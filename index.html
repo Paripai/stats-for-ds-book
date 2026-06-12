@@ -1,0 +1,1077 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Parichart Pattarapanitchai">
+<meta name="dcterms.date" content="2026-01-01">
+
+<title>Statistics for Data Science</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./chapter01_descriptive_statistics.html" rel="next">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-a06763021a52c43c40a351ac8b799b8f.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-81de787dd4773dbc0001c2dc1cc3016d.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-sidebar floating quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./index.html"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Preface</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">Statistics for Data Science</a> 
+        <div class="sidebar-tools-main">
+    <a href="./Statistics-for-Data-Science.pdf" title="Download PDF" class="quarto-navigation-tool px-1" aria-label="Download PDF"><i class="bi bi-file-pdf"></i></a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Preface</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter01_descriptive_statistics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Chapter 1: Descriptive Statistics</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter02_data_distribution_probability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Chapter 2: Data Distribution and Probability</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter03_hypothesis_testing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Chapter 3: Hypothesis Testing</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter04_test_of_independence.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Chapter 4: Test of Independence of Variables</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter05_data_sampling.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Chapter 5: Data Sampling Techniques</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter06_data_preprocessing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Chapter 6: Data Preprocessing</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter07_dimension_reduction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Chapter 7: Data Dimension Reduction</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter08_data_clustering.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Chapter 8: Data Clustering</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter09_data_classification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Chapter 9: Data Classification</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter10_regression_analysis.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Chapter 10: Regression Analysis</span></span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Contents</h2>
+   
+  <ul>
+  <li><a href="#preface" id="toc-preface" class="nav-link active" data-scroll-target="#preface"><span class="header-section-number">1</span> Preface</a></li>
+  <li><a href="#course-overview" id="toc-course-overview" class="nav-link" data-scroll-target="#course-overview"><span class="header-section-number">2</span> Course Overview</a>
+  <ul class="collapse">
+  <li><a href="#about-this-course" id="toc-about-this-course" class="nav-link" data-scroll-target="#about-this-course"><span class="header-section-number">2.1</span> About This Course</a></li>
+  <li><a href="#learning-objectives" id="toc-learning-objectives" class="nav-link" data-scroll-target="#learning-objectives"><span class="header-section-number">2.2</span> Learning Objectives</a></li>
+  <li><a href="#software-requirements" id="toc-software-requirements" class="nav-link" data-scroll-target="#software-requirements"><span class="header-section-number">2.3</span> Software Requirements</a></li>
+  </ul></li>
+  <li><a href="#course-structure" id="toc-course-structure" class="nav-link" data-scroll-target="#course-structure"><span class="header-section-number">3</span> Course Structure</a>
+  <ul class="collapse">
+  <li><a href="#part-i-foundations-chapters-14" id="toc-part-i-foundations-chapters-14" class="nav-link" data-scroll-target="#part-i-foundations-chapters-14"><span class="header-section-number">3.1</span> Part I — Foundations (Chapters 1–4)</a></li>
+  <li><a href="#part-ii-data-preparation-chapters-56" id="toc-part-ii-data-preparation-chapters-56" class="nav-link" data-scroll-target="#part-ii-data-preparation-chapters-56"><span class="header-section-number">3.2</span> Part II — Data Preparation (Chapters 5–6)</a></li>
+  <li><a href="#part-iii-modeling-and-machine-learning-chapters-710" id="toc-part-iii-modeling-and-machine-learning-chapters-710" class="nav-link" data-scroll-target="#part-iii-modeling-and-machine-learning-chapters-710"><span class="header-section-number">3.3</span> Part III — Modeling and Machine Learning (Chapters 7–10)</a></li>
+  </ul></li>
+  <li><a href="#prerequisites" id="toc-prerequisites" class="nav-link" data-scroll-target="#prerequisites"><span class="header-section-number">4</span> Prerequisites</a></li>
+  <li><a href="#chapter-previews" id="toc-chapter-previews" class="nav-link" data-scroll-target="#chapter-previews"><span class="header-section-number">5</span> Chapter Previews</a>
+  <ul class="collapse">
+  <li><a href="#chapter-1-descriptive-statistics" id="toc-chapter-1-descriptive-statistics" class="nav-link" data-scroll-target="#chapter-1-descriptive-statistics"><span class="header-section-number">5.1</span> Chapter 1: Descriptive Statistics</a></li>
+  <li><a href="#chapter-2-data-distribution-and-probability" id="toc-chapter-2-data-distribution-and-probability" class="nav-link" data-scroll-target="#chapter-2-data-distribution-and-probability"><span class="header-section-number">5.2</span> Chapter 2: Data Distribution and Probability</a></li>
+  <li><a href="#chapter-3-hypothesis-testing" id="toc-chapter-3-hypothesis-testing" class="nav-link" data-scroll-target="#chapter-3-hypothesis-testing"><span class="header-section-number">5.3</span> Chapter 3: Hypothesis Testing</a></li>
+  <li><a href="#chapter-4-test-of-independence" id="toc-chapter-4-test-of-independence" class="nav-link" data-scroll-target="#chapter-4-test-of-independence"><span class="header-section-number">5.4</span> Chapter 4: Test of Independence</a></li>
+  <li><a href="#chapter-5-data-sampling" id="toc-chapter-5-data-sampling" class="nav-link" data-scroll-target="#chapter-5-data-sampling"><span class="header-section-number">5.5</span> Chapter 5: Data Sampling</a></li>
+  <li><a href="#chapter-6-data-preprocessing" id="toc-chapter-6-data-preprocessing" class="nav-link" data-scroll-target="#chapter-6-data-preprocessing"><span class="header-section-number">5.6</span> Chapter 6: Data Preprocessing</a></li>
+  <li><a href="#chapter-7-dimension-reduction" id="toc-chapter-7-dimension-reduction" class="nav-link" data-scroll-target="#chapter-7-dimension-reduction"><span class="header-section-number">5.7</span> Chapter 7: Dimension Reduction</a></li>
+  <li><a href="#chapter-8-data-clustering" id="toc-chapter-8-data-clustering" class="nav-link" data-scroll-target="#chapter-8-data-clustering"><span class="header-section-number">5.8</span> Chapter 8: Data Clustering</a></li>
+  <li><a href="#chapter-9-data-classification" id="toc-chapter-9-data-classification" class="nav-link" data-scroll-target="#chapter-9-data-classification"><span class="header-section-number">5.9</span> Chapter 9: Data Classification</a></li>
+  <li><a href="#chapter-10-regression-analysis" id="toc-chapter-10-regression-analysis" class="nav-link" data-scroll-target="#chapter-10-regression-analysis"><span class="header-section-number">5.10</span> Chapter 10: Regression Analysis</a></li>
+  </ul></li>
+  <li><a href="#a-note-on-learning-statistics" id="toc-a-note-on-learning-statistics" class="nav-link" data-scroll-target="#a-note-on-learning-statistics"><span class="header-section-number">6</span> A Note on Learning Statistics</a></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Statistics for Data Science</h1>
+<p class="subtitle lead">229711</p>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Parichart Pattarapanitchai </p>
+          </div>
+  </div>
+    
+    <div>
+    <div class="quarto-title-meta-heading">Published</div>
+    <div class="quarto-title-meta-contents">
+      <p class="date">January 1, 2026</p>
+    </div>
+  </div>
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="preface" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Preface</h1>
+<p>This book is a hands-on introduction to statistics for students and practitioners in data science. It is designed to bridge the gap between mathematical theory and practical application in R — every concept is accompanied by worked examples, derivations, and reproducible code.</p>
+<p>The course progresses from foundational descriptive tools (Chapter 1) through probability and inference (Chapters 2–4), to the full data-science pipeline: sampling, preprocessing, dimensionality reduction, clustering, classification, and regression (Chapters 5–10). By the final chapter, you will be equipped to build, evaluate, and interpret predictive models from raw data.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>How to Use This Book
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Each chapter follows a consistent four-part structure:</p>
+<ol type="1">
+<li><strong>Theory</strong> — mathematical foundations with derivations and formulas</li>
+<li><strong>Worked Examples</strong> — step-by-step calculations by hand</li>
+<li><strong>R Examples</strong> — fully reproducible code with line-by-line explanations</li>
+<li><strong>Exercises</strong> — practice problems ranging from computational to conceptual</li>
+</ol>
+<p>Read the theory, work through the examples by hand, then reproduce and extend the R code. The exercises at the end of each section are designed to reinforce understanding — do not skip them.</p>
+</div>
+</div>
+<hr>
+</section>
+<section id="course-overview" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Course Overview</h1>
+<section id="about-this-course" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="about-this-course"><span class="header-section-number">2.1</span> About This Course</h2>
+<p><strong>Statistics for Data Science</strong> introduces the probabilistic and statistical foundations that underpin modern data analysis and machine learning. The course emphasizes both mathematical rigor and practical fluency in R, the leading language for statistical computing.</p>
+<p>At its core, data science is applied statistics. Understanding <em>why</em> methods work — not just <em>how</em> to call a function — makes the difference between a practitioner who applies tools blindly and one who chooses the right tool, diagnoses failures, and communicates results with confidence. This course builds that understanding from the ground up.</p>
+</section>
+<section id="learning-objectives" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="learning-objectives"><span class="header-section-number">2.2</span> Learning Objectives</h2>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>By the End of This Course, You Will Be Able To:
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<ol type="1">
+<li>Describe, visualize, and interpret any dataset using appropriate descriptive statistics.</li>
+<li>Apply probability theory and common distributions to model real-world phenomena.</li>
+<li>Design and conduct hypothesis tests and correctly interpret <em>p</em>-values, confidence intervals, and effect sizes.</li>
+<li>Test for independence and association in categorical and continuous data.</li>
+<li>Design and evaluate sampling strategies to collect valid data.</li>
+<li>Clean, transform, and encode messy data for downstream analysis.</li>
+<li>Reduce high-dimensional data using PCA and related methods.</li>
+<li>Apply and evaluate clustering algorithms to discover structure in unlabeled data.</li>
+<li>Build and assess classification models to predict categorical outcomes.</li>
+<li>Fit, diagnose, and interpret simple and multiple linear regression models.</li>
+</ol>
+</div>
+</div>
+</section>
+<section id="software-requirements" class="level2" data-number="2.3">
+<h2 data-number="2.3" class="anchored" data-anchor-id="software-requirements"><span class="header-section-number">2.3</span> Software Requirements</h2>
+<p>All examples in this book use <strong>R</strong> (version ≥ 4.3) and are written within the <strong>Quarto</strong> publishing framework. The following packages are used throughout:</p>
+<table class="caption-top table">
+<caption>Core R packages used in this course. Install all at once with <code>install.packages(c("tidyverse", "moments", "psych", "knitr", "kableExtra", "GGally", "corrplot", "MASS", "survey", "recipes", "caret", "factoextra", "cluster", "e1071", "rpart", "car", "lmtest"))</code>.</caption>
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Package</th>
+<th>Purpose</th>
+<th>Chapters</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>tidyverse</code></td>
+<td>Data manipulation and visualization (<code>ggplot2</code>, <code>dplyr</code>)</td>
+<td>All</td>
+</tr>
+<tr class="even">
+<td><code>moments</code></td>
+<td>Skewness and kurtosis</td>
+<td>1</td>
+</tr>
+<tr class="odd">
+<td><code>psych</code></td>
+<td>Comprehensive descriptive statistics</td>
+<td>1</td>
+</tr>
+<tr class="even">
+<td><code>knitr</code> / <code>kableExtra</code></td>
+<td>Table formatting</td>
+<td>All</td>
+</tr>
+<tr class="odd">
+<td><code>GGally</code> / <code>corrplot</code></td>
+<td>Correlation visualization</td>
+<td>1, 10</td>
+</tr>
+<tr class="even">
+<td><code>MASS</code></td>
+<td>Statistical distributions and datasets</td>
+<td>2, 3</td>
+</tr>
+<tr class="odd">
+<td><code>stats</code></td>
+<td>Hypothesis tests (base R)</td>
+<td>3, 4</td>
+</tr>
+<tr class="even">
+<td><code>survey</code></td>
+<td>Complex survey design</td>
+<td>5</td>
+</tr>
+<tr class="odd">
+<td><code>recipes</code> / <code>caret</code></td>
+<td>Preprocessing and modeling pipelines</td>
+<td>6, 9</td>
+</tr>
+<tr class="even">
+<td><code>factoextra</code></td>
+<td>PCA and clustering visualization</td>
+<td>7, 8</td>
+</tr>
+<tr class="odd">
+<td><code>cluster</code></td>
+<td>Clustering algorithms</td>
+<td>8</td>
+</tr>
+<tr class="even">
+<td><code>class</code> / <code>e1071</code> / <code>rpart</code></td>
+<td>Classification models</td>
+<td>9</td>
+</tr>
+<tr class="odd">
+<td><code>car</code> / <code>lmtest</code></td>
+<td>Regression diagnostics</td>
+<td>10</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+</section>
+<section id="course-structure" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Course Structure</h1>
+<p>The ten chapters are organized into three parts that reflect the natural progression of a data science project.</p>
+<section id="part-i-foundations-chapters-14" class="level2" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="part-i-foundations-chapters-14"><span class="header-section-number">3.1</span> Part I — Foundations (Chapters 1–4)</h2>
+<p>Before modeling data, you must understand it. Part I builds the statistical vocabulary and inferential framework that all subsequent chapters rely on.</p>
+<table class="caption-top table">
+<caption>Part I — Statistical Foundations</caption>
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Chapter</th>
+<th>Title</th>
+<th>Key Topics</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>1</td>
+<td><strong>Descriptive Statistics</strong></td>
+<td>Mean, median, variance, SD, IQR, skewness, kurtosis, correlation, visualization</td>
+</tr>
+<tr class="even">
+<td>2</td>
+<td><strong>Data Distribution &amp; Probability</strong></td>
+<td>Probability rules, random variables, Binomial, Poisson, Normal, Central Limit Theorem</td>
+</tr>
+<tr class="odd">
+<td>3</td>
+<td><strong>Hypothesis Testing</strong></td>
+<td>Null/alternative hypotheses, <em>z</em>-test, <em>t</em>-test, Type I/II errors, <em>p</em>-values, power, confidence intervals</td>
+</tr>
+<tr class="even">
+<td>4</td>
+<td><strong>Test of Independence</strong></td>
+<td>Chi-square test, Fisher’s exact test, Cramér’s V, ANOVA, post-hoc tests</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="part-ii-data-preparation-chapters-56" class="level2" data-number="3.2">
+<h2 data-number="3.2" class="anchored" data-anchor-id="part-ii-data-preparation-chapters-56"><span class="header-section-number">3.2</span> Part II — Data Preparation (Chapters 5–6)</h2>
+<p>Real data is never clean. Part II covers how to collect it properly and prepare it for analysis.</p>
+<table class="caption-top table">
+<caption>Part II — Data Collection and Preparation</caption>
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Chapter</th>
+<th>Title</th>
+<th>Key Topics</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>5</td>
+<td><strong>Data Sampling</strong></td>
+<td>Simple random, stratified, cluster, systematic sampling; sample size determination; sampling bias</td>
+</tr>
+<tr class="even">
+<td>6</td>
+<td><strong>Data Preprocessing</strong></td>
+<td>Missing values, outlier detection, normalization, encoding, feature engineering, train/test split</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="part-iii-modeling-and-machine-learning-chapters-710" class="level2" data-number="3.3">
+<h2 data-number="3.3" class="anchored" data-anchor-id="part-iii-modeling-and-machine-learning-chapters-710"><span class="header-section-number">3.3</span> Part III — Modeling and Machine Learning (Chapters 7–10)</h2>
+<p>With clean data in hand, Part III introduces the core modeling techniques used in applied data science.</p>
+<table class="caption-top table">
+<caption>Part III — Modeling and Machine Learning</caption>
+<colgroup>
+<col style="width: 33%">
+<col style="width: 33%">
+<col style="width: 33%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Chapter</th>
+<th>Title</th>
+<th>Key Topics</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>7</td>
+<td><strong>Dimension Reduction</strong></td>
+<td>PCA, scree plots, biplots, variance explained, factor rotation</td>
+</tr>
+<tr class="even">
+<td>8</td>
+<td><strong>Data Clustering</strong></td>
+<td>k-Means, hierarchical clustering, DBSCAN, silhouette scores, elbow method</td>
+</tr>
+<tr class="odd">
+<td>9</td>
+<td><strong>Data Classification</strong></td>
+<td>k-NN, Naive Bayes, decision trees, confusion matrix, precision, recall, ROC/AUC</td>
+</tr>
+<tr class="even">
+<td>10</td>
+<td><strong>Regression Analysis</strong></td>
+<td>Simple and multiple linear regression, OLS, model diagnostics, regularization, interpretation</td>
+</tr>
+</tbody>
+</table>
+<hr>
+</section>
+</section>
+<section id="prerequisites" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Prerequisites</h1>
+<p>This course assumes the following background knowledge. Students lacking prerequisites in any area should review the suggested resources before beginning.</p>
+<div class="callout callout-style-default callout-important callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Important</span>Required Background
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Mathematics</strong></p>
+<ul>
+<li>High school algebra (solving equations, working with fractions and exponents)</li>
+<li>Basic calculus (derivatives and integrals at the level of a first-year university course) — used in Chapters 2–3 for probability density functions</li>
+<li>Linear algebra fundamentals (vectors, matrices, matrix multiplication) — used in Chapters 7, 10</li>
+</ul>
+<p><strong>Computing</strong></p>
+<ul>
+<li>R installed (download from <a href="https://www.r-project.org">https://www.r-project.org</a>)</li>
+<li>RStudio or Positron IDE recommended</li>
+<li>Quarto installed for rendering this book (<a href="https://quarto.org">https://quarto.org</a>)</li>
+<li>Familiarity with basic R syntax (<code>&lt;-</code>, vectors, data frames, <code>library()</code>)</li>
+</ul>
+<p><strong>Statistics</strong></p>
+<ul>
+<li>No prior statistics knowledge is assumed — this course starts from scratch.</li>
+</ul>
+</div>
+</div>
+<hr>
+</section>
+<section id="chapter-previews" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Chapter Previews</h1>
+<section id="chapter-1-descriptive-statistics" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="chapter-1-descriptive-statistics"><span class="header-section-number">5.1</span> Chapter 1: Descriptive Statistics</h2>
+<p>Every data analysis begins here. Before fitting any model, a data scientist must develop an intimate understanding of the data — its center, spread, shape, and relationships. This chapter covers all major descriptive tools: measures of central tendency (mean, median, mode), measures of dispersion (range, IQR, variance, standard deviation, CV), measures of shape (skewness and kurtosis), and a complete toolkit of descriptive visualizations (histograms, boxplots, QQ plots, scatterplot matrices).</p>
+<p>A unifying theme: numerical summaries compress information and can mislead. Anscombe’s Quartet demonstrates that four datasets with identical means, variances, and correlations can look completely different. <strong>Always visualize.</strong></p>
+</section>
+<section id="chapter-2-data-distribution-and-probability" class="level2" data-number="5.2">
+<h2 data-number="5.2" class="anchored" data-anchor-id="chapter-2-data-distribution-and-probability"><span class="header-section-number">5.2</span> Chapter 2: Data Distribution and Probability</h2>
+<p>Statistical inference is built on probability. This chapter introduces the mathematical language of uncertainty: sample spaces, events, conditional probability, and Bayes’ theorem. The core of the chapter is a tour of the most important probability distributions — Binomial, Poisson, Normal, <em>t</em>, <span class="math inline">\(\chi^2\)</span>, and F — with attention to when each arises in practice. The chapter closes with the Central Limit Theorem, arguably the most important result in statistics: the key that unlocks inference from sample data to population parameters.</p>
+</section>
+<section id="chapter-3-hypothesis-testing" class="level2" data-number="5.3">
+<h2 data-number="5.3" class="anchored" data-anchor-id="chapter-3-hypothesis-testing"><span class="header-section-number">5.3</span> Chapter 3: Hypothesis Testing</h2>
+<p>The workhorse of inferential statistics. We formalize the logic of hypothesis testing — null and alternative hypotheses, test statistics, <em>p</em>-values, and critical regions — then apply it to one-sample and two-sample <em>z</em>-tests and <em>t</em>-tests. Special attention is paid to the concept of <strong>statistical power</strong>, Type I and Type II errors, and how to determine appropriate sample sizes. The chapter ends with a critical discussion of <em>p</em>-value misinterpretation, effect sizes, and confidence intervals as a more informative alternative.</p>
+</section>
+<section id="chapter-4-test-of-independence" class="level2" data-number="5.4">
+<h2 data-number="5.4" class="anchored" data-anchor-id="chapter-4-test-of-independence"><span class="header-section-number">5.4</span> Chapter 4: Test of Independence</h2>
+<p>When variables are categorical, standard tests of means do not apply. This chapter covers the <span class="math inline">\(\chi^2\)</span> test of independence, Fisher’s exact test for small samples, and Cramér’s V for measuring association strength. We then extend hypothesis testing to compare means across more than two groups via <strong>ANOVA</strong>, including post-hoc multiple comparison procedures (Tukey’s HSD) and the non-parametric Kruskal-Wallis alternative.</p>
+</section>
+<section id="chapter-5-data-sampling" class="level2" data-number="5.5">
+<h2 data-number="5.5" class="anchored" data-anchor-id="chapter-5-data-sampling"><span class="header-section-number">5.5</span> Chapter 5: Data Sampling</h2>
+<p>How data is collected determines what conclusions can be drawn. This chapter covers the major probability sampling designs — simple random, stratified, cluster, and systematic — and the sources of bias that arise when sampling is not done carefully. We examine how to calculate required sample sizes for a desired margin of error and power, and introduce complex survey design using the <code>survey</code> package in R.</p>
+</section>
+<section id="chapter-6-data-preprocessing" class="level2" data-number="5.6">
+<h2 data-number="5.6" class="anchored" data-anchor-id="chapter-6-data-preprocessing"><span class="header-section-number">5.6</span> Chapter 6: Data Preprocessing</h2>
+<p>Raw data is rarely analysis-ready. This chapter is a practical guide to the full preprocessing pipeline: diagnosing and imputing missing values, detecting and handling outliers, scaling and normalizing features, encoding categorical variables, engineering new features, and constructing reproducible train/test splits. We use the <code>recipes</code> package from the <code>tidymodels</code> ecosystem, which provides a principled, auditable workflow for all preprocessing steps.</p>
+</section>
+<section id="chapter-7-dimension-reduction" class="level2" data-number="5.7">
+<h2 data-number="5.7" class="anchored" data-anchor-id="chapter-7-dimension-reduction"><span class="header-section-number">5.7</span> Chapter 7: Dimension Reduction</h2>
+<p>High-dimensional data is computationally expensive, statistically challenging, and difficult to visualize. <strong>Principal Component Analysis (PCA)</strong> addresses all three problems by finding a lower-dimensional representation that retains as much variance as possible. This chapter derives PCA from the eigendecomposition of the covariance matrix, then demonstrates interpretation via scree plots, biplots, and loadings. We discuss how many components to retain, when PCA is appropriate, and introduce factor analysis as a related approach.</p>
+</section>
+<section id="chapter-8-data-clustering" class="level2" data-number="5.8">
+<h2 data-number="5.8" class="anchored" data-anchor-id="chapter-8-data-clustering"><span class="header-section-number">5.8</span> Chapter 8: Data Clustering</h2>
+<p>Clustering is <strong>unsupervised learning</strong>: finding structure in unlabeled data. We cover the three most important paradigms — <strong>k-Means</strong> (partition-based), <strong>hierarchical clustering</strong> (agglomerative and divisive), and <strong>DBSCAN</strong> (density-based) — along with methods for evaluating cluster quality (silhouette scores, elbow method, dendrogram inspection). A key theme: clustering algorithms always find clusters, even in random data. Rigorous evaluation is essential.</p>
+</section>
+<section id="chapter-9-data-classification" class="level2" data-number="5.9">
+<h2 data-number="5.9" class="anchored" data-anchor-id="chapter-9-data-classification"><span class="header-section-number">5.9</span> Chapter 9: Data Classification</h2>
+<p><strong>Supervised learning</strong> for categorical outcomes. This chapter introduces the classification pipeline — feature engineering, training, cross-validation, and evaluation — and applies it to three foundational classifiers: <em>k</em>-Nearest Neighbors (k-NN), Naive Bayes, and decision trees. Model performance is evaluated using the full toolkit: confusion matrix, accuracy, precision, recall, F1 score, and the ROC/AUC curve. The chapter emphasizes the <strong>bias-variance tradeoff</strong> and the danger of evaluating a model on the data it was trained on.</p>
+</section>
+<section id="chapter-10-regression-analysis" class="level2" data-number="5.10">
+<h2 data-number="5.10" class="anchored" data-anchor-id="chapter-10-regression-analysis"><span class="header-section-number">5.10</span> Chapter 10: Regression Analysis</h2>
+<p>The capstone of the course. We develop <strong>linear regression</strong> in full — from simple regression with one predictor to multiple regression with many. We derive the Ordinary Least Squares (OLS) estimator, prove its optimality under the Gauss-Markov assumptions, and build a complete diagnostic toolkit: residual plots, leverage and influence measures, tests for heteroskedasticity and autocorrelation. The chapter closes with regularization (Ridge and Lasso), connecting regression to modern machine learning and the challenge of prediction in high dimensions.</p>
+<hr>
+</section>
+</section>
+<section id="a-note-on-learning-statistics" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> A Note on Learning Statistics</h1>
+<p>Statistics has a reputation for being abstract, dry, and disconnected from practice. This book takes the opposite view. Every formula in this course exists to solve a real problem — and understanding the problem makes the formula memorable.</p>
+<p>When you encounter a formula, ask: <em>What is this measuring? Why is it defined this way? What goes wrong if I use something simpler?</em> When you encounter a concept, ask: <em>Where would I see this in real data? How would I explain it to someone who has never seen a statistics textbook?</em></p>
+<p>The R code in each chapter is not decoration. It is the primary vehicle for building intuition. Run every block, change the parameters, break things, and observe what happens. The most productive way to learn statistics in 2026 is to spend half your time computing and the other half thinking about what the numbers mean.</p>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Getting Help
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<ul>
+<li><strong>Course material:</strong> All <code>.qmd</code> source files for this book are available on the accompanying GitHub repository.</li>
+<li><strong>R help:</strong> Use <code>?function_name</code> in the R console for documentation, or search <a href="https://www.rdocumentation.org">https://www.rdocumentation.org</a>.</li>
+<li><strong>Quarto:</strong> Official documentation at <a href="https://quarto.org/docs">https://quarto.org/docs</a>.</li>
+<li><strong>Community:</strong> <a href="https://stackoverflow.com/questions/tagged/r">Stack Overflow</a> (tag: <code>r</code>), <a href="https://community.rstudio.com">Posit Community</a>, and <a href="https://stats.stackexchange.com">Cross Validated</a> are excellent resources for R and statistics questions.</li>
+</ul>
+</div>
+</div>
+<hr>
+<p><em>Begin with Chapter 1: Descriptive Statistics.</em></p>
+
+
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./chapter01_descriptive_statistics.html" class="pagination-link" aria-label="Chapter 1: Descriptive Statistics">
+        <span class="nav-page-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Chapter 1: Descriptive Statistics</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

@@ -1,0 +1,2422 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>10&nbsp; Chapter 9: Data Classification – Statistics for Data Science</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./chapter10_regression_analysis.html" rel="next">
+<link href="./chapter08_data_clustering.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-a06763021a52c43c40a351ac8b799b8f.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-81de787dd4773dbc0001c2dc1cc3016d.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="site_libs/kePrint-0.0.1/kePrint.js"></script>
+
+<link href="site_libs/lightable-0.0.1/lightable.css" rel="stylesheet">
+
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-sidebar floating quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./chapter09_data_classification.html"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Chapter 9: Data Classification</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">Statistics for Data Science</a> 
+        <div class="sidebar-tools-main">
+    <a href="./Statistics-for-Data-Science.pdf" title="Download PDF" class="quarto-navigation-tool px-1" aria-label="Download PDF"><i class="bi bi-file-pdf"></i></a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Preface</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter01_descriptive_statistics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Chapter 1: Descriptive Statistics</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter02_data_distribution_probability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Chapter 2: Data Distribution and Probability</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter03_hypothesis_testing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Chapter 3: Hypothesis Testing</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter04_test_of_independence.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Chapter 4: Test of Independence of Variables</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter05_data_sampling.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Chapter 5: Data Sampling Techniques</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter06_data_preprocessing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Chapter 6: Data Preprocessing</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter07_dimension_reduction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Chapter 7: Data Dimension Reduction</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter08_data_clustering.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Chapter 8: Data Clustering</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter09_data_classification.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Chapter 9: Data Classification</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter10_regression_analysis.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Chapter 10: Regression Analysis</span></span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Contents</h2>
+   
+  <ul>
+  <li><a href="#chapter-overview" id="toc-chapter-overview" class="nav-link active" data-scroll-target="#chapter-overview"><span class="header-section-number">11</span> Chapter Overview</a>
+  <ul class="collapse">
+  <li><a href="#introduction" id="toc-introduction" class="nav-link" data-scroll-target="#introduction"><span class="header-section-number">11.1</span> Introduction</a></li>
+  </ul></li>
+  <li><a href="#introduction-to-classification" id="toc-introduction-to-classification" class="nav-link" data-scroll-target="#introduction-to-classification"><span class="header-section-number">12</span> Introduction to Classification</a>
+  <ul class="collapse">
+  <li><a href="#introduction-1" id="toc-introduction-1" class="nav-link" data-scroll-target="#introduction-1"><span class="header-section-number">12.1</span> Introduction</a></li>
+  <li><a href="#theory" id="toc-theory" class="nav-link" data-scroll-target="#theory"><span class="header-section-number">12.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#types-of-classification-problems" id="toc-types-of-classification-problems" class="nav-link" data-scroll-target="#types-of-classification-problems"><span class="header-section-number">12.2.1</span> Types of Classification Problems</a></li>
+  <li><a href="#the-decision-boundary" id="toc-the-decision-boundary" class="nav-link" data-scroll-target="#the-decision-boundary"><span class="header-section-number">12.2.2</span> The Decision Boundary</a></li>
+  <li><a href="#the-training-test-split" id="toc-the-training-test-split" class="nav-link" data-scroll-target="#the-training-test-split"><span class="header-section-number">12.2.3</span> The Training-Test Split</a></li>
+  <li><a href="#the-bayes-error-rate" id="toc-the-bayes-error-rate" class="nav-link" data-scroll-target="#the-bayes-error-rate"><span class="header-section-number">12.2.4</span> The Bayes Error Rate</a></li>
+  </ul></li>
+  <li><a href="#example-classification-problem-setup" id="toc-example-classification-problem-setup" class="nav-link" data-scroll-target="#example-classification-problem-setup"><span class="header-section-number">12.3</span> Example: Classification Problem Setup</a></li>
+  <li><a href="#r-example-setting-up-a-classification-problem" id="toc-r-example-setting-up-a-classification-problem" class="nav-link" data-scroll-target="#r-example-setting-up-a-classification-problem"><span class="header-section-number">12.4</span> R Example: Setting Up a Classification Problem</a></li>
+  <li><a href="#exercises" id="toc-exercises" class="nav-link" data-scroll-target="#exercises"><span class="header-section-number">12.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#logistic-regression" id="toc-logistic-regression" class="nav-link" data-scroll-target="#logistic-regression"><span class="header-section-number">13</span> Logistic Regression</a>
+  <ul class="collapse">
+  <li><a href="#introduction-2" id="toc-introduction-2" class="nav-link" data-scroll-target="#introduction-2"><span class="header-section-number">13.1</span> Introduction</a></li>
+  <li><a href="#theory-1" id="toc-theory-1" class="nav-link" data-scroll-target="#theory-1"><span class="header-section-number">13.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#the-logistic-model" id="toc-the-logistic-model" class="nav-link" data-scroll-target="#the-logistic-model"><span class="header-section-number">13.2.1</span> The Logistic Model</a></li>
+  <li><a href="#the-log-odds-logit-interpretation" id="toc-the-log-odds-logit-interpretation" class="nav-link" data-scroll-target="#the-log-odds-logit-interpretation"><span class="header-section-number">13.2.2</span> The Log-Odds (Logit) Interpretation</a></li>
+  <li><a href="#parameter-estimation-maximum-likelihood" id="toc-parameter-estimation-maximum-likelihood" class="nav-link" data-scroll-target="#parameter-estimation-maximum-likelihood"><span class="header-section-number">13.2.3</span> Parameter Estimation: Maximum Likelihood</a></li>
+  <li><a href="#hypothesis-testing-for-coefficients" id="toc-hypothesis-testing-for-coefficients" class="nav-link" data-scroll-target="#hypothesis-testing-for-coefficients"><span class="header-section-number">13.2.4</span> Hypothesis Testing for Coefficients</a></li>
+  <li><a href="#multinomial-logistic-regression" id="toc-multinomial-logistic-regression" class="nav-link" data-scroll-target="#multinomial-logistic-regression"><span class="header-section-number">13.2.5</span> Multinomial Logistic Regression</a></li>
+  </ul></li>
+  <li><a href="#example-logistic-regression-for-diabetes-prediction" id="toc-example-logistic-regression-for-diabetes-prediction" class="nav-link" data-scroll-target="#example-logistic-regression-for-diabetes-prediction"><span class="header-section-number">13.3</span> Example: Logistic Regression for Diabetes Prediction</a></li>
+  <li><a href="#r-example-logistic-regression" id="toc-r-example-logistic-regression" class="nav-link" data-scroll-target="#r-example-logistic-regression"><span class="header-section-number">13.4</span> R Example: Logistic Regression</a></li>
+  <li><a href="#exercises-1" id="toc-exercises-1" class="nav-link" data-scroll-target="#exercises-1"><span class="header-section-number">13.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#k-nearest-neighbors" id="toc-k-nearest-neighbors" class="nav-link" data-scroll-target="#k-nearest-neighbors"><span class="header-section-number">14</span> K-Nearest Neighbors</a>
+  <ul class="collapse">
+  <li><a href="#introduction-3" id="toc-introduction-3" class="nav-link" data-scroll-target="#introduction-3"><span class="header-section-number">14.1</span> Introduction</a></li>
+  <li><a href="#theory-2" id="toc-theory-2" class="nav-link" data-scroll-target="#theory-2"><span class="header-section-number">14.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#the-knn-algorithm" id="toc-the-knn-algorithm" class="nav-link" data-scroll-target="#the-knn-algorithm"><span class="header-section-number">14.2.1</span> The KNN Algorithm</a></li>
+  <li><a href="#choosing-k" id="toc-choosing-k" class="nav-link" data-scroll-target="#choosing-k"><span class="header-section-number">14.2.2</span> Choosing <span class="math inline">\(K\)</span></a></li>
+  <li><a href="#the-bias-variance-tradeoff-in-knn" id="toc-the-bias-variance-tradeoff-in-knn" class="nav-link" data-scroll-target="#the-bias-variance-tradeoff-in-knn"><span class="header-section-number">14.2.3</span> The Bias-Variance Tradeoff in KNN</a></li>
+  <li><a href="#knn-requirements" id="toc-knn-requirements" class="nav-link" data-scroll-target="#knn-requirements"><span class="header-section-number">14.2.4</span> KNN Requirements</a></li>
+  <li><a href="#weighted-knn" id="toc-weighted-knn" class="nav-link" data-scroll-target="#weighted-knn"><span class="header-section-number">14.2.5</span> Weighted KNN</a></li>
+  </ul></li>
+  <li><a href="#example-knn-decision-boundary" id="toc-example-knn-decision-boundary" class="nav-link" data-scroll-target="#example-knn-decision-boundary"><span class="header-section-number">14.3</span> Example: KNN Decision Boundary</a></li>
+  <li><a href="#r-example-knn-classification" id="toc-r-example-knn-classification" class="nav-link" data-scroll-target="#r-example-knn-classification"><span class="header-section-number">14.4</span> R Example: KNN Classification</a></li>
+  <li><a href="#exercises-2" id="toc-exercises-2" class="nav-link" data-scroll-target="#exercises-2"><span class="header-section-number">14.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#decision-trees" id="toc-decision-trees" class="nav-link" data-scroll-target="#decision-trees"><span class="header-section-number">15</span> Decision Trees</a>
+  <ul class="collapse">
+  <li><a href="#introduction-4" id="toc-introduction-4" class="nav-link" data-scroll-target="#introduction-4"><span class="header-section-number">15.1</span> Introduction</a></li>
+  <li><a href="#theory-3" id="toc-theory-3" class="nav-link" data-scroll-target="#theory-3"><span class="header-section-number">15.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#tree-construction-recursive-binary-splitting" id="toc-tree-construction-recursive-binary-splitting" class="nav-link" data-scroll-target="#tree-construction-recursive-binary-splitting"><span class="header-section-number">15.2.1</span> Tree Construction: Recursive Binary Splitting</a></li>
+  <li><a href="#impurity-measures" id="toc-impurity-measures" class="nav-link" data-scroll-target="#impurity-measures"><span class="header-section-number">15.2.2</span> Impurity Measures</a></li>
+  <li><a href="#the-information-gain" id="toc-the-information-gain" class="nav-link" data-scroll-target="#the-information-gain"><span class="header-section-number">15.2.3</span> The Information Gain</a></li>
+  <li><a href="#pruning" id="toc-pruning" class="nav-link" data-scroll-target="#pruning"><span class="header-section-number">15.2.4</span> Pruning</a></li>
+  <li><a href="#advantages-and-limitations" id="toc-advantages-and-limitations" class="nav-link" data-scroll-target="#advantages-and-limitations"><span class="header-section-number">15.2.5</span> Advantages and Limitations</a></li>
+  </ul></li>
+  <li><a href="#example-decision-tree-for-diabetes-classification" id="toc-example-decision-tree-for-diabetes-classification" class="nav-link" data-scroll-target="#example-decision-tree-for-diabetes-classification"><span class="header-section-number">15.3</span> Example: Decision Tree for Diabetes Classification</a></li>
+  <li><a href="#r-example-decision-trees" id="toc-r-example-decision-trees" class="nav-link" data-scroll-target="#r-example-decision-trees"><span class="header-section-number">15.4</span> R Example: Decision Trees</a></li>
+  <li><a href="#exercises-3" id="toc-exercises-3" class="nav-link" data-scroll-target="#exercises-3"><span class="header-section-number">15.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#random-forest-and-ensemble-methods" id="toc-random-forest-and-ensemble-methods" class="nav-link" data-scroll-target="#random-forest-and-ensemble-methods"><span class="header-section-number">16</span> Random Forest and Ensemble Methods</a>
+  <ul class="collapse">
+  <li><a href="#introduction-5" id="toc-introduction-5" class="nav-link" data-scroll-target="#introduction-5"><span class="header-section-number">16.1</span> Introduction</a></li>
+  <li><a href="#theory-4" id="toc-theory-4" class="nav-link" data-scroll-target="#theory-4"><span class="header-section-number">16.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#bagging-bootstrap-aggregating" id="toc-bagging-bootstrap-aggregating" class="nav-link" data-scroll-target="#bagging-bootstrap-aggregating"><span class="header-section-number">16.2.1</span> Bagging (Bootstrap Aggregating)</a></li>
+  <li><a href="#random-forest" id="toc-random-forest" class="nav-link" data-scroll-target="#random-forest"><span class="header-section-number">16.2.2</span> Random Forest</a></li>
+  <li><a href="#boosting" id="toc-boosting" class="nav-link" data-scroll-target="#boosting"><span class="header-section-number">16.2.3</span> Boosting</a></li>
+  <li><a href="#bagging-vs.-boosting" id="toc-bagging-vs.-boosting" class="nav-link" data-scroll-target="#bagging-vs.-boosting"><span class="header-section-number">16.2.4</span> Bagging vs.&nbsp;Boosting</a></li>
+  </ul></li>
+  <li><a href="#example-random-forest-feature-importance" id="toc-example-random-forest-feature-importance" class="nav-link" data-scroll-target="#example-random-forest-feature-importance"><span class="header-section-number">16.3</span> Example: Random Forest Feature Importance</a></li>
+  <li><a href="#r-example-random-forest-and-ensemble-methods" id="toc-r-example-random-forest-and-ensemble-methods" class="nav-link" data-scroll-target="#r-example-random-forest-and-ensemble-methods"><span class="header-section-number">16.4</span> R Example: Random Forest and Ensemble Methods</a></li>
+  <li><a href="#exercises-4" id="toc-exercises-4" class="nav-link" data-scroll-target="#exercises-4"><span class="header-section-number">16.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#model-evaluation" id="toc-model-evaluation" class="nav-link" data-scroll-target="#model-evaluation"><span class="header-section-number">17</span> Model Evaluation</a>
+  <ul class="collapse">
+  <li><a href="#introduction-6" id="toc-introduction-6" class="nav-link" data-scroll-target="#introduction-6"><span class="header-section-number">17.1</span> Introduction</a></li>
+  <li><a href="#theory-5" id="toc-theory-5" class="nav-link" data-scroll-target="#theory-5"><span class="header-section-number">17.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#the-confusion-matrix" id="toc-the-confusion-matrix" class="nav-link" data-scroll-target="#the-confusion-matrix"><span class="header-section-number">17.2.1</span> The Confusion Matrix</a></li>
+  <li><a href="#derived-metrics" id="toc-derived-metrics" class="nav-link" data-scroll-target="#derived-metrics"><span class="header-section-number">17.2.2</span> Derived Metrics</a></li>
+  <li><a href="#the-precision-recall-tradeoff" id="toc-the-precision-recall-tradeoff" class="nav-link" data-scroll-target="#the-precision-recall-tradeoff"><span class="header-section-number">17.2.3</span> The Precision-Recall Tradeoff</a></li>
+  <li><a href="#roc-curve-and-auc" id="toc-roc-curve-and-auc" class="nav-link" data-scroll-target="#roc-curve-and-auc"><span class="header-section-number">17.2.4</span> ROC Curve and AUC</a></li>
+  <li><a href="#metrics-for-imbalanced-classes" id="toc-metrics-for-imbalanced-classes" class="nav-link" data-scroll-target="#metrics-for-imbalanced-classes"><span class="header-section-number">17.2.5</span> Metrics for Imbalanced Classes</a></li>
+  </ul></li>
+  <li><a href="#example-why-accuracy-alone-is-insufficient" id="toc-example-why-accuracy-alone-is-insufficient" class="nav-link" data-scroll-target="#example-why-accuracy-alone-is-insufficient"><span class="header-section-number">17.3</span> Example: Why Accuracy Alone is Insufficient</a></li>
+  <li><a href="#r-example-comprehensive-model-evaluation" id="toc-r-example-comprehensive-model-evaluation" class="nav-link" data-scroll-target="#r-example-comprehensive-model-evaluation"><span class="header-section-number">17.4</span> R Example: Comprehensive Model Evaluation</a></li>
+  <li><a href="#exercises-5" id="toc-exercises-5" class="nav-link" data-scroll-target="#exercises-5"><span class="header-section-number">17.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#model-comparison-and-selection" id="toc-model-comparison-and-selection" class="nav-link" data-scroll-target="#model-comparison-and-selection"><span class="header-section-number">18</span> Model Comparison and Selection</a>
+  <ul class="collapse">
+  <li><a href="#introduction-7" id="toc-introduction-7" class="nav-link" data-scroll-target="#introduction-7"><span class="header-section-number">18.1</span> Introduction</a></li>
+  <li><a href="#theory-6" id="toc-theory-6" class="nav-link" data-scroll-target="#theory-6"><span class="header-section-number">18.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#k-fold-cross-validation" id="toc-k-fold-cross-validation" class="nav-link" data-scroll-target="#k-fold-cross-validation"><span class="header-section-number">18.2.1</span> K-Fold Cross-Validation</a></li>
+  <li><a href="#the-bias-variance-of-cv-estimates" id="toc-the-bias-variance-of-cv-estimates" class="nav-link" data-scroll-target="#the-bias-variance-of-cv-estimates"><span class="header-section-number">18.2.2</span> The Bias-Variance of CV Estimates</a></li>
+  <li><a href="#statistical-comparison-of-models" id="toc-statistical-comparison-of-models" class="nav-link" data-scroll-target="#statistical-comparison-of-models"><span class="header-section-number">18.2.3</span> Statistical Comparison of Models</a></li>
+  <li><a href="#the-test-set-discipline" id="toc-the-test-set-discipline" class="nav-link" data-scroll-target="#the-test-set-discipline"><span class="header-section-number">18.2.4</span> The Test Set Discipline</a></li>
+  <li><a href="#model-selection-criteria" id="toc-model-selection-criteria" class="nav-link" data-scroll-target="#model-selection-criteria"><span class="header-section-number">18.2.5</span> Model Selection Criteria</a></li>
+  </ul></li>
+  <li><a href="#example-cross-validated-model-comparison" id="toc-example-cross-validated-model-comparison" class="nav-link" data-scroll-target="#example-cross-validated-model-comparison"><span class="header-section-number">18.3</span> Example: Cross-Validated Model Comparison</a></li>
+  <li><a href="#r-example-cross-validation-and-model-comparison" id="toc-r-example-cross-validation-and-model-comparison" class="nav-link" data-scroll-target="#r-example-cross-validation-and-model-comparison"><span class="header-section-number">18.4</span> R Example: Cross-Validation and Model Comparison</a></li>
+  <li><a href="#exercises-6" id="toc-exercises-6" class="nav-link" data-scroll-target="#exercises-6"><span class="header-section-number">18.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#chapter-lab-activity-medical-diagnosis-classification-with-pima-data" id="toc-chapter-lab-activity-medical-diagnosis-classification-with-pima-data" class="nav-link" data-scroll-target="#chapter-lab-activity-medical-diagnosis-classification-with-pima-data"><span class="header-section-number">19</span> Chapter Lab Activity: Medical Diagnosis Classification with <code>Pima</code> Data</a>
+  <ul class="collapse">
+  <li><a href="#objectives" id="toc-objectives" class="nav-link" data-scroll-target="#objectives"><span class="header-section-number">19.1</span> Objectives</a></li>
+  <li><a href="#the-dataset" id="toc-the-dataset" class="nav-link" data-scroll-target="#the-dataset"><span class="header-section-number">19.2</span> The Dataset</a></li>
+  <li><a href="#lab-task-1-exploratory-analysis" id="toc-lab-task-1-exploratory-analysis" class="nav-link" data-scroll-target="#lab-task-1-exploratory-analysis"><span class="header-section-number">19.3</span> Lab Task 1: Exploratory Analysis</a></li>
+  <li><a href="#lab-task-2-train-all-classifiers" id="toc-lab-task-2-train-all-classifiers" class="nav-link" data-scroll-target="#lab-task-2-train-all-classifiers"><span class="header-section-number">19.4</span> Lab Task 2: Train All Classifiers</a></li>
+  <li><a href="#lab-task-3-comprehensive-evaluation" id="toc-lab-task-3-comprehensive-evaluation" class="nav-link" data-scroll-target="#lab-task-3-comprehensive-evaluation"><span class="header-section-number">19.5</span> Lab Task 3: Comprehensive Evaluation</a></li>
+  <li><a href="#lab-task-4-roc-and-threshold-analysis" id="toc-lab-task-4-roc-and-threshold-analysis" class="nav-link" data-scroll-target="#lab-task-4-roc-and-threshold-analysis"><span class="header-section-number">19.6</span> Lab Task 4: ROC and Threshold Analysis</a></li>
+  <li><a href="#lab-discussion-questions" id="toc-lab-discussion-questions" class="nav-link" data-scroll-target="#lab-discussion-questions"><span class="header-section-number">19.7</span> Lab Discussion Questions</a></li>
+  </ul></li>
+  <li><a href="#chapter-summary" id="toc-chapter-summary" class="nav-link" data-scroll-target="#chapter-summary"><span class="header-section-number">20</span> Chapter Summary</a>
+  <ul class="collapse">
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary"><span class="header-section-number">20.1</span> Summary</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">20.2</span> References</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Chapter 9: Data Classification</span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<hr>
+<section id="chapter-overview" class="level1" data-number="11">
+<h1 data-number="11"><span class="header-section-number">11</span> Chapter Overview</h1>
+<section id="introduction" class="level2" data-number="11.1">
+<h2 data-number="11.1" class="anchored" data-anchor-id="introduction"><span class="header-section-number">11.1</span> Introduction</h2>
+<p><strong>Classification</strong> is the task of predicting which category — class, label, group — a new observation belongs to, based on its features. It is the most widely applied form of supervised machine learning: spam vs.&nbsp;legitimate email, disease vs.&nbsp;healthy, fraud vs.&nbsp;genuine transaction, high-risk vs.&nbsp;low-risk loan applicant. Every classification problem shares a common structure: a labeled training set, a set of features, a learning algorithm, and a performance evaluation framework.</p>
+<p>This chapter covers:</p>
+<ul>
+<li><strong>Introduction to Classification</strong> — supervised learning, decision boundaries, problem types</li>
+<li><strong>Logistic Regression</strong> — the statistical foundation of binary classification</li>
+<li><strong>K-Nearest Neighbors</strong> — the simplest non-parametric classifier</li>
+<li><strong>Decision Trees</strong> — interpretable rule-based classification</li>
+<li><strong>Random Forest and Ensemble Methods</strong> — combining classifiers for superior performance</li>
+<li><strong>Model Evaluation</strong> — confusion matrix, precision, recall, F1, AUC-ROC</li>
+<li><strong>Model Comparison and Selection</strong> — cross-validation, bias-variance, choosing the best model</li>
+</ul>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>Learning Objectives
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>By the end of this chapter, you will be able to:</p>
+<ol type="1">
+<li>Distinguish classification from clustering and regression; frame a problem correctly.</li>
+<li>Fit and interpret logistic regression including odds ratios and ROC curves.</li>
+<li>Implement KNN classification and choose the optimal K.</li>
+<li>Build, prune, and interpret decision trees.</li>
+<li>Train random forests and extract variable importance measures.</li>
+<li>Evaluate classifiers using appropriate metrics beyond accuracy.</li>
+<li>Compare multiple classifiers using cross-validation and select the best model.</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="introduction-to-classification" class="level1" data-number="12">
+<h1 data-number="12"><span class="header-section-number">12</span> Introduction to Classification</h1>
+<section id="introduction-1" class="level2" data-number="12.1">
+<h2 data-number="12.1" class="anchored" data-anchor-id="introduction-1"><span class="header-section-number">12.1</span> Introduction</h2>
+<p>In <strong>supervised learning</strong>, we have a labeled dataset: <span class="math inline">\(n\)</span> observations <span class="math inline">\((x_i, y_i)\)</span> where <span class="math inline">\(x_i \in \mathbb{R}^p\)</span> is a feature vector and <span class="math inline">\(y_i \in \{1, 2, \ldots, K\}\)</span> is a class label. The goal is to learn a function <span class="math inline">\(f: \mathbb{R}^p \to \{1, \ldots, K\}\)</span> that predicts the class of new, unseen observations.</p>
+<p>Classification is fundamentally different from clustering (Chapter 8) — we have labels and we use them. It is also different from regression (Chapter 10) — the outcome is categorical, not continuous.</p>
+</section>
+<section id="theory" class="level2" data-number="12.2">
+<h2 data-number="12.2" class="anchored" data-anchor-id="theory"><span class="header-section-number">12.2</span> Theory</h2>
+<section id="types-of-classification-problems" class="level3" data-number="12.2.1">
+<h3 data-number="12.2.1" class="anchored" data-anchor-id="types-of-classification-problems"><span class="header-section-number">12.2.1</span> Types of Classification Problems</h3>
+<table class="table-striped caption-top table">
+<caption>Types of classification problems</caption>
+<colgroup>
+<col style="width: 26%">
+<col style="width: 34%">
+<col style="width: 39%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Output</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Binary</strong></td>
+<td>2 classes</td>
+<td>Spam/not spam, disease/healthy</td>
+</tr>
+<tr class="even">
+<td><strong>Multiclass</strong></td>
+<td><span class="math inline">\(K &gt; 2\)</span> classes</td>
+<td>Digit recognition, species ID</td>
+</tr>
+<tr class="odd">
+<td><strong>Multilabel</strong></td>
+<td>Multiple labels per observation</td>
+<td>Image tagging, document categorization</td>
+</tr>
+<tr class="even">
+<td><strong>Imbalanced</strong></td>
+<td>Very unequal class frequencies</td>
+<td>Fraud detection, rare disease</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="the-decision-boundary" class="level3" data-number="12.2.2">
+<h3 data-number="12.2.2" class="anchored" data-anchor-id="the-decision-boundary"><span class="header-section-number">12.2.2</span> The Decision Boundary</h3>
+<p>A classifier partitions the feature space into regions, one per class. The <strong>decision boundary</strong> is the surface separating these regions. Its shape depends on the algorithm:</p>
+<ul>
+<li><strong>Linear classifiers</strong> (logistic regression, LDA): flat hyperplane boundary</li>
+<li><strong>KNN:</strong> locally adaptive, potentially complex boundary</li>
+<li><strong>Decision trees:</strong> axis-aligned rectangular regions</li>
+<li><strong>Random forests:</strong> complex non-linear boundaries</li>
+<li><strong>SVM:</strong> maximum-margin hyperplane (possibly non-linear via kernel)</li>
+</ul>
+</section>
+<section id="the-training-test-split" class="level3" data-number="12.2.3">
+<h3 data-number="12.2.3" class="anchored" data-anchor-id="the-training-test-split"><span class="header-section-number">12.2.3</span> The Training-Test Split</h3>
+<p>A fundamental principle: <strong>never evaluate a model on the data used to train it</strong>. The training set is used to fit the model; the <strong>test set</strong> (held out before training) provides an unbiased estimate of generalization performance.</p>
+<p><span class="math display">\[\text{Dataset} \xrightarrow{\text{split}} \begin{cases} \text{Training set (70-80\%)} &amp; \text{fit model} \\ \text{Test set (20-30\%)} &amp; \text{evaluate model} \end{cases}\]</span></p>
+<p>In practice, a <strong>validation set</strong> or <strong>cross-validation</strong> is used for hyperparameter tuning, with the test set reserved for final evaluation only.</p>
+</section>
+<section id="the-bayes-error-rate" class="level3" data-number="12.2.4">
+<h3 data-number="12.2.4" class="anchored" data-anchor-id="the-bayes-error-rate"><span class="header-section-number">12.2.4</span> The Bayes Error Rate</h3>
+<p>The <strong>Bayes error rate</strong> is the lowest achievable error rate for any classifier:</p>
+<p><span class="math display">\[\text{Bayes error} = 1 - E\left[\max_k P(Y = k \mid X)\right]\]</span></p>
+<p>It represents irreducible error — the overlap between class distributions in feature space. No model can achieve error below the Bayes rate. Real classifiers aim to approach, but not exceed, this bound.</p>
+</section>
+</section>
+<section id="example-classification-problem-setup" class="level2" data-number="12.3">
+<h2 data-number="12.3" class="anchored" data-anchor-id="example-classification-problem-setup"><span class="header-section-number">12.3</span> Example: Classification Problem Setup</h2>
+<p><strong>Example 9.1.</strong> A bank wants to predict whether a loan applicant will default (1) or not (0) based on income, credit score, loan amount, and employment length.</p>
+<ul>
+<li><strong>Problem type:</strong> Binary classification</li>
+<li><strong>Features:</strong> <span class="math inline">\(p = 4\)</span> (income, credit score, loan amount, employment)</li>
+<li><strong>Training set:</strong> Historical loans with known outcomes</li>
+<li><strong>Evaluation metric:</strong> Not accuracy alone — the cost of a false negative (predicting no default when the applicant will default) is much higher than a false positive.</li>
+</ul>
+<p>This asymmetric cost structure requires careful metric choice — a recurring theme throughout this chapter.</p>
+</section>
+<section id="r-example-setting-up-a-classification-problem" class="level2" data-number="12.4">
+<h2 data-number="12.4" class="anchored" data-anchor-id="r-example-setting-up-a-classification-problem"><span class="header-section-number">12.4</span> R Example: Setting Up a Classification Problem</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Dataset dimensions: 532 × 8 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Class distribution:</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ No Yes 
+355 177 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Class balance: 33.3 % positive (diabetic)</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Rows: 532
+Columns: 9
+$ npreg &lt;int&gt; 5, 7, 5, 0, 0, 5, 3, 1, 3, 2, 0, 9, 1, 12, 1, 4, 1, 11, 1, 0, 2,…
+$ glu   &lt;int&gt; 86, 195, 77, 165, 107, 97, 83, 193, 142, 128, 137, 154, 189, 92,…
+$ bp    &lt;int&gt; 68, 70, 82, 76, 60, 76, 58, 50, 80, 78, 40, 78, 60, 62, 66, 76, …
+$ skin  &lt;int&gt; 28, 33, 41, 43, 25, 27, 31, 16, 15, 37, 35, 30, 23, 7, 52, 15, 8…
+$ bmi   &lt;dbl&gt; 30.2, 25.1, 35.8, 47.9, 26.4, 35.6, 34.3, 25.9, 32.4, 43.3, 43.1…
+$ ped   &lt;dbl&gt; 0.364, 0.163, 0.156, 0.259, 0.133, 0.378, 0.336, 0.655, 0.200, 1…
+$ age   &lt;int&gt; 24, 55, 35, 26, 23, 52, 25, 24, 63, 31, 33, 45, 59, 44, 29, 21, …
+$ type  &lt;fct&gt; No, Yes, No, No, No, Yes, No, No, No, Yes, Yes, No, Yes, Yes, No…
+$ set   &lt;chr&gt; "train", "train", "train", "train", "train", "train", "train", "…</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter09_data_classification_files/figure-html/classification-eda-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>bind_rows()</code> with a <code>set</code> identifier preserves train/test membership while enabling combined visualization — always maintain this split discipline.</li>
+<li><code>pivot_longer()</code> reshapes to long format for <code>facet_wrap()</code> — the cleanest way to compare feature distributions across all variables simultaneously.</li>
+<li>Visual separation (density overlap) gives a first impression of which features will be most useful for classification.</li>
+</ul>
+</section>
+<section id="exercises" class="level2" data-number="12.5">
+<h2 data-number="12.5" class="anchored" data-anchor-id="exercises"><span class="header-section-number">12.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 9.1
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>iris</code> dataset reformulated as a binary classification problem (setosa vs.&nbsp;non-setosa):</p>
+<ol type="a">
+<li>Create a binary outcome variable <code>is_setosa</code>.</li>
+<li>Split into 75% training and 25% test sets using <code>caret::createDataPartition()</code>.</li>
+<li>Visualize feature distributions by class. Which two features appear most discriminating?</li>
+<li>What is the class balance? If you built a “majority class” classifier, what accuracy would it achieve?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="logistic-regression" class="level1" data-number="13">
+<h1 data-number="13"><span class="header-section-number">13</span> Logistic Regression</h1>
+<section id="introduction-2" class="level2" data-number="13.1">
+<h2 data-number="13.1" class="anchored" data-anchor-id="introduction-2"><span class="header-section-number">13.1</span> Introduction</h2>
+<p><strong>Logistic regression</strong> is the natural extension of linear regression to binary classification. Rather than predicting a continuous outcome, it models the <strong>probability</strong> that an observation belongs to the positive class. Despite its name, logistic regression is a classification algorithm — it outputs probabilities that are converted to class predictions by applying a threshold (typically 0.5). It remains one of the most widely used and interpretable classifiers in statistics and data science.</p>
+</section>
+<section id="theory-1" class="level2" data-number="13.2">
+<h2 data-number="13.2" class="anchored" data-anchor-id="theory-1"><span class="header-section-number">13.2</span> Theory</h2>
+<section id="the-logistic-model" class="level3" data-number="13.2.1">
+<h3 data-number="13.2.1" class="anchored" data-anchor-id="the-logistic-model"><span class="header-section-number">13.2.1</span> The Logistic Model</h3>
+<p>For a binary outcome <span class="math inline">\(Y \in \{0, 1\}\)</span>, logistic regression models:</p>
+<p><span class="math display">\[P(Y = 1 \mid \mathbf{x}) = \sigma(\beta_0 + \beta_1 x_1 + \cdots + \beta_p x_p) = \frac{1}{1 + e^{-(\beta_0 + \boldsymbol{\beta}^T\mathbf{x})}}\]</span></p>
+<p>where <span class="math inline">\(\sigma(z) = 1/(1 + e^{-z})\)</span> is the <strong>sigmoid (logistic) function</strong>, which maps any real number to <span class="math inline">\((0, 1)\)</span>.</p>
+</section>
+<section id="the-log-odds-logit-interpretation" class="level3" data-number="13.2.2">
+<h3 data-number="13.2.2" class="anchored" data-anchor-id="the-log-odds-logit-interpretation"><span class="header-section-number">13.2.2</span> The Log-Odds (Logit) Interpretation</h3>
+<p>Taking the log of the odds ratio:</p>
+<p><span class="math display">\[\log\frac{P(Y=1)}{P(Y=0)} = \beta_0 + \beta_1 x_1 + \cdots + \beta_p x_p\]</span></p>
+<p>The <strong>log-odds</strong> (logit) is linear in the features. This gives a clear interpretation:</p>
+<ul>
+<li><span class="math inline">\(e^{\beta_j}\)</span> is the <strong>odds ratio</strong> for a one-unit increase in <span class="math inline">\(x_j\)</span>, holding all other variables constant.</li>
+<li><span class="math inline">\(e^{\beta_j} &gt; 1\)</span>: increasing <span class="math inline">\(x_j\)</span> increases the odds of <span class="math inline">\(Y = 1\)</span>.</li>
+<li><span class="math inline">\(e^{\beta_j} &lt; 1\)</span>: increasing <span class="math inline">\(x_j\)</span> decreases the odds of <span class="math inline">\(Y = 1\)</span>.</li>
+<li><span class="math inline">\(e^{\beta_j} = 1\)</span> (i.e., <span class="math inline">\(\beta_j = 0\)</span>): <span class="math inline">\(x_j\)</span> has no effect.</li>
+</ul>
+</section>
+<section id="parameter-estimation-maximum-likelihood" class="level3" data-number="13.2.3">
+<h3 data-number="13.2.3" class="anchored" data-anchor-id="parameter-estimation-maximum-likelihood"><span class="header-section-number">13.2.3</span> Parameter Estimation: Maximum Likelihood</h3>
+<p>Coefficients are estimated by <strong>maximum likelihood</strong> — finding <span class="math inline">\(\boldsymbol{\beta}\)</span> that maximizes the probability of observing the training labels:</p>
+<p><span class="math display">\[\ell(\boldsymbol{\beta}) = \sum_{i=1}^{n} \left[ y_i \log\hat{p}_i + (1-y_i)\log(1-\hat{p}_i) \right]\]</span></p>
+<p>This is the <strong>binary cross-entropy loss</strong> (negative log-likelihood). It is convex — gradient descent finds the global optimum.</p>
+</section>
+<section id="hypothesis-testing-for-coefficients" class="level3" data-number="13.2.4">
+<h3 data-number="13.2.4" class="anchored" data-anchor-id="hypothesis-testing-for-coefficients"><span class="header-section-number">13.2.4</span> Hypothesis Testing for Coefficients</h3>
+<p>Each coefficient <span class="math inline">\(\beta_j\)</span> is tested with:</p>
+<p><span class="math display">\[z = \frac{\hat{\beta}_j}{\text{SE}(\hat{\beta}_j)} \sim N(0,1) \text{ under } H_0: \beta_j = 0\]</span></p>
+<p>The <strong>likelihood ratio test</strong> compares the full model to a reduced model and follows a <span class="math inline">\(\chi^2\)</span> distribution.</p>
+</section>
+<section id="multinomial-logistic-regression" class="level3" data-number="13.2.5">
+<h3 data-number="13.2.5" class="anchored" data-anchor-id="multinomial-logistic-regression"><span class="header-section-number">13.2.5</span> Multinomial Logistic Regression</h3>
+<p>For <span class="math inline">\(K &gt; 2\)</span> classes, the model extends to <strong>multinomial (softmax) regression</strong>:</p>
+<p><span class="math display">\[P(Y = k \mid \mathbf{x}) = \frac{e^{\boldsymbol{\beta}_k^T\mathbf{x}}}{\sum_{j=1}^{K} e^{\boldsymbol{\beta}_j^T\mathbf{x}}}\]</span></p>
+<p>One class is set as reference; <span class="math inline">\(K-1\)</span> sets of coefficients are estimated.</p>
+</section>
+</section>
+<section id="example-logistic-regression-for-diabetes-prediction" class="level2" data-number="13.3">
+<h2 data-number="13.3" class="anchored" data-anchor-id="example-logistic-regression-for-diabetes-prediction"><span class="header-section-number">13.3</span> Example: Logistic Regression for Diabetes Prediction</h2>
+<p><strong>Example 9.2.</strong> Using the Pima dataset, a logistic regression predicts diabetes from glucose level, BMI, and age. Coefficient for glucose: <span class="math inline">\(\hat{\beta} = 0.038\)</span>, <span class="math inline">\(e^{\hat{\beta}} = 1.039\)</span>.</p>
+<p><strong>Interpretation:</strong> For each 1 mg/dL increase in glucose concentration, the odds of diabetes increase by 3.9%, holding BMI and age constant. This is statistically significant (<span class="math inline">\(z = 8.2\)</span>, <span class="math inline">\(p &lt; 0.001\)</span>).</p>
+</section>
+<section id="r-example-logistic-regression" class="level2" data-number="13.4">
+<h2 data-number="13.4" class="anchored" data-anchor-id="r-example-logistic-regression"><span class="header-section-number">13.4</span> R Example: Logistic Regression</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+glm(formula = diabetes ~ glu + bmi + age + ped, family = binomial(link = "logit"), 
+    data = Pima.tr)
+
+Coefficients:
+             Estimate Std. Error z value Pr(&gt;|z|)    
+(Intercept) -9.971388   1.527587  -6.528 6.69e-11 ***
+glu          0.031255   0.006627   4.716 2.40e-06 ***
+bmi          0.077030   0.032251   2.388 0.016921 *  
+age          0.058603   0.017574   3.335 0.000854 ***
+ped          1.719794   0.656088   2.621 0.008760 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 256.41  on 199  degrees of freedom
+Residual deviance: 181.08  on 195  degrees of freedom
+AIC: 191.08
+
+Number of Fisher Scoring iterations: 5</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Odds Ratios: Logistic Regression</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Variable</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">OR</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">95% CI Lower</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">95% CI Upper</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">p-value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">glu</td>
+<td style="text-align: left; font-weight: bold; color: tomato !important;">glu</td>
+<td style="text-align: right;">1.0317</td>
+<td style="text-align: right;">1.0190</td>
+<td style="text-align: right;">1.0460</td>
+<td style="text-align: right;">0.0000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">bmi</td>
+<td style="text-align: left; font-weight: bold; color: tomato !important;">bmi</td>
+<td style="text-align: right;">1.0801</td>
+<td style="text-align: right;">1.0154</td>
+<td style="text-align: right;">1.1531</td>
+<td style="text-align: right;">0.0169</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">age</td>
+<td style="text-align: left; font-weight: bold; color: tomato !important;">age</td>
+<td style="text-align: right;">1.0604</td>
+<td style="text-align: right;">1.0252</td>
+<td style="text-align: right;">1.0988</td>
+<td style="text-align: right;">0.0009</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">ped</td>
+<td style="text-align: left; font-weight: bold; color: tomato !important;">ped</td>
+<td style="text-align: right;">5.5834</td>
+<td style="text-align: right;">1.5873</td>
+<td style="text-align: right;">20.9615</td>
+<td style="text-align: right;">0.0088</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Accuracy: 79.2 %</code></pre>
+</div>
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Confusion Matrix: Logistic Regression</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">0</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">1</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">0</td>
+<td style="text-align: right;">196</td>
+<td style="text-align: right;">42</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">1</td>
+<td style="text-align: right;">27</td>
+<td style="text-align: right;">67</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter09_data_classification_files/figure-html/logistic-roc-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>glm(formula, family = binomial)</code> fits logistic regression. <code>family = binomial(link = "logit")</code> specifies the logit link function.</li>
+<li><code>exp(coef(lr_model))</code> converts log-odds coefficients to odds ratios; <code>exp(confint())</code> gives the CIs on the OR scale.</li>
+<li><code>pROC::roc()</code> computes the ROC curve from predicted probabilities and true labels. <code>pROC::auc()</code> extracts the area under the curve.</li>
+<li>The shaded area under the ROC curve visually represents the AUC — the probability that the model ranks a random positive higher than a random negative.</li>
+</ul>
+</section>
+<section id="exercises-1" class="level2" data-number="13.5">
+<h2 data-number="13.5" class="anchored" data-anchor-id="exercises-1"><span class="header-section-number">13.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 9.2
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the full Pima dataset:</p>
+<ol type="a">
+<li>Fit logistic regression with all 7 predictors. Which are significant at <span class="math inline">\(\alpha = 0.05\)</span>?</li>
+<li>Interpret the odds ratio for <code>glu</code>. How does it change when you control for all other variables?</li>
+<li>Try different classification thresholds (0.3, 0.4, 0.5, 0.6). How do precision and recall change?</li>
+<li>Fit a multinomial logistic regression on the <code>iris</code> dataset using <code>nnet::multinom()</code>. Report the AIC.</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="k-nearest-neighbors" class="level1" data-number="14">
+<h1 data-number="14"><span class="header-section-number">14</span> K-Nearest Neighbors</h1>
+<section id="introduction-3" class="level2" data-number="14.1">
+<h2 data-number="14.1" class="anchored" data-anchor-id="introduction-3"><span class="header-section-number">14.1</span> Introduction</h2>
+<p><strong>K-Nearest Neighbors (KNN)</strong> is the simplest non-parametric classifier. It makes no assumptions about the form of the decision boundary — instead, it classifies each new observation based on the majority class among its <span class="math inline">\(K\)</span> nearest neighbors in the training set. KNN is intuitive, easy to implement, and can capture complex non-linear boundaries. Its main limitations are computational cost at prediction time (must compute distances to all training points) and sensitivity to irrelevant features and scale.</p>
+</section>
+<section id="theory-2" class="level2" data-number="14.2">
+<h2 data-number="14.2" class="anchored" data-anchor-id="theory-2"><span class="header-section-number">14.2</span> Theory</h2>
+<section id="the-knn-algorithm" class="level3" data-number="14.2.1">
+<h3 data-number="14.2.1" class="anchored" data-anchor-id="the-knn-algorithm"><span class="header-section-number">14.2.1</span> The KNN Algorithm</h3>
+<p><strong>Training:</strong> Simply store all training observations. There is no explicit model fitting.</p>
+<p><strong>Prediction for a new point <span class="math inline">\(x_0\)</span>:</strong> 1. Compute the distance from <span class="math inline">\(x_0\)</span> to every training point. 2. Identify the <span class="math inline">\(K\)</span> nearest neighbors <span class="math inline">\(\mathcal{N}(x_0)\)</span>. 3. Predict the most common class among the <span class="math inline">\(K\)</span> neighbors: <span class="math display">\[\hat{y} = \arg\max_k \sum_{i \in \mathcal{N}(x_0)} \mathbf{1}(y_i = k)\]</span></p>
+<p>For probability estimates, use the proportion of class <span class="math inline">\(k\)</span> among the <span class="math inline">\(K\)</span> neighbors.</p>
+</section>
+<section id="choosing-k" class="level3" data-number="14.2.2">
+<h3 data-number="14.2.2" class="anchored" data-anchor-id="choosing-k"><span class="header-section-number">14.2.2</span> Choosing <span class="math inline">\(K\)</span></h3>
+<ul>
+<li><strong>Small <span class="math inline">\(K\)</span> (e.g., <span class="math inline">\(K = 1\)</span>):</strong> Very flexible decision boundary; low bias, high variance; overfits to noise.</li>
+<li><strong>Large <span class="math inline">\(K\)</span> (e.g., <span class="math inline">\(K = n\)</span>):</strong> Smooth boundary; high bias, low variance; predicts majority class always.</li>
+<li><strong>Optimal <span class="math inline">\(K\)</span>:</strong> Found by cross-validation — minimizes validation error.</li>
+</ul>
+</section>
+<section id="the-bias-variance-tradeoff-in-knn" class="level3" data-number="14.2.3">
+<h3 data-number="14.2.3" class="anchored" data-anchor-id="the-bias-variance-tradeoff-in-knn"><span class="header-section-number">14.2.3</span> The Bias-Variance Tradeoff in KNN</h3>
+<p>As <span class="math inline">\(K\)</span> increases from 1 to <span class="math inline">\(n\)</span>:</p>
+<p><span class="math display">\[\text{Bias} \uparrow, \quad \text{Variance} \downarrow\]</span></p>
+<p>The optimal <span class="math inline">\(K\)</span> minimizes the total error <span class="math inline">\(= \text{Bias}^2 + \text{Variance}\)</span>.</p>
+</section>
+<section id="knn-requirements" class="level3" data-number="14.2.4">
+<h3 data-number="14.2.4" class="anchored" data-anchor-id="knn-requirements"><span class="header-section-number">14.2.4</span> KNN Requirements</h3>
+<ol type="1">
+<li><strong>Scale:</strong> All features must be standardized — a feature with large range dominates Euclidean distances.</li>
+<li><strong>Dimensionality:</strong> KNN degrades in high dimensions (curse of dimensionality, Chapter 7) — consider PCA preprocessing.</li>
+<li><strong>Computational cost:</strong> Prediction is <span class="math inline">\(O(np)\)</span> per query — slow for large training sets. Use k-d trees or ball trees for speed.</li>
+</ol>
+</section>
+<section id="weighted-knn" class="level3" data-number="14.2.5">
+<h3 data-number="14.2.5" class="anchored" data-anchor-id="weighted-knn"><span class="header-section-number">14.2.5</span> Weighted KNN</h3>
+<p>Give closer neighbors more influence by weighting votes by inverse distance:</p>
+<p><span class="math display">\[w_i = \frac{1}{d(x_0, x_i)^2}\]</span></p>
+<p>This reduces the influence of distant neighbors and often improves performance near decision boundaries.</p>
+</section>
+</section>
+<section id="example-knn-decision-boundary" class="level2" data-number="14.3">
+<h2 data-number="14.3" class="anchored" data-anchor-id="example-knn-decision-boundary"><span class="header-section-number">14.3</span> Example: KNN Decision Boundary</h2>
+<p><strong>Example 9.3.</strong> For the Pima dataset with <span class="math inline">\(K = 1\)</span>: perfect training accuracy (each point is its own nearest neighbor), but poor test accuracy (overfitting). With <span class="math inline">\(K = 21\)</span>: smoother boundary, better generalization. Cross-validation identifies <span class="math inline">\(K = 15\)</span> as optimal, achieving 76% test accuracy.</p>
+</section>
+<section id="r-example-knn-classification" class="level2" data-number="14.4">
+<h2 data-number="14.4" class="anchored" data-anchor-id="r-example-knn-classification"><span class="header-section-number">14.4</span> R Example: KNN Classification</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Optimal K: 11 </code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>KNN Test Accuracy (K= 11 ): 77.7 %</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>         Actual
+Predicted  No Yes
+      No  197  48
+      Yes  26  61</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter09_data_classification_files/figure-html/knn-plot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>scale(test_x, center = ..., scale = ...)</code> applies training set scaling to test data — critical to prevent data leakage; always scale test using training set parameters.</li>
+<li><code>createFolds(y, k = 5)</code> creates stratified cross-validation folds, preserving class proportions in each fold.</li>
+<li><code>class::knn(..., prob = TRUE)</code> returns class probabilities via <code>attr(pred, "prob")</code> for ROC analysis.</li>
+</ul>
+</section>
+<section id="exercises-2" class="level2" data-number="14.5">
+<h2 data-number="14.5" class="anchored" data-anchor-id="exercises-2"><span class="header-section-number">14.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 9.3
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>iris</code> dataset:</p>
+<ol type="a">
+<li>Split into 70% train / 30% test. Standardize features.</li>
+<li>Tune <span class="math inline">\(K\)</span> from 1 to 20 using 10-fold cross-validation. Plot CV accuracy vs.&nbsp;<span class="math inline">\(K\)</span>.</li>
+<li>Fit the final KNN model. What is the test accuracy?</li>
+<li>Compare KNN to logistic regression on the same split. Which performs better for multiclass iris?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="decision-trees" class="level1" data-number="15">
+<h1 data-number="15"><span class="header-section-number">15</span> Decision Trees</h1>
+<section id="introduction-4" class="level2" data-number="15.1">
+<h2 data-number="15.1" class="anchored" data-anchor-id="introduction-4"><span class="header-section-number">15.1</span> Introduction</h2>
+<p><strong>Decision trees</strong> classify observations by recursively partitioning the feature space using a series of simple binary rules — “if <span class="math inline">\(x_j \leq t\)</span> then go left, else go right.” Each leaf node represents a class prediction. Decision trees are uniquely valuable for their <strong>interpretability</strong> — the learned rules can be visualized and explained to non-technical stakeholders. They are also the building blocks of the most powerful ensemble methods.</p>
+</section>
+<section id="theory-3" class="level2" data-number="15.2">
+<h2 data-number="15.2" class="anchored" data-anchor-id="theory-3"><span class="header-section-number">15.2</span> Theory</h2>
+<section id="tree-construction-recursive-binary-splitting" class="level3" data-number="15.2.1">
+<h3 data-number="15.2.1" class="anchored" data-anchor-id="tree-construction-recursive-binary-splitting"><span class="header-section-number">15.2.1</span> Tree Construction: Recursive Binary Splitting</h3>
+<p>Starting from the root node containing all training data, at each node:</p>
+<ol type="1">
+<li>For each feature <span class="math inline">\(x_j\)</span> and each possible split point <span class="math inline">\(t\)</span>, compute the <strong>impurity reduction</strong> from splitting.</li>
+<li>Choose the split <span class="math inline">\((x_j^*, t^*)\)</span> that maximally reduces impurity.</li>
+<li>Recursively apply to each child node.</li>
+<li>Stop when a stopping criterion is met (minimum node size, maximum depth, or minimum impurity reduction).</li>
+</ol>
+</section>
+<section id="impurity-measures" class="level3" data-number="15.2.2">
+<h3 data-number="15.2.2" class="anchored" data-anchor-id="impurity-measures"><span class="header-section-number">15.2.2</span> Impurity Measures</h3>
+<p><strong>Gini impurity</strong> (used in CART): <span class="math display">\[G(t) = \sum_{k=1}^{K} p_k(t)(1 - p_k(t)) = 1 - \sum_{k=1}^{K} p_k(t)^2\]</span></p>
+<p><strong>Entropy</strong> (used in C4.5/C5.0): <span class="math display">\[H(t) = -\sum_{k=1}^{K} p_k(t)\log_2 p_k(t)\]</span></p>
+<p><strong>Misclassification rate:</strong> <span class="math display">\[E(t) = 1 - \max_k p_k(t)\]</span></p>
+<p>where <span class="math inline">\(p_k(t)\)</span> is the proportion of class <span class="math inline">\(k\)</span> observations at node <span class="math inline">\(t\)</span>. All three are minimized when a node is pure (one class only). Gini and entropy are preferred for growing trees because they are more sensitive to impurity changes than misclassification rate.</p>
+</section>
+<section id="the-information-gain" class="level3" data-number="15.2.3">
+<h3 data-number="15.2.3" class="anchored" data-anchor-id="the-information-gain"><span class="header-section-number">15.2.3</span> The Information Gain</h3>
+<p>The quality of a split is measured by the <strong>information gain</strong> (reduction in entropy):</p>
+<p><span class="math display">\[\text{IG}(t, x_j, s) = H(t) - \frac{n_L}{n}H(t_L) - \frac{n_R}{n}H(t_R)\]</span></p>
+<p>where <span class="math inline">\(t_L\)</span> and <span class="math inline">\(t_R\)</span> are the left and right child nodes.</p>
+</section>
+<section id="pruning" class="level3" data-number="15.2.4">
+<h3 data-number="15.2.4" class="anchored" data-anchor-id="pruning"><span class="header-section-number">15.2.4</span> Pruning</h3>
+<p>A fully grown tree overfits. <strong>Post-pruning</strong> (cost-complexity pruning, also called weakest-link pruning) removes branches that do not improve generalization:</p>
+<p><span class="math display">\[\text{Minimize: } R_\alpha(T) = R(T) + \alpha |T|\]</span></p>
+<p>where <span class="math inline">\(R(T)\)</span> is the training error, <span class="math inline">\(|T|\)</span> is the number of leaves, and <span class="math inline">\(\alpha \geq 0\)</span> is the complexity parameter. Cross-validation selects the optimal <span class="math inline">\(\alpha\)</span>.</p>
+</section>
+<section id="advantages-and-limitations" class="level3" data-number="15.2.5">
+<h3 data-number="15.2.5" class="anchored" data-anchor-id="advantages-and-limitations"><span class="header-section-number">15.2.5</span> Advantages and Limitations</h3>
+<p><strong>Advantages:</strong> - Highly interpretable (“white box” model) - Handles mixed data types natively - No scaling required - Captures non-linear relationships and interactions</p>
+<p><strong>Limitations:</strong> - High variance — small changes in data produce different trees - Biased toward features with many levels - Poor extrapolation beyond training data range - Suboptimal compared to ensemble methods</p>
+</section>
+</section>
+<section id="example-decision-tree-for-diabetes-classification" class="level2" data-number="15.3">
+<h2 data-number="15.3" class="anchored" data-anchor-id="example-decision-tree-for-diabetes-classification"><span class="header-section-number">15.3</span> Example: Decision Tree for Diabetes Classification</h2>
+<p><strong>Example 9.4.</strong> A decision tree for the Pima dataset with maximum depth 3 produces rules like:</p>
+<pre><code>If glu &lt;= 127.5:
+  If bmi &lt;= 26.35: → No (82% accuracy in leaf)
+  If bmi &gt;  26.35: → No (63% accuracy in leaf)
+If glu &gt; 127.5:
+  If age &lt;= 28.5:  → No (56% accuracy in leaf)
+  If age &gt;  28.5:  → Yes (72% accuracy in leaf)</code></pre>
+<p>The tree reveals that glucose level is the primary predictor, followed by BMI — consistent with medical knowledge. The leaf purity statistics show where the model is most and least confident.</p>
+</section>
+<section id="r-example-decision-trees" class="level2" data-number="15.4">
+<h2 data-number="15.4" class="anchored" data-anchor-id="r-example-decision-trees"><span class="header-section-number">15.4</span> R Example: Decision Trees</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter09_data_classification_files/figure-html/decision-tree-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Classification tree:
+rpart(formula = type ~ glu + bmi + age + ped + npreg, data = Pima.tr, 
+    method = "class", control = rpart.control(minsplit = 10, 
+        cp = 0.001, maxdepth = 10))
+
+Variables actually used in tree construction:
+[1] age   bmi   glu   npreg ped  
+
+Root node error: 68/200 = 0.34
+
+n= 200 
+
+         CP nsplit rel error  xerror     xstd
+1 0.2205882      0   1.00000 1.00000 0.098518
+2 0.1617647      1   0.77941 0.80882 0.092863
+3 0.0735294      2   0.61765 0.70588 0.088822
+4 0.0588235      3   0.54412 0.70588 0.088822
+5 0.0294118      4   0.48529 0.57353 0.082399
+6 0.0147059      5   0.45588 0.76471 0.091224
+7 0.0098039     10   0.35294 0.91176 0.096186
+8 0.0010000     18   0.26471 0.95588 0.097409</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter09_data_classification_files/figure-html/tree-pruning-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Optimal CP: 0.02941 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Tree size before pruning: 37 nodes</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Tree size after pruning:  9 nodes</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Pruned Tree Test Accuracy: 75.6 %</code></pre>
+</div>
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Variable Importance: Decision Tree</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Variable</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Importance</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">glu</td>
+<td style="text-align: left;">glu</td>
+<td style="text-align: right;">24.00</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">bmi</td>
+<td style="text-align: left;">bmi</td>
+<td style="text-align: right;">7.82</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">ped</td>
+<td style="text-align: left;">ped</td>
+<td style="text-align: right;">7.17</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">age</td>
+<td style="text-align: left;">age</td>
+<td style="text-align: right;">6.04</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">npreg</td>
+<td style="text-align: left;">npreg</td>
+<td style="text-align: right;">4.66</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>rpart(formula, method = "class")</code> fits a classification tree. <code>method = "anova"</code> is used for regression.</li>
+<li><code>printcp()</code> displays the cross-validated error for each tree size — the row with minimum <code>xerror</code> gives the optimal pruning level.</li>
+<li><code>prune(tree, cp)</code> prunes the tree to the specified complexity. <code>which.min(cptable[,"xerror"])</code> automates optimal <span class="math inline">\(\alpha\)</span> selection.</li>
+<li><code>rpart.plot(..., extra = 104)</code> displays class probabilities and percentages in each leaf — making the tree a complete interpretable model.</li>
+</ul>
+</section>
+<section id="exercises-3" class="level2" data-number="15.5">
+<h2 data-number="15.5" class="anchored" data-anchor-id="exercises-3"><span class="header-section-number">15.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 9.4
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>iris</code> dataset:</p>
+<ol type="a">
+<li>Grow a full decision tree (no depth limit). What is the training accuracy?</li>
+<li>Apply cost-complexity pruning. Plot the CV error curve and identify the optimal tree size.</li>
+<li>Visualize the pruned tree using <code>rpart.plot()</code>. How many levels deep is it?</li>
+<li>Compare Gini impurity (<code>parms = list(split = "gini")</code>) vs.&nbsp;entropy (<code>"information"</code>). Do they produce different trees?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="random-forest-and-ensemble-methods" class="level1" data-number="16">
+<h1 data-number="16"><span class="header-section-number">16</span> Random Forest and Ensemble Methods</h1>
+<section id="introduction-5" class="level2" data-number="16.1">
+<h2 data-number="16.1" class="anchored" data-anchor-id="introduction-5"><span class="header-section-number">16.1</span> Introduction</h2>
+<p>A single decision tree has high variance — small perturbations in the training data produce very different trees. <strong>Ensemble methods</strong> address this by combining many models, each trained on a perturbed version of the data, and aggregating their predictions. The result is dramatically lower variance with minimal increase in bias, producing classifiers that are among the most accurate available for tabular data. <strong>Random Forest</strong> and <strong>Gradient Boosting</strong> are the dominant ensemble methods in modern data science.</p>
+</section>
+<section id="theory-4" class="level2" data-number="16.2">
+<h2 data-number="16.2" class="anchored" data-anchor-id="theory-4"><span class="header-section-number">16.2</span> Theory</h2>
+<section id="bagging-bootstrap-aggregating" class="level3" data-number="16.2.1">
+<h3 data-number="16.2.1" class="anchored" data-anchor-id="bagging-bootstrap-aggregating"><span class="header-section-number">16.2.1</span> Bagging (Bootstrap Aggregating)</h3>
+<p><strong>Bagging</strong> trains <span class="math inline">\(B\)</span> decision trees on <span class="math inline">\(B\)</span> bootstrap samples of the training data, then aggregates predictions by majority vote (classification) or mean (regression):</p>
+<p><span class="math display">\[\hat{f}_{\text{bag}}(x) = \text{majority vote}\{\hat{f}_b(x)\}_{b=1}^{B}\]</span></p>
+<p>The key insight: averaging reduces variance by a factor of <span class="math inline">\(B\)</span> without increasing bias (for independent predictors). Trees trained on different bootstrap samples are not identical — their disagreement captures variance.</p>
+<p><strong>Out-of-Bag (OOB) Error:</strong> Each bootstrap sample omits approximately 37% of training observations. These out-of-bag observations can be used to estimate generalization error without a separate validation set.</p>
+</section>
+<section id="random-forest" class="level3" data-number="16.2.2">
+<h3 data-number="16.2.2" class="anchored" data-anchor-id="random-forest"><span class="header-section-number">16.2.2</span> Random Forest</h3>
+<p><strong>Random Forest</strong> extends bagging with <strong>feature randomization</strong>: at each split, only a random subset of <span class="math inline">\(m\)</span> features is considered (not all <span class="math inline">\(p\)</span>):</p>
+<p><span class="math display">\[m \approx \sqrt{p} \text{ (classification)}, \qquad m \approx p/3 \text{ (regression)}\]</span></p>
+<p>This <strong>decorrelates</strong> the trees — even if one feature is very strong, it doesn’t dominate every split in every tree. Decorrelation further reduces variance beyond what bagging alone achieves.</p>
+<p><strong>Variable Importance:</strong></p>
+<ul>
+<li><strong>Mean Decrease in Accuracy (MDA):</strong> Permute each feature and measure the drop in OOB accuracy.</li>
+<li><strong>Mean Decrease in Gini (MDG):</strong> Sum of Gini impurity decreases from splits on each feature across all trees.</li>
+</ul>
+<p>MDA is more principled and robust; MDG is faster to compute.</p>
+</section>
+<section id="boosting" class="level3" data-number="16.2.3">
+<h3 data-number="16.2.3" class="anchored" data-anchor-id="boosting"><span class="header-section-number">16.2.3</span> Boosting</h3>
+<p><strong>Boosting</strong> builds trees sequentially, with each tree fitting the <strong>residuals</strong> (errors) of the previous ones:</p>
+<p><strong>AdaBoost:</strong> Increases weights of misclassified observations so subsequent trees focus on hard cases.</p>
+<p><strong>Gradient Boosting (GBM):</strong> Fits each tree to the negative gradient of the loss function — a generalization of residual fitting.</p>
+<p><span class="math display">\[F_m(x) = F_{m-1}(x) + \eta \cdot h_m(x)\]</span></p>
+<p>where <span class="math inline">\(\eta\)</span> is the learning rate and <span class="math inline">\(h_m\)</span> is the <span class="math inline">\(m\)</span>-th tree fit to residuals. <strong>XGBoost</strong> and <strong>LightGBM</strong> are highly optimized gradient boosting implementations.</p>
+</section>
+<section id="bagging-vs.-boosting" class="level3" data-number="16.2.4">
+<h3 data-number="16.2.4" class="anchored" data-anchor-id="bagging-vs.-boosting"><span class="header-section-number">16.2.4</span> Bagging vs.&nbsp;Boosting</h3>
+<table class="table-striped caption-top table">
+<caption>Bagging vs.&nbsp;Boosting comparison</caption>
+<thead>
+<tr class="header">
+<th>Feature</th>
+<th>Bagging / Random Forest</th>
+<th>Boosting</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Tree building</td>
+<td>Parallel (independent)</td>
+<td>Sequential (dependent)</td>
+</tr>
+<tr class="even">
+<td>Main effect</td>
+<td>Reduces variance</td>
+<td>Reduces bias</td>
+</tr>
+<tr class="odd">
+<td>Overfitting risk</td>
+<td>Low</td>
+<td>Higher (needs regularization)</td>
+</tr>
+<tr class="even">
+<td>Interpretability</td>
+<td>Moderate (variable importance)</td>
+<td>Low</td>
+</tr>
+<tr class="odd">
+<td>Typical performance</td>
+<td>Very good</td>
+<td>Often best-in-class</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="example-random-forest-feature-importance" class="level2" data-number="16.3">
+<h2 data-number="16.3" class="anchored" data-anchor-id="example-random-forest-feature-importance"><span class="header-section-number">16.3</span> Example: Random Forest Feature Importance</h2>
+<p><strong>Example 9.5.</strong> Random forest on the Pima dataset (<span class="math inline">\(B = 500\)</span> trees, <span class="math inline">\(m = 2\)</span>) identifies glucose as the most important feature by both MDA and MDG, followed by BMI, age, and diabetes pedigree function. This is consistent with medical knowledge and the logistic regression results — but the random forest captures non-linear interactions that logistic regression misses.</p>
+</section>
+<section id="r-example-random-forest-and-ensemble-methods" class="level2" data-number="16.4">
+<h2 data-number="16.4" class="anchored" data-anchor-id="r-example-random-forest-and-ensemble-methods"><span class="header-section-number">16.4</span> R Example: Random Forest and Ensemble Methods</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+ randomForest(formula = type ~ glu + bmi + age + ped + npreg,      data = Pima.tr, ntree = 500, mtry = 2, importance = TRUE) 
+               Type of random forest: classification
+                     Number of trees: 500
+No. of variables tried at each split: 2
+
+        OOB estimate of  error rate: 25.5%
+Confusion matrix:
+     No Yes class.error
+No  111  21   0.1590909
+Yes  30  38   0.4411765</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Random Forest Variable Importance</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">MDA</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">MDG</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">glu</td>
+<td style="text-align: right;">19.054</td>
+<td style="text-align: right;">26.638</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">age</td>
+<td style="text-align: right;">12.441</td>
+<td style="text-align: right;">17.263</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">ped</td>
+<td style="text-align: right;">10.775</td>
+<td style="text-align: right;">17.480</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">npreg</td>
+<td style="text-align: right;">10.498</td>
+<td style="text-align: right;">11.309</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">bmi</td>
+<td style="text-align: right;">9.849</td>
+<td style="text-align: right;">16.633</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Random Forest Test Accuracy: 76.8 %</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter09_data_classification_files/figure-html/rf-plots-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>randomForest(formula, ntree, mtry, importance = TRUE)</code> fits the model. <code>importance = TRUE</code> enables both MDA and MDG calculation.</li>
+<li><code>rf_model$err.rate[, "OOB"]</code> gives the OOB error after each tree is added — plotting this reveals the number of trees needed for convergence.</li>
+<li><code>predict(rf_model, type = "prob")</code> returns class probabilities — needed for ROC analysis.</li>
+<li>The OOB error curve (Panel A) shows that around 200 trees, additional trees provide diminishing returns — useful for balancing accuracy and computation time.</li>
+</ul>
+</section>
+<section id="exercises-4" class="level2" data-number="16.5">
+<h2 data-number="16.5" class="anchored" data-anchor-id="exercises-4"><span class="header-section-number">16.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 9.5
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>iris</code> dataset:</p>
+<ol type="a">
+<li>Train a random forest with <span class="math inline">\(B = 500\)</span> trees. Tune <code>mtry</code> using OOB error for <span class="math inline">\(m = 1, 2, 3, 4\)</span>.</li>
+<li>Compare OOB accuracy to test accuracy. Are they similar?</li>
+<li>Plot variable importance (MDA and MDG). Do both methods agree on the most important features?</li>
+<li>Fit a gradient boosting model using <code>gbm::gbm()</code> or <code>xgboost</code>. Compare test accuracy to random forest.</li>
+</ol>
+</div>
+</div>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 9.6 (Challenge)
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Explore the bias-variance tradeoff in random forests:</p>
+<ol type="a">
+<li>Train forests with <span class="math inline">\(B = 1, 5, 20, 100, 500\)</span> trees on the Pima dataset. Record test accuracy for each.</li>
+<li>Is there a point of diminishing returns? At what <span class="math inline">\(B\)</span> does accuracy stabilize?</li>
+<li>Compare single decision tree vs.&nbsp;bagging vs.&nbsp;random forest test accuracy. Which variance reduction is greater: bagging or random forests?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="model-evaluation" class="level1" data-number="17">
+<h1 data-number="17"><span class="header-section-number">17</span> Model Evaluation</h1>
+<section id="introduction-6" class="level2" data-number="17.1">
+<h2 data-number="17.1" class="anchored" data-anchor-id="introduction-6"><span class="header-section-number">17.1</span> Introduction</h2>
+<p>Accuracy — the proportion of correctly classified observations — is the most intuitive performance metric. But it is often deeply misleading: a classifier that always predicts “No disease” achieves 90% accuracy on a dataset where 90% of patients are healthy, yet is completely useless. <strong>Comprehensive model evaluation</strong> requires a suite of metrics that capture different aspects of performance, particularly for imbalanced classes and asymmetric misclassification costs.</p>
+</section>
+<section id="theory-5" class="level2" data-number="17.2">
+<h2 data-number="17.2" class="anchored" data-anchor-id="theory-5"><span class="header-section-number">17.2</span> Theory</h2>
+<section id="the-confusion-matrix" class="level3" data-number="17.2.1">
+<h3 data-number="17.2.1" class="anchored" data-anchor-id="the-confusion-matrix"><span class="header-section-number">17.2.1</span> The Confusion Matrix</h3>
+<p>For binary classification (positive = 1, negative = 0):</p>
+<table class="table-striped caption-top table">
+<caption>Confusion matrix structure</caption>
+<thead>
+<tr class="header">
+<th></th>
+<th>Predicted Positive</th>
+<th>Predicted Negative</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Actual Positive</strong></td>
+<td>True Positive (TP)</td>
+<td>False Negative (FN)</td>
+</tr>
+<tr class="even">
+<td><strong>Actual Negative</strong></td>
+<td>False Positive (FP)</td>
+<td>True Negative (TN)</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="derived-metrics" class="level3" data-number="17.2.2">
+<h3 data-number="17.2.2" class="anchored" data-anchor-id="derived-metrics"><span class="header-section-number">17.2.2</span> Derived Metrics</h3>
+<p><span class="math display">\[\text{Accuracy} = \frac{TP + TN}{TP + TN + FP + FN}\]</span></p>
+<p><span class="math display">\[\text{Precision} = \frac{TP}{TP + FP} \quad \text{(of predicted positives, how many are truly positive?)}\]</span></p>
+<p><span class="math display">\[\text{Recall (Sensitivity)} = \frac{TP}{TP + FN} \quad \text{(of actual positives, how many did we catch?)}\]</span></p>
+<p><span class="math display">\[\text{Specificity} = \frac{TN}{TN + FP} \quad \text{(of actual negatives, how many did we correctly identify?)}\]</span></p>
+<p><span class="math display">\[F_1 = 2 \cdot \frac{\text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}} \quad \text{(harmonic mean of precision and recall)}\]</span></p>
+<p><span class="math display">\[F_\beta = (1 + \beta^2) \cdot \frac{\text{Precision} \times \text{Recall}}{\beta^2 \cdot \text{Precision} + \text{Recall}} \quad \text{($\beta &gt; 1$: recall weighted more; $\beta &lt; 1$: precision weighted more)}\]</span></p>
+</section>
+<section id="the-precision-recall-tradeoff" class="level3" data-number="17.2.3">
+<h3 data-number="17.2.3" class="anchored" data-anchor-id="the-precision-recall-tradeoff"><span class="header-section-number">17.2.3</span> The Precision-Recall Tradeoff</h3>
+<p>Lowering the classification threshold increases recall (catch more positives) but decreases precision (more false alarms). The <strong>precision-recall curve</strong> visualizes this tradeoff across all thresholds. The <strong>average precision (AP)</strong> summarizes the curve.</p>
+</section>
+<section id="roc-curve-and-auc" class="level3" data-number="17.2.4">
+<h3 data-number="17.2.4" class="anchored" data-anchor-id="roc-curve-and-auc"><span class="header-section-number">17.2.4</span> ROC Curve and AUC</h3>
+<p>The <strong>Receiver Operating Characteristic (ROC)</strong> curve plots Sensitivity (TPR) vs.&nbsp;1 − Specificity (FPR) across all thresholds.</p>
+<p><strong>AUC (Area Under the Curve):</strong> - AUC = 1.0: Perfect classifier - AUC = 0.5: Random classifier (diagonal line) - AUC &lt; 0.5: Worse than random</p>
+<p>AUC has a probabilistic interpretation: the probability that the classifier ranks a random positive observation higher than a random negative one.</p>
+</section>
+<section id="metrics-for-imbalanced-classes" class="level3" data-number="17.2.5">
+<h3 data-number="17.2.5" class="anchored" data-anchor-id="metrics-for-imbalanced-classes"><span class="header-section-number">17.2.5</span> Metrics for Imbalanced Classes</h3>
+<p>When one class is rare, accuracy is misleading. Preferred metrics:</p>
+<table class="table-striped caption-top table">
+<caption>Metrics for imbalanced classification</caption>
+<colgroup>
+<col style="width: 47%">
+<col style="width: 52%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Metric</th>
+<th>Use When</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Precision, Recall, F1</td>
+<td>Minority class matters most</td>
+</tr>
+<tr class="even">
+<td>AUC-ROC</td>
+<td>Overall ranking ability</td>
+</tr>
+<tr class="odd">
+<td>Matthews Correlation Coefficient (MCC)</td>
+<td>Balanced summary for imbalanced data</td>
+</tr>
+<tr class="even">
+<td>Cohen’s Kappa</td>
+<td>Agreement above chance</td>
+</tr>
+</tbody>
+</table>
+<p><span class="math display">\[\text{MCC} = \frac{TP \cdot TN - FP \cdot FN}{\sqrt{(TP+FP)(TP+FN)(TN+FP)(TN+FN)}}\]</span></p>
+<p>MCC ranges from <span class="math inline">\(-1\)</span> to <span class="math inline">\(+1\)</span>; values near <span class="math inline">\(+1\)</span> indicate excellent classification.</p>
+</section>
+</section>
+<section id="example-why-accuracy-alone-is-insufficient" class="level2" data-number="17.3">
+<h2 data-number="17.3" class="anchored" data-anchor-id="example-why-accuracy-alone-is-insufficient"><span class="header-section-number">17.3</span> Example: Why Accuracy Alone is Insufficient</h2>
+<p><strong>Example 9.6.</strong> A fraud detection model flags 1% of transactions as fraudulent (true fraud rate = 0.5%). A model that flags nothing achieves 99.5% accuracy. The fraud-detection model that flags 1% correctly catches 80% of all fraud (recall = 0.80) but has many false alarms (precision = 0.40). Accuracy would rank the “flag nothing” model higher, but recall and F1 correctly identify the fraud detector as more valuable.</p>
+</section>
+<section id="r-example-comprehensive-model-evaluation" class="level2" data-number="17.4">
+<h2 data-number="17.4" class="anchored" data-anchor-id="r-example-comprehensive-model-evaluation"><span class="header-section-number">17.4</span> R Example: Comprehensive Model Evaluation</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Comprehensive Model Evaluation: Pima Dataset</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Model</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Accuracy</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Precision</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Recall</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Specificity</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">F1</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">MCC</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">AUC</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Logistic Reg.</td>
+<td style="text-align: right;">0.7922</td>
+<td style="text-align: right;">0.7128</td>
+<td style="text-align: right;">0.6147</td>
+<td style="text-align: right;">0.8789</td>
+<td style="text-align: right;">0.6601</td>
+<td style="text-align: right;">0.5145</td>
+<td style="text-align: right; font-weight: bold; color: darkgreen !important;">0.8585</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">KNN</td>
+<td style="text-align: right;">0.7771</td>
+<td style="text-align: right;">0.7011</td>
+<td style="text-align: right;">0.5596</td>
+<td style="text-align: right;">0.8834</td>
+<td style="text-align: right;">0.6224</td>
+<td style="text-align: right;">0.4731</td>
+<td style="text-align: right; font-weight: bold; color: steelblue !important;">0.7005</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Decision Tree</td>
+<td style="text-align: right;">0.7560</td>
+<td style="text-align: right;">0.6591</td>
+<td style="text-align: right;">0.5321</td>
+<td style="text-align: right;">0.8655</td>
+<td style="text-align: right;">0.5888</td>
+<td style="text-align: right;">0.4230</td>
+<td style="text-align: right; font-weight: bold; color: steelblue !important;">0.7278</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Random Forest</td>
+<td style="text-align: right;">0.7681</td>
+<td style="text-align: right;">0.6509</td>
+<td style="text-align: right;">0.6330</td>
+<td style="text-align: right;">0.8341</td>
+<td style="text-align: right;">0.6419</td>
+<td style="text-align: right;">0.4705</td>
+<td style="text-align: right; font-weight: bold; color: steelblue !important;">0.8199</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter09_data_classification_files/figure-html/evaluation-roc-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li>The <code>compute_metrics()</code> function computes all metrics from a confusion matrix — a reusable utility applicable to any binary classifier.</li>
+<li><code>pROC::roc()</code> requires numeric labels (0/1) not factor levels — <code>as.integer(true == "Yes")</code> handles this conversion cleanly.</li>
+<li>Overlaying ROC curves on the same plot enables direct visual comparison of all models’ discrimination ability across all thresholds simultaneously.</li>
+</ul>
+</section>
+<section id="exercises-5" class="level2" data-number="17.5">
+<h2 data-number="17.5" class="anchored" data-anchor-id="exercises-5"><span class="header-section-number">17.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 9.7
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>A cancer screening test has the following confusion matrix on 1,000 patients (50 with cancer):</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th></th>
+<th>Pred. Cancer</th>
+<th>Pred. Healthy</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Actual Cancer</strong></td>
+<td>42</td>
+<td>8</td>
+</tr>
+<tr class="even">
+<td><strong>Actual Healthy</strong></td>
+<td>95</td>
+<td>855</td>
+</tr>
+</tbody>
+</table>
+<ol type="a">
+<li>Compute accuracy, precision, recall, specificity, F1, and MCC.</li>
+<li>Is accuracy a good metric here? Why or why not?</li>
+<li>At what threshold would recall = 0.95? What is the precision at that threshold?</li>
+<li>Compute and plot the precision-recall curve using <code>PRROC::pr.curve()</code>.</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="model-comparison-and-selection" class="level1" data-number="18">
+<h1 data-number="18"><span class="header-section-number">18</span> Model Comparison and Selection</h1>
+<section id="introduction-7" class="level2" data-number="18.1">
+<h2 data-number="18.1" class="anchored" data-anchor-id="introduction-7"><span class="header-section-number">18.1</span> Introduction</h2>
+<p>With multiple classifiers trained and evaluated, the final question is: <strong>which model should be deployed?</strong> This requires more than comparing test set metrics — we need to account for the <strong>variance</strong> in performance estimates, guard against overfitting the test set through repeated evaluation, and consider practical constraints (interpretability, prediction speed, maintenance cost). Cross-validation and statistical testing provide a rigorous framework for model comparison.</p>
+</section>
+<section id="theory-6" class="level2" data-number="18.2">
+<h2 data-number="18.2" class="anchored" data-anchor-id="theory-6"><span class="header-section-number">18.2</span> Theory</h2>
+<section id="k-fold-cross-validation" class="level3" data-number="18.2.1">
+<h3 data-number="18.2.1" class="anchored" data-anchor-id="k-fold-cross-validation"><span class="header-section-number">18.2.1</span> K-Fold Cross-Validation</h3>
+<p><span class="math inline">\(K\)</span>-fold cross-validation partitions the training data into <span class="math inline">\(K\)</span> equal folds. For each fold <span class="math inline">\(k\)</span>:</p>
+<ol type="1">
+<li>Train the model on all folds except <span class="math inline">\(k\)</span>.</li>
+<li>Evaluate on fold <span class="math inline">\(k\)</span>.</li>
+</ol>
+<p>The cross-validated performance estimate is: <span class="math display">\[\hat{\text{Perf}}_{\text{CV}} = \frac{1}{K}\sum_{k=1}^{K}\text{Perf}_k\]</span></p>
+<p><strong>Stratified <span class="math inline">\(K\)</span>-fold</strong> preserves class proportions in each fold — essential for imbalanced data.</p>
+<p>Common choices: <span class="math inline">\(K = 5\)</span> (fast, slightly higher bias) or <span class="math inline">\(K = 10\)</span> (standard, near-unbiased).</p>
+<p><strong>Repeated <span class="math inline">\(K\)</span>-fold:</strong> Repeat the entire <span class="math inline">\(K\)</span>-fold process <span class="math inline">\(r\)</span> times with different random splits, averaging over <span class="math inline">\(K \times r\)</span> evaluations. More stable estimates.</p>
+</section>
+<section id="the-bias-variance-of-cv-estimates" class="level3" data-number="18.2.2">
+<h3 data-number="18.2.2" class="anchored" data-anchor-id="the-bias-variance-of-cv-estimates"><span class="header-section-number">18.2.2</span> The Bias-Variance of CV Estimates</h3>
+<ul>
+<li><strong>Leave-one-out CV (LOOCV):</strong> <span class="math inline">\(K = n\)</span>. Unbiased but high variance; computationally expensive.</li>
+<li><strong><span class="math inline">\(K = 10\)</span>:</strong> Slight bias (models trained on 90% of data), low variance — the best practical choice.</li>
+<li><strong><span class="math inline">\(K = 5\)</span>:</strong> Higher bias, even lower variance — used when computation is limited.</li>
+</ul>
+</section>
+<section id="statistical-comparison-of-models" class="level3" data-number="18.2.3">
+<h3 data-number="18.2.3" class="anchored" data-anchor-id="statistical-comparison-of-models"><span class="header-section-number">18.2.3</span> Statistical Comparison of Models</h3>
+<p>After cross-validation, each model has <span class="math inline">\(K\)</span> performance scores. To test whether Model A outperforms Model B:</p>
+<p><strong>McNemar’s test:</strong> Tests whether two classifiers make significantly different errors on the same test set.</p>
+<p><strong>Paired t-test on CV scores:</strong> Tests whether the mean CV performance differs between two models: <span class="math display">\[t = \frac{\bar{d}}{s_d / \sqrt{K}}\]</span></p>
+<p>where <span class="math inline">\(d_k\)</span> is the performance difference in fold <span class="math inline">\(k\)</span>.</p>
+</section>
+<section id="the-test-set-discipline" class="level3" data-number="18.2.4">
+<h3 data-number="18.2.4" class="anchored" data-anchor-id="the-test-set-discipline"><span class="header-section-number">18.2.4</span> The Test Set Discipline</h3>
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Warning</span>The Test Set Must Remain Untouched
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The test set is for <strong>final, one-time evaluation only</strong>. Every time you peek at test results and tune the model accordingly, the test set becomes part of your training process — and your performance estimate is optimistically biased. Use cross-validation for all tuning decisions; reserve the test set for the final reported result.</p>
+</div>
+</div>
+</section>
+<section id="model-selection-criteria" class="level3" data-number="18.2.5">
+<h3 data-number="18.2.5" class="anchored" data-anchor-id="model-selection-criteria"><span class="header-section-number">18.2.5</span> Model Selection Criteria</h3>
+<p>Beyond performance, consider:</p>
+<table class="table-striped caption-top table">
+<caption>Model selection criteria beyond performance</caption>
+<colgroup>
+<col style="width: 47%">
+<col style="width: 52%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Factor</th>
+<th>Question</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Interpretability</td>
+<td>Does the stakeholder need to understand the model?</td>
+</tr>
+<tr class="even">
+<td>Prediction speed</td>
+<td>How fast must predictions be made?</td>
+</tr>
+<tr class="odd">
+<td>Training cost</td>
+<td>How often will the model be retrained?</td>
+</tr>
+<tr class="even">
+<td>Robustness</td>
+<td>How stable is performance across data shifts?</td>
+</tr>
+<tr class="odd">
+<td>Maintenance</td>
+<td>How easy is the model to update and monitor?</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="example-cross-validated-model-comparison" class="level2" data-number="18.3">
+<h2 data-number="18.3" class="anchored" data-anchor-id="example-cross-validated-model-comparison"><span class="header-section-number">18.3</span> Example: Cross-Validated Model Comparison</h2>
+<p><strong>Example 9.7.</strong> Four classifiers are evaluated with 10-fold cross-validation on the Pima dataset. Results (mean AUC ± SD):</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Model</th>
+<th>Mean AUC</th>
+<th>SD AUC</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Logistic Regression</td>
+<td>0.833</td>
+<td>0.028</td>
+</tr>
+<tr class="even">
+<td>KNN (<span class="math inline">\(K = 15\)</span>)</td>
+<td>0.801</td>
+<td>0.041</td>
+</tr>
+<tr class="odd">
+<td>Decision Tree</td>
+<td>0.782</td>
+<td>0.052</td>
+</tr>
+<tr class="even">
+<td>Random Forest</td>
+<td>0.856</td>
+<td>0.022</td>
+</tr>
+</tbody>
+</table>
+<p>Random Forest has the highest mean AUC and the lowest variability. A paired t-test confirms Random Forest significantly outperforms KNN (<span class="math inline">\(t_9 = 3.2\)</span>, <span class="math inline">\(p = 0.011\)</span>) and Decision Tree (<span class="math inline">\(p = 0.003\)</span>), but does not significantly outperform Logistic Regression (<span class="math inline">\(p = 0.12\)</span>). Given that Logistic Regression is nearly as accurate and far more interpretable, it may be preferred for a clinical deployment.</p>
+</section>
+<section id="r-example-cross-validation-and-model-comparison" class="level2" data-number="18.4">
+<h2 data-number="18.4" class="anchored" data-anchor-id="r-example-cross-validation-and-model-comparison"><span class="header-section-number">18.4</span> R Example: Cross-Validation and Model Comparison</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+summary.resamples(object = cv_results)
+
+Models: LR, KNN, Tree, RF 
+Number of resamples: 10 
+
+ROC 
+          Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
+LR   0.7512605 0.8351631 0.8744061 0.8589314 0.8873457 0.9253968    0
+KNN  0.7055556 0.8262605 0.8460538 0.8340669 0.8621437 0.8785714    0
+Tree 0.6873016 0.7657388 0.8044001 0.8003485 0.8381559 0.9151235    0
+RF   0.7589869 0.8013062 0.8542134 0.8407354 0.8817460 0.8986928    0
+
+Sens 
+          Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
+LR   0.7777778 0.8642857 0.8873016 0.8899206 0.9363095 1.0000000    0
+KNN  0.8571429 0.8857143 0.8888889 0.8928571 0.9079365 0.9166667    0
+Tree 0.6000000 0.7799603 0.8472222 0.8134921 0.8857143 0.8888889    0
+RF   0.6944444 0.8581349 0.9000000 0.8764286 0.9357143 0.9722222    0
+
+Spec 
+          Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
+LR   0.4705882 0.5073529 0.5996732 0.5866013 0.6111111 0.7777778    0
+KNN  0.3333333 0.4779412 0.5555556 0.5480392 0.5882353 0.7222222    0
+Tree 0.3888889 0.6111111 0.6290850 0.6163399 0.6666667 0.8235294    0
+RF   0.4117647 0.5138889 0.5555556 0.5754902 0.6666667 0.7058824    0</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter09_data_classification_files/figure-html/cv-plot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+summary.diff.resamples(object = cv_diff)
+
+p-value adjustment: bonferroni 
+Upper diagonal: estimates of the difference
+Lower diagonal: p-value for H0: difference = 0
+
+ROC 
+     LR     KNN       Tree      RF       
+LR           0.024864  0.058583  0.018196
+KNN  1.0000            0.033718 -0.006668
+Tree 0.2397 1.0000              -0.040387
+RF   1.0000 1.0000    1.0000             
+
+Sens 
+     LR     KNN       Tree      RF       
+LR          -0.002937  0.076429  0.013492
+KNN  1.0000            0.079365  0.016429
+Tree 0.4779 0.1897              -0.062937
+RF   1.0000 1.0000    0.8945             
+
+Spec 
+     LR KNN      Tree     RF      
+LR       0.03856 -0.02974  0.01111
+KNN  1           -0.06830 -0.02745
+Tree 1  1                  0.04085
+RF   1  1        1                </code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>10-Fold Cross-Validated AUC Comparison</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Model</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Mean AUC</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">SD</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Min</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Max</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">LR</td>
+<td style="text-align: left; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">LR</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">0.8589</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">0.0519</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">0.7513</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">0.9254</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">RF</td>
+<td style="text-align: left;">RF</td>
+<td style="text-align: right;">0.8407</td>
+<td style="text-align: right;">0.0520</td>
+<td style="text-align: right;">0.7590</td>
+<td style="text-align: right;">0.8987</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">KNN</td>
+<td style="text-align: left;">KNN</td>
+<td style="text-align: right;">0.8341</td>
+<td style="text-align: right;">0.0493</td>
+<td style="text-align: right;">0.7056</td>
+<td style="text-align: right;">0.8786</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Tree</td>
+<td style="text-align: left;">Tree</td>
+<td style="text-align: right;">0.8003</td>
+<td style="text-align: right;">0.0669</td>
+<td style="text-align: right;">0.6873</td>
+<td style="text-align: right;">0.9151</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>caret::train()</code> provides a unified interface to dozens of algorithms with consistent cross-validation. <code>method = "glm"</code>, <code>"knn"</code>, <code>"rpart"</code>, <code>"rf"</code> access different algorithms.</li>
+<li><code>trainControl(summaryFunction = twoClassSummary, metric = "ROC")</code> evaluates models by AUC rather than accuracy — critical for imbalanced data.</li>
+<li><code>resamples(models_cv)</code> collects CV results from multiple models for comparison. <code>diff(cv_results)</code> computes pairwise differences with statistical tests.</li>
+<li><code>dotplot(cv_results)</code> from <code>lattice</code> produces a confidence-interval-based comparison plot — the standard visualization for comparing CV results.</li>
+</ul>
+</section>
+<section id="exercises-6" class="level2" data-number="18.5">
+<h2 data-number="18.5" class="anchored" data-anchor-id="exercises-6"><span class="header-section-number">18.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 9.8
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>Sonar</code> dataset from the <code>mlbench</code> package (binary classification: rock vs.&nbsp;mine):</p>
+<ol type="a">
+<li>Apply 10-fold stratified CV to logistic regression, KNN, decision tree, and random forest.</li>
+<li>Report mean and SD of accuracy and AUC for each model.</li>
+<li>Use <code>diff(resamples())</code> to test pairwise differences. Which pairs are significantly different?</li>
+<li>Given that the dataset is highly imbalanced, rerun with F1 as the metric. Do rankings change?</li>
+</ol>
+</div>
+</div>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 9.9 (Challenge)
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Implement a complete classification pipeline with <code>caret</code>:</p>
+<ol type="a">
+<li>Load the <code>GermanCredit</code> dataset from <code>caret</code>. Predict <code>Class</code> (Good/Bad credit).</li>
+<li>Apply SMOTE oversampling for class imbalance using <code>DMwR::SMOTE()</code>.</li>
+<li>Train and compare random forest vs.&nbsp;gradient boosting (<code>method = "gbm"</code>).</li>
+<li>Report all metrics: accuracy, precision, recall, F1, AUC, MCC. Which model would you deploy?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="chapter-lab-activity-medical-diagnosis-classification-with-pima-data" class="level1" data-number="19">
+<h1 data-number="19"><span class="header-section-number">19</span> Chapter Lab Activity: Medical Diagnosis Classification with <code>Pima</code> Data</h1>
+<section id="objectives" class="level2" data-number="19.1">
+<h2 data-number="19.1" class="anchored" data-anchor-id="objectives"><span class="header-section-number">19.1</span> Objectives</h2>
+<p>In this lab you will apply the complete classification pipeline — from exploratory analysis through model training, evaluation, and comparison — to the Pima Indians diabetes dataset. The medical context makes metric choice particularly important: false negatives (missing a diabetic patient) are more costly than false positives.</p>
+</section>
+<section id="the-dataset" class="level2" data-number="19.2">
+<h2 data-number="19.2" class="anchored" data-anchor-id="the-dataset"><span class="header-section-number">19.2</span> The Dataset</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Training set: 200 observations</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Test set:     332 observations</code></pre>
+</div>
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Class Distribution by Partition</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Test</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Train</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Sum</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">No</td>
+<td style="text-align: right;">223</td>
+<td style="text-align: right;">132</td>
+<td style="text-align: right;">355</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Yes</td>
+<td style="text-align: right;">109</td>
+<td style="text-align: right;">68</td>
+<td style="text-align: right;">177</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Sum</td>
+<td style="text-align: right;">332</td>
+<td style="text-align: right;">200</td>
+<td style="text-align: right;">532</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="lab-task-1-exploratory-analysis" class="level2" data-number="19.3">
+<h2 data-number="19.3" class="anchored" data-anchor-id="lab-task-1-exploratory-analysis"><span class="header-section-number">19.3</span> Lab Task 1: Exploratory Analysis</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter09_data_classification_files/figure-html/lab-task1-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="lab-task-2-train-all-classifiers" class="level2" data-number="19.4">
+<h2 data-number="19.4" class="anchored" data-anchor-id="lab-task-2-train-all-classifiers"><span class="header-section-number">19.4</span> Lab Task 2: Train All Classifiers</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>All models trained successfully.</code></pre>
+</div>
+</div>
+</section>
+<section id="lab-task-3-comprehensive-evaluation" class="level2" data-number="19.5">
+<h2 data-number="19.5" class="anchored" data-anchor-id="lab-task-3-comprehensive-evaluation"><span class="header-section-number">19.5</span> Lab Task 3: Comprehensive Evaluation</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Full Evaluation: All Models on Test Set</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Model</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Accuracy</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Precision</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Recall</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Specificity</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">F1</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">MCC</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">AUC</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Logistic Reg.</td>
+<td style="text-align: right;">0.8012</td>
+<td style="text-align: right;">0.7416</td>
+<td style="text-align: right;">0.6055</td>
+<td style="text-align: right;">0.8969</td>
+<td style="text-align: right;">0.6667</td>
+<td style="text-align: right; font-weight: bold; color: darkgreen !important;">0.5326</td>
+<td style="text-align: right; font-weight: bold; color: darkgreen !important;">0.8659</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">KNN (K=15)</td>
+<td style="text-align: right;">0.7711</td>
+<td style="text-align: right;">0.7089</td>
+<td style="text-align: right;">0.5138</td>
+<td style="text-align: right;">0.8969</td>
+<td style="text-align: right;">0.5957</td>
+<td style="text-align: right; font-weight: bold; color: steelblue !important;">0.4528</td>
+<td style="text-align: right; font-weight: bold; color: steelblue !important;">0.8213</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Decision Tree</td>
+<td style="text-align: right;">0.7319</td>
+<td style="text-align: right;">0.5980</td>
+<td style="text-align: right;">0.5596</td>
+<td style="text-align: right;">0.8161</td>
+<td style="text-align: right;">0.5782</td>
+<td style="text-align: right; font-weight: bold; color: steelblue !important;">0.3825</td>
+<td style="text-align: right; font-weight: bold; color: steelblue !important;">0.7764</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Random Forest</td>
+<td style="text-align: right;">0.7681</td>
+<td style="text-align: right;">0.6667</td>
+<td style="text-align: right;">0.5872</td>
+<td style="text-align: right;">0.8565</td>
+<td style="text-align: right;">0.6244</td>
+<td style="text-align: right; font-weight: bold; color: steelblue !important;">0.4595</td>
+<td style="text-align: right; font-weight: bold; color: steelblue !important;">0.8182</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="lab-task-4-roc-and-threshold-analysis" class="level2" data-number="19.6">
+<h2 data-number="19.6" class="anchored" data-anchor-id="lab-task-4-roc-and-threshold-analysis"><span class="header-section-number">19.6</span> Lab Task 4: ROC and Threshold Analysis</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter09_data_classification_files/figure-html/lab-task4-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="lab-discussion-questions" class="level2" data-number="19.7">
+<h2 data-number="19.7" class="anchored" data-anchor-id="lab-discussion-questions"><span class="header-section-number">19.7</span> Lab Discussion Questions</h2>
+<p>Answer the following in writing:</p>
+<ol type="1">
+<li><p><strong>Metric Choice:</strong> In a diabetes screening context, which metric matters most — precision or recall? At what classification threshold (from Panel B) would you deploy the random forest model, and why?</p></li>
+<li><p><strong>Model Interpretability:</strong> The decision tree and logistic regression are more interpretable than the random forest. For a clinical setting where doctors must understand predictions, which model would you recommend? How does interpretability trade off against accuracy?</p></li>
+<li><p><strong>Class Imbalance:</strong> The Pima dataset has approximately 33% positive cases (diabetic). Is this a serious imbalance problem? How would you handle a dataset where only 2% of cases are positive?</p></li>
+<li><p><strong>Overfitting Check:</strong> Compare training accuracy to test accuracy for each model. Which model shows the most overfitting? What regularization or pruning approach would you apply?</p></li>
+<li><p><strong>Deployment Decision:</strong> You must choose one model to deploy in a rural health clinic with limited computational resources. The predictions must be explainable to doctors. Which model do you choose, and what is your justification beyond just AUC?</p></li>
+</ol>
+<hr>
+</section>
+</section>
+<section id="chapter-summary" class="level1" data-number="20">
+<h1 data-number="20"><span class="header-section-number">20</span> Chapter Summary</h1>
+<section id="summary" class="level2" data-number="20.1">
+<h2 data-number="20.1" class="anchored" data-anchor-id="summary"><span class="header-section-number">20.1</span> Summary</h2>
+<p>This chapter built a comprehensive classification toolkit from foundations to practical deployment:</p>
+<ul>
+<li><strong>Introduction</strong> — classification predicts categorical outcomes using labeled training data; decision boundary shape varies by algorithm; the training-test split discipline is inviolable.</li>
+<li><strong>Logistic regression</strong> — models probability via the sigmoid function; coefficients are log-odds, exponentiated to odds ratios; estimated by maximum likelihood; the most interpretable classifier.</li>
+<li><strong>KNN</strong> — classifies by majority vote among <span class="math inline">\(K\)</span> nearest neighbors; non-parametric; requires scaling; <span class="math inline">\(K\)</span> tuned by cross-validation; suffers in high dimensions.</li>
+<li><strong>Decision trees</strong> — recursive binary splitting minimizes impurity (Gini/entropy); pruned by cost-complexity to prevent overfitting; highly interpretable; building block of ensemble methods.</li>
+<li><strong>Random forest</strong> — bagging + feature randomization; reduces variance; OOB error estimates generalization; variable importance via MDA and MDG; among the most reliable classifiers for tabular data.</li>
+<li><strong>Model evaluation</strong> — accuracy alone is insufficient; precision, recall, F1, MCC, and AUC capture different aspects; ROC and precision-recall curves visualize threshold tradeoffs.</li>
+<li><strong>Model comparison</strong> — cross-validation provides unbiased performance estimates; statistical tests compare models; test set reserved for final evaluation only; practical factors (interpretability, speed) inform final selection.</li>
+</ul>
+<div class="callout callout-style-default callout-important callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Important</span>Key Formulas to Know
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>Logistic Model:</strong> <span class="math display">\[P(Y=1|\mathbf{x}) = \frac{1}{1+e^{-\boldsymbol{\beta}^T\mathbf{x}}}\]</span></p>
+<p><strong>Gini Impurity:</strong> <span class="math display">\[G(t) = 1 - \sum_{k=1}^{K}p_k(t)^2\]</span></p>
+<p><strong>Precision, Recall, F1:</strong> <span class="math display">\[\text{Precision} = \frac{TP}{TP+FP}, \quad \text{Recall} = \frac{TP}{TP+FN}\]</span> <span class="math display">\[F_1 = 2 \cdot \frac{\text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}}\]</span></p>
+<p><strong>Matthews Correlation Coefficient:</strong> <span class="math display">\[\text{MCC} = \frac{TP \cdot TN - FP \cdot FN}{\sqrt{(TP+FP)(TP+FN)(TN+FP)(TN+FN)}}\]</span></p>
+<p><strong>Cross-Validated Performance:</strong> <span class="math display">\[\hat{\text{Perf}}_{\text{CV}} = \frac{1}{K}\sum_{k=1}^{K}\text{Perf}_k\]</span></p>
+</div>
+</div>
+</section>
+<section id="references" class="level2" data-number="20.2">
+<h2 data-number="20.2" class="anchored" data-anchor-id="references"><span class="header-section-number">20.2</span> References</h2>
+<p>Anderson, E. (1935). The irises of the Gaspé Peninsula. <em>Bulletin of the American Iris Society</em>, <em>59</em>, 2–5.</p>
+<p>Breiman, L. (1996). Bagging predictors. <em>Machine Learning</em>, <em>24</em>(2), 123–140.</p>
+<p>Breiman, L. (2001). Random forests. <em>Machine Learning</em>, <em>45</em>(1), 5–32.</p>
+<p>Breiman, L., Friedman, J. H., Olshen, R. A., &amp; Stone, C. J. (1984). <em>Classification and regression trees</em>. Wadsworth.</p>
+<p>Cover, T. M., &amp; Hart, P. E. (1967). Nearest neighbor pattern classification. <em>IEEE Transactions on Information Theory</em>, <em>13</em>(1), 21–27.</p>
+<p>Friedman, J. H. (2001). Greedy function approximation: A gradient boosting machine. <em>Annals of Statistics</em>, <em>29</em>(5), 1189–1232.</p>
+<p>Hastie, T., Tibshirani, R., &amp; Friedman, J. (2009). <em>The elements of statistical learning</em> (2nd ed.). Springer. https://hastie.su.domains/ElemStatLearn/</p>
+<p>Henderson, H. V., &amp; Velleman, P. F. (1981). Building multiple regression models interactively. <em>Biometrics</em>, <em>37</em>(2), 391–411.</p>
+<p>James, G., Witten, D., Hastie, T., &amp; Tibshirani, R. (2021). <em>An introduction to statistical learning with applications in R</em> (2nd ed.). Springer. https://www.statlearning.com</p>
+<p>Kuhn, M. (2008). Building predictive models in R using the caret package. <em>Journal of Statistical Software</em>, <em>28</em>(5), 1–26.</p>
+<p>Liaw, A., &amp; Wiener, M. (2002). Classification and regression by randomForest. <em>R News</em>, <em>2</em>(3), 18–22.</p>
+<p>Matthews, B. W. (1975). Comparison of the predicted and observed secondary structure of T4 phage lysozyme. <em>Biochimica et Biophysica Acta</em>, <em>405</em>(2), 442–451.</p>
+<p>Pedersen, T. L. (2022). <em>patchwork: The composer of plots</em> (R package version 1.1.2). https://CRAN.R-project.org/package=patchwork</p>
+<p>R Core Team. (2024). <em>R: A language and environment for statistical computing</em>. R Foundation for Statistical Computing. https://www.R-project.org/</p>
+<p>Robin, X., Turck, N., Hainard, A., Tiberti, N., Lisacek, F., Sanchez, J.-C., &amp; Müller, M. (2011). pROC: An open-source package for R and S+ to analyze and compare ROC curves. <em>BMC Bioinformatics</em>, <em>12</em>, 77.</p>
+<p>Scrucca, L., Fop, M., Murphy, T. B., &amp; Raftery, A. E. (2016). mclust 5: Clustering, classification and density estimation using Gaussian finite mixture models. <em>The R Journal</em>, <em>8</em>(1), 289–317.</p>
+<p>Smith, J. W., Everhart, J. E., Dickson, W. C., Knowler, W. C., &amp; Johannes, R. S. (1988). Using the ADAP learning algorithm to forecast the onset of diabetes mellitus. <em>Proceedings of the Symposium on Computer Applications and Medical Care</em> (pp.&nbsp;261–265). IEEE.</p>
+<p>Therneau, T., &amp; Atkinson, B. (2023). <em>rpart: Recursive partitioning and regression trees</em> (R package version 4.1-19). https://CRAN.R-project.org/package=rpart</p>
+<p>Venables, W. N., &amp; Ripley, B. D. (2002). <em>Modern applied statistics with S</em> (4th ed.). Springer.</p>
+<p>Wickham, H. (2016). <em>ggplot2: Elegant graphics for data analysis</em>. Springer.</p>
+<p>Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. <em>Journal of Open Source Software</em>, <em>4</em>(43), 1686.</p>
+<p>Xie, Y. (2015). <em>Dynamic documents with R and knitr</em> (2nd ed.). CRC Press.</p>
+<hr>
+<p><em>End of Chapter 9. Proceed to Chapter 10: Regression Analysis.</em></p>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./chapter08_data_clustering.html" class="pagination-link" aria-label="Chapter 8: Data Clustering">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Chapter 8: Data Clustering</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./chapter10_regression_analysis.html" class="pagination-link" aria-label="Chapter 10: Regression Analysis">
+        <span class="nav-page-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Chapter 10: Regression Analysis</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

@@ -1,0 +1,2357 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>9&nbsp; Chapter 8: Data Clustering – Statistics for Data Science</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./chapter09_data_classification.html" rel="next">
+<link href="./chapter07_dimension_reduction.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-a06763021a52c43c40a351ac8b799b8f.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-81de787dd4773dbc0001c2dc1cc3016d.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="site_libs/kePrint-0.0.1/kePrint.js"></script>
+
+<link href="site_libs/lightable-0.0.1/lightable.css" rel="stylesheet">
+
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-sidebar floating quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./chapter08_data_clustering.html"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Chapter 8: Data Clustering</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">Statistics for Data Science</a> 
+        <div class="sidebar-tools-main">
+    <a href="./Statistics-for-Data-Science.pdf" title="Download PDF" class="quarto-navigation-tool px-1" aria-label="Download PDF"><i class="bi bi-file-pdf"></i></a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Preface</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter01_descriptive_statistics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Chapter 1: Descriptive Statistics</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter02_data_distribution_probability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Chapter 2: Data Distribution and Probability</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter03_hypothesis_testing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Chapter 3: Hypothesis Testing</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter04_test_of_independence.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Chapter 4: Test of Independence of Variables</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter05_data_sampling.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Chapter 5: Data Sampling Techniques</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter06_data_preprocessing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Chapter 6: Data Preprocessing</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter07_dimension_reduction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Chapter 7: Data Dimension Reduction</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter08_data_clustering.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Chapter 8: Data Clustering</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter09_data_classification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Chapter 9: Data Classification</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter10_regression_analysis.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Chapter 10: Regression Analysis</span></span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Contents</h2>
+   
+  <ul>
+  <li><a href="#chapter-overview" id="toc-chapter-overview" class="nav-link active" data-scroll-target="#chapter-overview"><span class="header-section-number">10</span> Chapter Overview</a>
+  <ul class="collapse">
+  <li><a href="#introduction" id="toc-introduction" class="nav-link" data-scroll-target="#introduction"><span class="header-section-number">10.1</span> Introduction</a></li>
+  </ul></li>
+  <li><a href="#introduction-to-clustering" id="toc-introduction-to-clustering" class="nav-link" data-scroll-target="#introduction-to-clustering"><span class="header-section-number">11</span> Introduction to Clustering</a>
+  <ul class="collapse">
+  <li><a href="#introduction-1" id="toc-introduction-1" class="nav-link" data-scroll-target="#introduction-1"><span class="header-section-number">11.1</span> Introduction</a></li>
+  <li><a href="#theory" id="toc-theory" class="nav-link" data-scroll-target="#theory"><span class="header-section-number">11.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#types-of-clustering-algorithms" id="toc-types-of-clustering-algorithms" class="nav-link" data-scroll-target="#types-of-clustering-algorithms"><span class="header-section-number">11.2.1</span> Types of Clustering Algorithms</a></li>
+  <li><a href="#the-similaritydistance-problem" id="toc-the-similaritydistance-problem" class="nav-link" data-scroll-target="#the-similaritydistance-problem"><span class="header-section-number">11.2.2</span> The Similarity/Distance Problem</a></li>
+  <li><a href="#key-challenges" id="toc-key-challenges" class="nav-link" data-scroll-target="#key-challenges"><span class="header-section-number">11.2.3</span> Key Challenges</a></li>
+  </ul></li>
+  <li><a href="#example-when-do-clusters-exist" id="toc-example-when-do-clusters-exist" class="nav-link" data-scroll-target="#example-when-do-clusters-exist"><span class="header-section-number">11.3</span> Example: When Do Clusters Exist?</a></li>
+  <li><a href="#r-example-exploring-cluster-structure" id="toc-r-example-exploring-cluster-structure" class="nav-link" data-scroll-target="#r-example-exploring-cluster-structure"><span class="header-section-number">11.4</span> R Example: Exploring Cluster Structure</a></li>
+  <li><a href="#exercises" id="toc-exercises" class="nav-link" data-scroll-target="#exercises"><span class="header-section-number">11.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#k-means-clustering" id="toc-k-means-clustering" class="nav-link" data-scroll-target="#k-means-clustering"><span class="header-section-number">12</span> K-Means Clustering</a>
+  <ul class="collapse">
+  <li><a href="#introduction-2" id="toc-introduction-2" class="nav-link" data-scroll-target="#introduction-2"><span class="header-section-number">12.1</span> Introduction</a></li>
+  <li><a href="#theory-1" id="toc-theory-1" class="nav-link" data-scroll-target="#theory-1"><span class="header-section-number">12.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#the-k-means-objective" id="toc-the-k-means-objective" class="nav-link" data-scroll-target="#the-k-means-objective"><span class="header-section-number">12.2.1</span> The K-Means Objective</a></li>
+  <li><a href="#k-means-initialization" id="toc-k-means-initialization" class="nav-link" data-scroll-target="#k-means-initialization"><span class="header-section-number">12.2.2</span> K-Means++ Initialization</a></li>
+  <li><a href="#choosing-k-the-elbow-method" id="toc-choosing-k-the-elbow-method" class="nav-link" data-scroll-target="#choosing-k-the-elbow-method"><span class="header-section-number">12.2.3</span> Choosing <span class="math inline">\(K\)</span>: The Elbow Method</a></li>
+  <li><a href="#choosing-k-the-silhouette-method" id="toc-choosing-k-the-silhouette-method" class="nav-link" data-scroll-target="#choosing-k-the-silhouette-method"><span class="header-section-number">12.2.4</span> Choosing <span class="math inline">\(K\)</span>: The Silhouette Method</a></li>
+  <li><a href="#limitations-of-k-means" id="toc-limitations-of-k-means" class="nav-link" data-scroll-target="#limitations-of-k-means"><span class="header-section-number">12.2.5</span> Limitations of K-Means</a></li>
+  </ul></li>
+  <li><a href="#example-k-means-on-customer-data" id="toc-example-k-means-on-customer-data" class="nav-link" data-scroll-target="#example-k-means-on-customer-data"><span class="header-section-number">12.3</span> Example: K-Means on Customer Data</a></li>
+  <li><a href="#r-example-k-means-clustering" id="toc-r-example-k-means-clustering" class="nav-link" data-scroll-target="#r-example-k-means-clustering"><span class="header-section-number">12.4</span> R Example: K-Means Clustering</a></li>
+  <li><a href="#exercises-1" id="toc-exercises-1" class="nav-link" data-scroll-target="#exercises-1"><span class="header-section-number">12.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#hierarchical-clustering" id="toc-hierarchical-clustering" class="nav-link" data-scroll-target="#hierarchical-clustering"><span class="header-section-number">13</span> Hierarchical Clustering</a>
+  <ul class="collapse">
+  <li><a href="#introduction-3" id="toc-introduction-3" class="nav-link" data-scroll-target="#introduction-3"><span class="header-section-number">13.1</span> Introduction</a></li>
+  <li><a href="#theory-2" id="toc-theory-2" class="nav-link" data-scroll-target="#theory-2"><span class="header-section-number">13.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#agglomerative-clustering-bottom-up" id="toc-agglomerative-clustering-bottom-up" class="nav-link" data-scroll-target="#agglomerative-clustering-bottom-up"><span class="header-section-number">13.2.1</span> Agglomerative Clustering (Bottom-Up)</a></li>
+  <li><a href="#linkage-methods" id="toc-linkage-methods" class="nav-link" data-scroll-target="#linkage-methods"><span class="header-section-number">13.2.2</span> Linkage Methods</a></li>
+  <li><a href="#the-dendrogram" id="toc-the-dendrogram" class="nav-link" data-scroll-target="#the-dendrogram"><span class="header-section-number">13.2.3</span> The Dendrogram</a></li>
+  <li><a href="#divisive-clustering-top-down" id="toc-divisive-clustering-top-down" class="nav-link" data-scroll-target="#divisive-clustering-top-down"><span class="header-section-number">13.2.4</span> Divisive Clustering (Top-Down)</a></li>
+  </ul></li>
+  <li><a href="#example-hierarchical-clustering-of-countries" id="toc-example-hierarchical-clustering-of-countries" class="nav-link" data-scroll-target="#example-hierarchical-clustering-of-countries"><span class="header-section-number">13.3</span> Example: Hierarchical Clustering of Countries</a></li>
+  <li><a href="#r-example-hierarchical-clustering" id="toc-r-example-hierarchical-clustering" class="nav-link" data-scroll-target="#r-example-hierarchical-clustering"><span class="header-section-number">13.4</span> R Example: Hierarchical Clustering</a></li>
+  <li><a href="#exercises-2" id="toc-exercises-2" class="nav-link" data-scroll-target="#exercises-2"><span class="header-section-number">13.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#dbscan" id="toc-dbscan" class="nav-link" data-scroll-target="#dbscan"><span class="header-section-number">14</span> DBSCAN</a>
+  <ul class="collapse">
+  <li><a href="#introduction-4" id="toc-introduction-4" class="nav-link" data-scroll-target="#introduction-4"><span class="header-section-number">14.1</span> Introduction</a></li>
+  <li><a href="#theory-3" id="toc-theory-3" class="nav-link" data-scroll-target="#theory-3"><span class="header-section-number">14.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#core-concepts" id="toc-core-concepts" class="nav-link" data-scroll-target="#core-concepts"><span class="header-section-number">14.2.1</span> Core Concepts</a></li>
+  <li><a href="#the-dbscan-algorithm" id="toc-the-dbscan-algorithm" class="nav-link" data-scroll-target="#the-dbscan-algorithm"><span class="header-section-number">14.2.2</span> The DBSCAN Algorithm</a></li>
+  <li><a href="#advantages-and-limitations" id="toc-advantages-and-limitations" class="nav-link" data-scroll-target="#advantages-and-limitations"><span class="header-section-number">14.2.3</span> Advantages and Limitations</a></li>
+  <li><a href="#choosing-varepsilon-the-k-distance-plot" id="toc-choosing-varepsilon-the-k-distance-plot" class="nav-link" data-scroll-target="#choosing-varepsilon-the-k-distance-plot"><span class="header-section-number">14.2.4</span> Choosing <span class="math inline">\(\varepsilon\)</span>: The <span class="math inline">\(k\)</span>-Distance Plot</a></li>
+  </ul></li>
+  <li><a href="#example-dbscan-on-spatial-data" id="toc-example-dbscan-on-spatial-data" class="nav-link" data-scroll-target="#example-dbscan-on-spatial-data"><span class="header-section-number">14.3</span> Example: DBSCAN on Spatial Data</a></li>
+  <li><a href="#r-example-dbscan" id="toc-r-example-dbscan" class="nav-link" data-scroll-target="#r-example-dbscan"><span class="header-section-number">14.4</span> R Example: DBSCAN</a></li>
+  <li><a href="#exercises-3" id="toc-exercises-3" class="nav-link" data-scroll-target="#exercises-3"><span class="header-section-number">14.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#cluster-validation" id="toc-cluster-validation" class="nav-link" data-scroll-target="#cluster-validation"><span class="header-section-number">15</span> Cluster Validation</a>
+  <ul class="collapse">
+  <li><a href="#introduction-5" id="toc-introduction-5" class="nav-link" data-scroll-target="#introduction-5"><span class="header-section-number">15.1</span> Introduction</a></li>
+  <li><a href="#theory-4" id="toc-theory-4" class="nav-link" data-scroll-target="#theory-4"><span class="header-section-number">15.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#internal-validation-indices" id="toc-internal-validation-indices" class="nav-link" data-scroll-target="#internal-validation-indices"><span class="header-section-number">15.2.1</span> Internal Validation Indices</a></li>
+  <li><a href="#external-validation-indices" id="toc-external-validation-indices" class="nav-link" data-scroll-target="#external-validation-indices"><span class="header-section-number">15.2.2</span> External Validation Indices</a></li>
+  <li><a href="#stability-based-validation" id="toc-stability-based-validation" class="nav-link" data-scroll-target="#stability-based-validation"><span class="header-section-number">15.2.3</span> Stability-Based Validation</a></li>
+  </ul></li>
+  <li><a href="#example-comparing-validation-indices" id="toc-example-comparing-validation-indices" class="nav-link" data-scroll-target="#example-comparing-validation-indices"><span class="header-section-number">15.3</span> Example: Comparing Validation Indices</a></li>
+  <li><a href="#r-example-cluster-validation" id="toc-r-example-cluster-validation" class="nav-link" data-scroll-target="#r-example-cluster-validation"><span class="header-section-number">15.4</span> R Example: Cluster Validation</a></li>
+  <li><a href="#exercises-4" id="toc-exercises-4" class="nav-link" data-scroll-target="#exercises-4"><span class="header-section-number">15.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#gaussian-mixture-models" id="toc-gaussian-mixture-models" class="nav-link" data-scroll-target="#gaussian-mixture-models"><span class="header-section-number">16</span> Gaussian Mixture Models</a>
+  <ul class="collapse">
+  <li><a href="#introduction-6" id="toc-introduction-6" class="nav-link" data-scroll-target="#introduction-6"><span class="header-section-number">16.1</span> Introduction</a></li>
+  <li><a href="#theory-5" id="toc-theory-5" class="nav-link" data-scroll-target="#theory-5"><span class="header-section-number">16.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#the-mixture-model" id="toc-the-mixture-model" class="nav-link" data-scroll-target="#the-mixture-model"><span class="header-section-number">16.2.1</span> The Mixture Model</a></li>
+  <li><a href="#the-em-algorithm" id="toc-the-em-algorithm" class="nav-link" data-scroll-target="#the-em-algorithm"><span class="header-section-number">16.2.2</span> The EM Algorithm</a></li>
+  <li><a href="#covariance-structure" id="toc-covariance-structure" class="nav-link" data-scroll-target="#covariance-structure"><span class="header-section-number">16.2.3</span> Covariance Structure</a></li>
+  <li><a href="#model-selection-bic" id="toc-model-selection-bic" class="nav-link" data-scroll-target="#model-selection-bic"><span class="header-section-number">16.2.4</span> Model Selection: BIC</a></li>
+  </ul></li>
+  <li><a href="#example-gmm-vs.-k-means" id="toc-example-gmm-vs.-k-means" class="nav-link" data-scroll-target="#example-gmm-vs.-k-means"><span class="header-section-number">16.3</span> Example: GMM vs.&nbsp;K-Means</a></li>
+  <li><a href="#r-example-gaussian-mixture-models" id="toc-r-example-gaussian-mixture-models" class="nav-link" data-scroll-target="#r-example-gaussian-mixture-models"><span class="header-section-number">16.4</span> R Example: Gaussian Mixture Models</a></li>
+  <li><a href="#exercises-5" id="toc-exercises-5" class="nav-link" data-scroll-target="#exercises-5"><span class="header-section-number">16.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#practical-clustering-workflow" id="toc-practical-clustering-workflow" class="nav-link" data-scroll-target="#practical-clustering-workflow"><span class="header-section-number">17</span> Practical Clustering Workflow</a>
+  <ul class="collapse">
+  <li><a href="#introduction-7" id="toc-introduction-7" class="nav-link" data-scroll-target="#introduction-7"><span class="header-section-number">17.1</span> Introduction</a></li>
+  <li><a href="#theory-6" id="toc-theory-6" class="nav-link" data-scroll-target="#theory-6"><span class="header-section-number">17.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#the-end-to-end-clustering-workflow" id="toc-the-end-to-end-clustering-workflow" class="nav-link" data-scroll-target="#the-end-to-end-clustering-workflow"><span class="header-section-number">17.2.1</span> The End-to-End Clustering Workflow</a></li>
+  <li><a href="#algorithm-selection-guide" id="toc-algorithm-selection-guide" class="nav-link" data-scroll-target="#algorithm-selection-guide"><span class="header-section-number">17.2.2</span> Algorithm Selection Guide</a></li>
+  <li><a href="#cluster-profiling" id="toc-cluster-profiling" class="nav-link" data-scroll-target="#cluster-profiling"><span class="header-section-number">17.2.3</span> Cluster Profiling</a></li>
+  </ul></li>
+  <li><a href="#r-example-complete-clustering-workflow" id="toc-r-example-complete-clustering-workflow" class="nav-link" data-scroll-target="#r-example-complete-clustering-workflow"><span class="header-section-number">17.3</span> R Example: Complete Clustering Workflow</a></li>
+  <li><a href="#exercises-6" id="toc-exercises-6" class="nav-link" data-scroll-target="#exercises-6"><span class="header-section-number">17.4</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#chapter-lab-activity-customer-segmentation-with-wholesales-data" id="toc-chapter-lab-activity-customer-segmentation-with-wholesales-data" class="nav-link" data-scroll-target="#chapter-lab-activity-customer-segmentation-with-wholesales-data"><span class="header-section-number">18</span> Chapter Lab Activity: Customer Segmentation with <code>wholesales</code> Data</a>
+  <ul class="collapse">
+  <li><a href="#objectives" id="toc-objectives" class="nav-link" data-scroll-target="#objectives"><span class="header-section-number">18.1</span> Objectives</a></li>
+  <li><a href="#the-dataset" id="toc-the-dataset" class="nav-link" data-scroll-target="#the-dataset"><span class="header-section-number">18.2</span> The Dataset</a></li>
+  <li><a href="#lab-task-1-preprocessing" id="toc-lab-task-1-preprocessing" class="nav-link" data-scroll-target="#lab-task-1-preprocessing"><span class="header-section-number">18.3</span> Lab Task 1: Preprocessing</a></li>
+  <li><a href="#lab-task-2-k-means-segmentation" id="toc-lab-task-2-k-means-segmentation" class="nav-link" data-scroll-target="#lab-task-2-k-means-segmentation"><span class="header-section-number">18.4</span> Lab Task 2: K-Means Segmentation</a></li>
+  <li><a href="#lab-task-3-hierarchical-and-gmm-comparison" id="toc-lab-task-3-hierarchical-and-gmm-comparison" class="nav-link" data-scroll-target="#lab-task-3-hierarchical-and-gmm-comparison"><span class="header-section-number">18.5</span> Lab Task 3: Hierarchical and GMM Comparison</a></li>
+  <li><a href="#lab-task-4-visualization" id="toc-lab-task-4-visualization" class="nav-link" data-scroll-target="#lab-task-4-visualization"><span class="header-section-number">18.6</span> Lab Task 4: Visualization</a></li>
+  <li><a href="#lab-discussion-questions" id="toc-lab-discussion-questions" class="nav-link" data-scroll-target="#lab-discussion-questions"><span class="header-section-number">18.7</span> Lab Discussion Questions</a></li>
+  </ul></li>
+  <li><a href="#chapter-summary" id="toc-chapter-summary" class="nav-link" data-scroll-target="#chapter-summary"><span class="header-section-number">19</span> Chapter Summary</a>
+  <ul class="collapse">
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary"><span class="header-section-number">19.1</span> Summary</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">19.2</span> References</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Chapter 8: Data Clustering</span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<hr>
+<section id="chapter-overview" class="level1" data-number="10">
+<h1 data-number="10"><span class="header-section-number">10</span> Chapter Overview</h1>
+<section id="introduction" class="level2" data-number="10.1">
+<h2 data-number="10.1" class="anchored" data-anchor-id="introduction"><span class="header-section-number">10.1</span> Introduction</h2>
+<p>Clustering is one of the most fundamental tasks in unsupervised machine learning: given a collection of observations with no predefined labels, find natural groupings — <strong>clusters</strong> — such that observations within a group are more similar to each other than to observations in other groups. Clustering drives customer segmentation, anomaly detection, document organization, gene expression analysis, image compression, and countless other applications.</p>
+<p>Unlike classification (Chapter 9), clustering has no “correct” answer to compare against. Evaluating and interpreting clusters requires both statistical criteria and domain knowledge — making it as much an art as a science.</p>
+<p>This chapter covers:</p>
+<ul>
+<li><strong>Introduction to Clustering</strong> — concepts, types, and applications</li>
+<li><strong>K-Means Clustering</strong> — the workhorse algorithm with formal optimization</li>
+<li><strong>Hierarchical Clustering</strong> — agglomerative methods and dendrogram interpretation</li>
+<li><strong>DBSCAN</strong> — density-based clustering for irregular shapes and noise</li>
+<li><strong>Cluster Validation</strong> — internal and external validity measures</li>
+<li><strong>Gaussian Mixture Models</strong> — probabilistic soft clustering with model selection</li>
+<li><strong>Practical Clustering Workflow</strong> — end-to-end decision framework</li>
+</ul>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>Learning Objectives
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>By the end of this chapter, you will be able to:</p>
+<ol type="1">
+<li>Distinguish between types of clustering algorithms and select appropriately.</li>
+<li>Implement and interpret K-means clustering including optimal <span class="math inline">\(k\)</span> selection.</li>
+<li>Construct and interpret hierarchical cluster dendrograms with different linkage methods.</li>
+<li>Apply DBSCAN and tune its parameters for density-based clustering.</li>
+<li>Evaluate clustering solutions using silhouette scores, Davies-Bouldin index, and other criteria.</li>
+<li>Fit Gaussian mixture models and use BIC for model selection.</li>
+<li>Apply a principled end-to-end clustering workflow to real data.</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="introduction-to-clustering" class="level1" data-number="11">
+<h1 data-number="11"><span class="header-section-number">11</span> Introduction to Clustering</h1>
+<section id="introduction-1" class="level2" data-number="11.1">
+<h2 data-number="11.1" class="anchored" data-anchor-id="introduction-1"><span class="header-section-number">11.1</span> Introduction</h2>
+<p><strong>Clustering</strong> is the task of partitioning a dataset into groups (clusters) such that observations within a cluster are more similar to each other than to observations in other clusters. It is an <strong>unsupervised</strong> method — no labels or outcome variables are used. The algorithm discovers structure entirely from the patterns in the feature space.</p>
+<p>Clustering appears across virtually every domain of data science:</p>
+<ul>
+<li><strong>Marketing:</strong> Customer segmentation for targeted campaigns</li>
+<li><strong>Genomics:</strong> Grouping genes by expression profiles</li>
+<li><strong>Finance:</strong> Portfolio construction based on asset correlation patterns</li>
+<li><strong>NLP:</strong> Document clustering and topic discovery</li>
+<li><strong>Medicine:</strong> Patient subtyping for precision medicine</li>
+<li><strong>Anomaly detection:</strong> Normal behavior clusters; anomalies fall outside</li>
+</ul>
+</section>
+<section id="theory" class="level2" data-number="11.2">
+<h2 data-number="11.2" class="anchored" data-anchor-id="theory"><span class="header-section-number">11.2</span> Theory</h2>
+<section id="types-of-clustering-algorithms" class="level3" data-number="11.2.1">
+<h3 data-number="11.2.1" class="anchored" data-anchor-id="types-of-clustering-algorithms"><span class="header-section-number">11.2.1</span> Types of Clustering Algorithms</h3>
+<table class="table-striped caption-top table">
+<caption>Types of clustering algorithms</caption>
+<colgroup>
+<col style="width: 21%">
+<col style="width: 46%">
+<col style="width: 32%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Description</th>
+<th>Examples</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Partitional</strong></td>
+<td>Divides data into <span class="math inline">\(k\)</span> non-overlapping clusters</td>
+<td>K-Means, K-Medoids</td>
+</tr>
+<tr class="even">
+<td><strong>Hierarchical</strong></td>
+<td>Builds a tree of nested clusters</td>
+<td>Agglomerative, Divisive</td>
+</tr>
+<tr class="odd">
+<td><strong>Density-based</strong></td>
+<td>Clusters are dense regions separated by sparse regions</td>
+<td>DBSCAN, OPTICS</td>
+</tr>
+<tr class="even">
+<td><strong>Model-based</strong></td>
+<td>Assumes data generated from mixture of distributions</td>
+<td>GMM</td>
+</tr>
+<tr class="odd">
+<td><strong>Fuzzy</strong></td>
+<td>Each point has partial membership in multiple clusters</td>
+<td>Fuzzy C-Means</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="the-similaritydistance-problem" class="level3" data-number="11.2.2">
+<h3 data-number="11.2.2" class="anchored" data-anchor-id="the-similaritydistance-problem"><span class="header-section-number">11.2.2</span> The Similarity/Distance Problem</h3>
+<p>All clustering algorithms depend on a measure of <strong>similarity</strong> or <strong>distance</strong> between observations. The most common choices:</p>
+<p><strong>Euclidean distance</strong> (most common for continuous data): <span class="math display">\[d(x, y) = \sqrt{\sum_{j=1}^{p}(x_j - y_j)^2}\]</span></p>
+<p><strong>Manhattan distance</strong> (robust to outliers): <span class="math display">\[d(x, y) = \sum_{j=1}^{p}|x_j - y_j|\]</span></p>
+<p><strong>Cosine similarity</strong> (for text and high-dimensional sparse data): <span class="math display">\[\text{sim}(x, y) = \frac{x \cdot y}{\|x\|\|y\|}\]</span></p>
+<p><strong>Gower distance</strong> (for mixed-type data): <span class="math display">\[d_G(x, y) = \frac{\sum_{j=1}^{p} w_j d_j(x_j, y_j)}{\sum_{j=1}^{p} w_j}\]</span></p>
+<p>where <span class="math inline">\(d_j\)</span> is adapted to variable type (range-normalized for continuous, 0/1 for binary, etc.).</p>
+</section>
+<section id="key-challenges" class="level3" data-number="11.2.3">
+<h3 data-number="11.2.3" class="anchored" data-anchor-id="key-challenges"><span class="header-section-number">11.2.3</span> Key Challenges</h3>
+<ul>
+<li><strong>No ground truth:</strong> Without labels, “correct” clustering cannot be verified directly.</li>
+<li><strong>Scale sensitivity:</strong> Most algorithms require standardization — see Chapter 6.</li>
+<li><strong>Choosing <span class="math inline">\(k\)</span>:</strong> The number of clusters is rarely known in advance.</li>
+<li><strong>Cluster shape:</strong> K-Means assumes spherical clusters; DBSCAN handles arbitrary shapes.</li>
+<li><strong>High dimensionality:</strong> The curse of dimensionality (Chapter 7) affects distance-based clustering.</li>
+<li><strong>Interpretation:</strong> Statistical clusters may not align with meaningful domain categories.</li>
+</ul>
+</section>
+</section>
+<section id="example-when-do-clusters-exist" class="level2" data-number="11.3">
+<h2 data-number="11.3" class="anchored" data-anchor-id="example-when-do-clusters-exist"><span class="header-section-number">11.3</span> Example: When Do Clusters Exist?</h2>
+<p><strong>Example 8.1.</strong> Three datasets each have 150 observations in 2D:</p>
+<ul>
+<li><strong>Dataset A:</strong> Three well-separated spherical groups → K-Means works perfectly.</li>
+<li><strong>Dataset B:</strong> Two concentric rings → K-Means fails (not spherical); DBSCAN succeeds.</li>
+<li><strong>Dataset C:</strong> Uniformly distributed points → No meaningful clusters exist; any algorithm will produce arbitrary groupings.</li>
+</ul>
+<p>This illustrates a critical principle: <strong>clustering algorithms always find clusters</strong> — even in random data. The challenge is determining whether the discovered clusters are real or artifacts.</p>
+</section>
+<section id="r-example-exploring-cluster-structure" class="level2" data-number="11.4">
+<h2 data-number="11.4" class="anchored" data-anchor-id="r-example-exploring-cluster-structure"><span class="header-section-number">11.4</span> R Example: Exploring Cluster Structure</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter08_data_clustering_files/figure-html/cluster-intro-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li>Trigonometric functions <code>cos()</code> and <code>sin()</code> generate ring-shaped data — a classic test case for non-linear clustering methods.</li>
+<li><code>facet_wrap(scales = "free")</code> allows each panel its own axis range, preventing one dataset’s scale from distorting the others.</li>
+<li>Visual inspection is always the first step in clustering — before choosing an algorithm, look at the data (in 2D projections or PCA space).</li>
+</ul>
+</section>
+<section id="exercises" class="level2" data-number="11.5">
+<h2 data-number="11.5" class="anchored" data-anchor-id="exercises"><span class="header-section-number">11.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 8.1
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<ol type="a">
+<li>Generate a dataset with 4 clusters of 50 points each, arranged in a 2×2 grid pattern (well-separated). Plot it.</li>
+<li>Generate a dataset where two clusters overlap substantially. What challenges does this pose for clustering?</li>
+<li>Apply <code>scale()</code> to the <code>iris</code> numeric variables and compute the Euclidean distance matrix using <code>dist()</code>. Inspect the first 6×6 block. Are setosa observations closer to each other than to versicolor?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="k-means-clustering" class="level1" data-number="12">
+<h1 data-number="12"><span class="header-section-number">12</span> K-Means Clustering</h1>
+<section id="introduction-2" class="level2" data-number="12.1">
+<h2 data-number="12.1" class="anchored" data-anchor-id="introduction-2"><span class="header-section-number">12.1</span> Introduction</h2>
+<p><strong>K-Means</strong> is the most widely used clustering algorithm, valued for its simplicity, scalability, and intuitive interpretation. It partitions <span class="math inline">\(n\)</span> observations into exactly <span class="math inline">\(k\)</span> clusters by minimizing the total within-cluster variance — finding compact, spherical clusters in feature space.</p>
+</section>
+<section id="theory-1" class="level2" data-number="12.2">
+<h2 data-number="12.2" class="anchored" data-anchor-id="theory-1"><span class="header-section-number">12.2</span> Theory</h2>
+<section id="the-k-means-objective" class="level3" data-number="12.2.1">
+<h3 data-number="12.2.1" class="anchored" data-anchor-id="the-k-means-objective"><span class="header-section-number">12.2.1</span> The K-Means Objective</h3>
+<p>K-Means minimizes the <strong>total within-cluster sum of squares (WCSS)</strong>:</p>
+<p><span class="math display">\[\text{WCSS} = \sum_{k=1}^{K} \sum_{i \in C_k} \|\mathbf{x}_i - \boldsymbol{\mu}_k\|^2\]</span></p>
+<p>where <span class="math inline">\(\boldsymbol{\mu}_k\)</span> is the centroid (mean) of cluster <span class="math inline">\(k\)</span> and <span class="math inline">\(C_k\)</span> is the set of observations assigned to cluster <span class="math inline">\(k\)</span>.</p>
+<p>This is an NP-hard optimization problem in general. The <strong>Lloyd algorithm</strong> finds a local optimum:</p>
+<p><strong>Algorithm:</strong></p>
+<ol type="1">
+<li>Initialize <span class="math inline">\(K\)</span> centroids (randomly or via K-Means++)</li>
+<li><strong>Assignment step:</strong> Assign each observation to the nearest centroid: <span class="math display">\[C_k = \{i : \|\mathbf{x}_i - \boldsymbol{\mu}_k\|^2 \leq \|\mathbf{x}_i - \boldsymbol{\mu}_j\|^2 \; \forall j\}\]</span></li>
+<li><strong>Update step:</strong> Recompute centroids as cluster means: <span class="math display">\[\boldsymbol{\mu}_k = \frac{1}{|C_k|}\sum_{i \in C_k}\mathbf{x}_i\]</span></li>
+<li>Repeat steps 2–3 until assignments do not change.</li>
+</ol>
+<p><strong>Convergence:</strong> The WCSS decreases at every iteration and is bounded below by 0, guaranteeing convergence. However, convergence to the <strong>global</strong> optimum is not guaranteed — run with multiple random starts (<code>nstart</code> in R).</p>
+</section>
+<section id="k-means-initialization" class="level3" data-number="12.2.2">
+<h3 data-number="12.2.2" class="anchored" data-anchor-id="k-means-initialization"><span class="header-section-number">12.2.2</span> K-Means++ Initialization</h3>
+<p>Random initialization can lead to poor solutions. <strong>K-Means++</strong> selects initial centroids with probability proportional to squared distance from existing centroids:</p>
+<p><span class="math display">\[P(\mathbf{x}_i \text{ chosen}) \propto \min_k \|\mathbf{x}_i - \boldsymbol{\mu}_k\|^2\]</span></p>
+<p>This spreads initial centroids apart, dramatically improving solution quality and speed of convergence. R’s <code>kmeans()</code> uses K-Means++ by default with <code>algorithm = "Hartigan-Wong"</code>.</p>
+</section>
+<section id="choosing-k-the-elbow-method" class="level3" data-number="12.2.3">
+<h3 data-number="12.2.3" class="anchored" data-anchor-id="choosing-k-the-elbow-method"><span class="header-section-number">12.2.3</span> Choosing <span class="math inline">\(K\)</span>: The Elbow Method</h3>
+<p>Plot WCSS against <span class="math inline">\(K\)</span>. The “elbow” — where WCSS begins to decrease slowly — suggests the optimal <span class="math inline">\(K\)</span>. Beyond the elbow, adding clusters provides diminishing returns.</p>
+</section>
+<section id="choosing-k-the-silhouette-method" class="level3" data-number="12.2.4">
+<h3 data-number="12.2.4" class="anchored" data-anchor-id="choosing-k-the-silhouette-method"><span class="header-section-number">12.2.4</span> Choosing <span class="math inline">\(K\)</span>: The Silhouette Method</h3>
+<p>The <strong>silhouette score</strong> for observation <span class="math inline">\(i\)</span> measures how well it fits its assigned cluster relative to the next best cluster:</p>
+<p><span class="math display">\[s(i) = \frac{b(i) - a(i)}{\max(a(i), b(i))}\]</span></p>
+<p>where <span class="math inline">\(a(i)\)</span> is the mean distance to other points in the same cluster (cohesion) and <span class="math inline">\(b(i)\)</span> is the mean distance to points in the nearest other cluster (separation).</p>
+<ul>
+<li><span class="math inline">\(s(i) \approx 1\)</span>: well-clustered</li>
+<li><span class="math inline">\(s(i) \approx 0\)</span>: on the boundary between clusters</li>
+<li><span class="math inline">\(s(i) &lt; 0\)</span>: possibly misassigned</li>
+</ul>
+<p>The optimal <span class="math inline">\(K\)</span> maximizes the <strong>average silhouette width</strong>.</p>
+</section>
+<section id="limitations-of-k-means" class="level3" data-number="12.2.5">
+<h3 data-number="12.2.5" class="anchored" data-anchor-id="limitations-of-k-means"><span class="header-section-number">12.2.5</span> Limitations of K-Means</h3>
+<ul>
+<li>Assumes <strong>spherical, equally-sized</strong> clusters</li>
+<li>Sensitive to <strong>outliers</strong> (centroids are means)</li>
+<li>Requires specifying <span class="math inline">\(K\)</span> in advance</li>
+<li>Non-deterministic — different runs may yield different solutions</li>
+<li>Fails on <strong>non-convex</strong> cluster shapes</li>
+</ul>
+</section>
+</section>
+<section id="example-k-means-on-customer-data" class="level2" data-number="12.3">
+<h2 data-number="12.3" class="anchored" data-anchor-id="example-k-means-on-customer-data"><span class="header-section-number">12.3</span> Example: K-Means on Customer Data</h2>
+<p><strong>Example 8.2.</strong> A retailer segments 200 customers by annual spending (THB) and visit frequency. K-Means with <span class="math inline">\(K = 3\)</span> identifies:</p>
+<ul>
+<li><strong>Cluster 1:</strong> High spending, high frequency — “loyal premium customers”</li>
+<li><strong>Cluster 2:</strong> Low spending, high frequency — “frequent budget shoppers”</li>
+<li><strong>Cluster 3:</strong> High spending, low frequency — “occasional big spenders”</li>
+</ul>
+<p>Each segment suggests a different marketing strategy — demonstrating how clustering translates to business action.</p>
+</section>
+<section id="r-example-k-means-clustering" class="level2" data-number="12.4">
+<h2 data-number="12.4" class="anchored" data-anchor-id="r-example-k-means-clustering"><span class="header-section-number">12.4</span> R Example: K-Means Clustering</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>K-Means Results (K=3):</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Cluster sizes: 50 53 47 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Total WCSS:    138.888 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Between-SS / Total SS: 76.7 %</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>       Species
+Cluster setosa versicolor virginica
+      1     50          0         0
+      2      0         39        14
+      3      0         11        36</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter08_data_clustering_files/figure-html/kmeans-optimal-k-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>  cluster size ave.sil.width
+1       1   50          0.64
+2       2   53          0.39
+3       3   47          0.35</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter08_data_clustering_files/figure-html/kmeans-viz-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>kmeans(x, centers, nstart, iter.max)</code>: <code>nstart = 25</code> runs 25 random initializations and keeps the best — essential for avoiding poor local minima.</li>
+<li><code>silhouette(cluster, dist_matrix)</code> computes per-observation silhouette scores. <code>mean(sil[, 3])</code> extracts the average width.</li>
+<li><code>fviz_silhouette()</code> produces a publication-ready silhouette plot with per-cluster averages highlighted.</li>
+<li>Plotting clusters in PCA space (Panel C) is the standard way to visualize high-dimensional clustering results in 2D.</li>
+</ul>
+</section>
+<section id="exercises-1" class="level2" data-number="12.5">
+<h2 data-number="12.5" class="anchored" data-anchor-id="exercises-1"><span class="header-section-number">12.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 8.2
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>USArrests</code> dataset:</p>
+<ol type="a">
+<li>Standardize the data and apply K-Means for <span class="math inline">\(K = 2, 3, 4, 5\)</span>.</li>
+<li>Use the elbow method and silhouette method to choose the optimal <span class="math inline">\(K\)</span>.</li>
+<li>For the optimal <span class="math inline">\(K\)</span>, identify which states belong to each cluster. Interpret the clusters using cluster centroids.</li>
+<li>Visualize clusters on a US map (use <code>ggplot2::map_data("state")</code>).</li>
+</ol>
+</div>
+</div>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 8.3
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>K-Means is sensitive to initialization. For the <code>iris</code> data with <span class="math inline">\(K = 3\)</span>:</p>
+<ol type="a">
+<li>Run K-Means 10 times with <code>nstart = 1</code> and record the WCSS each time. How much does it vary?</li>
+<li>Run once with <code>nstart = 50</code>. Does this reliably find the best solution?</li>
+<li>Compare K-Means (Euclidean) to K-Medoids (<code>cluster::pam()</code>) on the same data. Which is more robust to the outlier you add: <code>iris[1, 1:4] &lt;- c(10, 10, 10, 10)</code>?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="hierarchical-clustering" class="level1" data-number="13">
+<h1 data-number="13"><span class="header-section-number">13</span> Hierarchical Clustering</h1>
+<section id="introduction-3" class="level2" data-number="13.1">
+<h2 data-number="13.1" class="anchored" data-anchor-id="introduction-3"><span class="header-section-number">13.1</span> Introduction</h2>
+<p><strong>Hierarchical clustering</strong> builds a tree-like structure of nested clusters — a <strong>dendrogram</strong> — that captures cluster relationships at every level of granularity simultaneously. Unlike K-Means, you do not need to specify <span class="math inline">\(K\)</span> in advance; instead, you choose the number of clusters by “cutting” the dendrogram at a chosen height. This makes hierarchical clustering particularly valuable for <strong>exploratory analysis</strong> and for data where the cluster hierarchy is itself scientifically meaningful (e.g., evolutionary trees, organizational hierarchies).</p>
+</section>
+<section id="theory-2" class="level2" data-number="13.2">
+<h2 data-number="13.2" class="anchored" data-anchor-id="theory-2"><span class="header-section-number">13.2</span> Theory</h2>
+<section id="agglomerative-clustering-bottom-up" class="level3" data-number="13.2.1">
+<h3 data-number="13.2.1" class="anchored" data-anchor-id="agglomerative-clustering-bottom-up"><span class="header-section-number">13.2.1</span> Agglomerative Clustering (Bottom-Up)</h3>
+<p>The most common approach: start with each observation in its own cluster, then repeatedly merge the two most similar clusters until one cluster remains.</p>
+<p><strong>Algorithm:</strong></p>
+<ol type="1">
+<li>Compute the <span class="math inline">\(n \times n\)</span> distance matrix <span class="math inline">\(\mathbf{D}\)</span>.</li>
+<li>Find the pair of clusters <span class="math inline">\((C_i, C_j)\)</span> with minimum inter-cluster distance.</li>
+<li>Merge <span class="math inline">\(C_i\)</span> and <span class="math inline">\(C_j\)</span> into a new cluster <span class="math inline">\(C_{ij}\)</span>.</li>
+<li>Update <span class="math inline">\(\mathbf{D}\)</span> with distances from <span class="math inline">\(C_{ij}\)</span> to all other clusters.</li>
+<li>Repeat until one cluster remains.</li>
+</ol>
+</section>
+<section id="linkage-methods" class="level3" data-number="13.2.2">
+<h3 data-number="13.2.2" class="anchored" data-anchor-id="linkage-methods"><span class="header-section-number">13.2.2</span> Linkage Methods</h3>
+<p>The choice of <strong>linkage</strong> defines how the distance between two clusters is computed from pairwise distances:</p>
+<table class="table-striped caption-top table">
+<caption>Linkage methods for hierarchical clustering</caption>
+<colgroup>
+<col style="width: 29%">
+<col style="width: 35%">
+<col style="width: 35%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Linkage</th>
+<th>Definition</th>
+<th>Properties</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Single</strong></td>
+<td>Min distance between any pair of points</td>
+<td>Chaining effect; finds elongated clusters</td>
+</tr>
+<tr class="even">
+<td><strong>Complete</strong></td>
+<td>Max distance between any pair of points</td>
+<td>Compact, spherical clusters; sensitive to outliers</td>
+</tr>
+<tr class="odd">
+<td><strong>Average (UPGMA)</strong></td>
+<td>Mean of all pairwise distances</td>
+<td>Compromise; most widely recommended</td>
+</tr>
+<tr class="even">
+<td><strong>Ward’s</strong></td>
+<td>Minimizes within-cluster variance increase</td>
+<td>Most similar to K-Means; finds compact clusters</td>
+</tr>
+<tr class="odd">
+<td><strong>Centroid</strong></td>
+<td>Distance between cluster centroids</td>
+<td>Can produce inversions in dendrogram</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Ward’s linkage</strong> is the most commonly recommended for general use as it produces compact, well-separated clusters and is consistent with the K-Means objective.</p>
+</section>
+<section id="the-dendrogram" class="level3" data-number="13.2.3">
+<h3 data-number="13.2.3" class="anchored" data-anchor-id="the-dendrogram"><span class="header-section-number">13.2.3</span> The Dendrogram</h3>
+<p>A <strong>dendrogram</strong> displays the hierarchical cluster structure:</p>
+<ul>
+<li>The <strong>height</strong> of each merge represents the distance at which two clusters joined.</li>
+<li><strong>Cutting</strong> the dendrogram at height <span class="math inline">\(h\)</span> produces clusters that were formed by merges at distances <span class="math inline">\(\leq h\)</span>.</li>
+<li>The <strong>cophenetic correlation</strong> measures how faithfully the dendrogram represents the original pairwise distances — a diagnostic of how well the hierarchical structure fits the data.</li>
+</ul>
+</section>
+<section id="divisive-clustering-top-down" class="level3" data-number="13.2.4">
+<h3 data-number="13.2.4" class="anchored" data-anchor-id="divisive-clustering-top-down"><span class="header-section-number">13.2.4</span> Divisive Clustering (Top-Down)</h3>
+<p><strong>DIANA (DIvisive ANAlysis):</strong> Starts with all observations in one cluster, then recursively splits the most heterogeneous cluster. Computationally expensive (<span class="math inline">\(O(2^n)\)</span> exact); rarely used in large datasets.</p>
+</section>
+</section>
+<section id="example-hierarchical-clustering-of-countries" class="level2" data-number="13.3">
+<h2 data-number="13.3" class="anchored" data-anchor-id="example-hierarchical-clustering-of-countries"><span class="header-section-number">13.3</span> Example: Hierarchical Clustering of Countries</h2>
+<p><strong>Example 8.3.</strong> The <code>USArrests</code> dataset is clustered hierarchically with Ward’s linkage. Cutting at <span class="math inline">\(K = 4\)</span> reveals:</p>
+<ul>
+<li><strong>Cluster 1:</strong> High crime states (e.g., Florida, California)</li>
+<li><strong>Cluster 2:</strong> Mid-high crime (e.g., Arizona, Colorado)</li>
+<li><strong>Cluster 3:</strong> Mid-low crime (e.g., Pennsylvania, Ohio)</li>
+<li><strong>Cluster 4:</strong> Low crime states (e.g., Vermont, Maine)</li>
+</ul>
+<p>The dendrogram shows that Clusters 3 and 4 merge before merging with Clusters 1 and 2 — low and mid-low crime states are more similar to each other than to high-crime states.</p>
+</section>
+<section id="r-example-hierarchical-clustering" class="level2" data-number="13.4">
+<h2 data-number="13.4" class="anchored" data-anchor-id="r-example-hierarchical-clustering"><span class="header-section-number">13.4</span> R Example: Hierarchical Clustering</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Cophenetic Correlation by Linkage Method</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Linkage</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Cophenetic r</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">single</td>
+<td style="text-align: left; font-weight: bold; color: steelblue !important;">single</td>
+<td style="text-align: right;">0.5413</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">complete</td>
+<td style="text-align: left; font-weight: bold; color: steelblue !important;">complete</td>
+<td style="text-align: right;">0.6979</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">average</td>
+<td style="text-align: left; font-weight: bold; color: darkgreen !important;">average</td>
+<td style="text-align: right;">0.7180</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">ward.D2</td>
+<td style="text-align: left; font-weight: bold; color: steelblue !important;">ward.D2</td>
+<td style="text-align: right;">0.6975</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter08_data_clustering_files/figure-html/dendrogram-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Cluster Profiles: USArrests (Ward's, K=4)</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;" data-quarto-table-cell-role="th">Cluster</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">n</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Murder</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Assault</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">UrbanPop</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Rape</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">14.67</td>
+<td style="text-align: right;">251.29</td>
+<td style="text-align: right;">54.29</td>
+<td style="text-align: right;">21.69</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">10.97</td>
+<td style="text-align: right;">264.00</td>
+<td style="text-align: right;">76.50</td>
+<td style="text-align: right;">33.61</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">19</td>
+<td style="text-align: right;">6.21</td>
+<td style="text-align: right;">142.05</td>
+<td style="text-align: right;">71.26</td>
+<td style="text-align: right;">19.18</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">3.09</td>
+<td style="text-align: right;">76.00</td>
+<td style="text-align: right;">52.08</td>
+<td style="text-align: right;">11.83</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter08_data_clustering_files/figure-html/hierarchical-viz-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>hclust(dist, method)</code> fits hierarchical clustering. <code>method = "ward.D2"</code> implements Ward’s criterion using squared distances (the standard Ward implementation in R).</li>
+<li><code>cophenetic(hc)</code> computes the cophenetic distance matrix; <code>cor(dist_mat, cophenetic(hc))</code> gives the cophenetic correlation — a model fit diagnostic.</li>
+<li><code>color_branches(dend, k)</code> from <code>dendextend</code> colors the dendrogram branches by cluster assignment, making the cut point visually clear.</li>
+<li><code>cutree(hc, k)</code> cuts the dendrogram to produce exactly <span class="math inline">\(k\)</span> clusters — no need to specify height directly.</li>
+</ul>
+</section>
+<section id="exercises-2" class="level2" data-number="13.5">
+<h2 data-number="13.5" class="anchored" data-anchor-id="exercises-2"><span class="header-section-number">13.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 8.4
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>mtcars</code> dataset:</p>
+<ol type="a">
+<li>Compute the Euclidean distance matrix on standardized data.</li>
+<li>Apply hierarchical clustering with all four linkage methods. Compare dendrograms visually.</li>
+<li>Choose the linkage with the highest cophenetic correlation. Cut at <span class="math inline">\(K = 3\)</span> and interpret the clusters using group means.</li>
+<li>How do the hierarchical clusters compare to K-Means clusters (<span class="math inline">\(K = 3\)</span>) from Exercise 8.2? Use a cross-tabulation.</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="dbscan" class="level1" data-number="14">
+<h1 data-number="14"><span class="header-section-number">14</span> DBSCAN</h1>
+<section id="introduction-4" class="level2" data-number="14.1">
+<h2 data-number="14.1" class="anchored" data-anchor-id="introduction-4"><span class="header-section-number">14.1</span> Introduction</h2>
+<p>K-Means and hierarchical clustering both struggle with clusters of <strong>arbitrary shape</strong> — elongated, curved, or interlocked — and with <strong>noise</strong> (outliers that do not belong to any cluster). <strong>DBSCAN (Density-Based Spatial Clustering of Applications with Noise)</strong>, introduced by Ester et al.&nbsp;(1996), solves these problems by defining clusters as dense regions of observations separated by sparse regions. It is particularly powerful for geospatial data, anomaly detection, and any domain where clusters are not compact spheres.</p>
+</section>
+<section id="theory-3" class="level2" data-number="14.2">
+<h2 data-number="14.2" class="anchored" data-anchor-id="theory-3"><span class="header-section-number">14.2</span> Theory</h2>
+<section id="core-concepts" class="level3" data-number="14.2.1">
+<h3 data-number="14.2.1" class="anchored" data-anchor-id="core-concepts"><span class="header-section-number">14.2.1</span> Core Concepts</h3>
+<p>DBSCAN has two parameters:</p>
+<ul>
+<li><span class="math inline">\(\varepsilon\)</span> (<strong>eps</strong>): The neighborhood radius. Two points are neighbors if their distance is <span class="math inline">\(\leq \varepsilon\)</span>.</li>
+<li><strong>MinPts</strong>: The minimum number of points required to form a dense region.</li>
+</ul>
+<p>Three types of points:</p>
+<ol type="1">
+<li><strong>Core point:</strong> Has at least MinPts neighbors within distance <span class="math inline">\(\varepsilon\)</span> (including itself).</li>
+<li><strong>Border point:</strong> Within <span class="math inline">\(\varepsilon\)</span> of a core point but has fewer than MinPts neighbors.</li>
+<li><strong>Noise point (outlier):</strong> Not a core point and not within <span class="math inline">\(\varepsilon\)</span> of any core point.</li>
+</ol>
+<p><strong>Density-reachability:</strong> Point <span class="math inline">\(q\)</span> is density-reachable from core point <span class="math inline">\(p\)</span> if there is a chain of core points <span class="math inline">\(p = p_1, p_2, \ldots, p_n = q\)</span> where each <span class="math inline">\(p_{i+1}\)</span> is within <span class="math inline">\(\varepsilon\)</span> of <span class="math inline">\(p_i\)</span>.</p>
+<p>A <strong>cluster</strong> is a maximal set of density-connected points.</p>
+</section>
+<section id="the-dbscan-algorithm" class="level3" data-number="14.2.2">
+<h3 data-number="14.2.2" class="anchored" data-anchor-id="the-dbscan-algorithm"><span class="header-section-number">14.2.2</span> The DBSCAN Algorithm</h3>
+<ol type="1">
+<li>For each unvisited point <span class="math inline">\(p\)</span>:
+<ul>
+<li>If <span class="math inline">\(p\)</span> is a core point: create a new cluster and expand it by adding all density-reachable points.</li>
+<li>If <span class="math inline">\(p\)</span> is a border or noise point: skip (may be assigned later when a core point reaches it).</li>
+</ul></li>
+<li>Points never assigned to any cluster are labeled <strong>noise</strong> (typically coded as 0 or -1).</li>
+</ol>
+<p><strong>Complexity:</strong> <span class="math inline">\(O(n \log n)\)</span> with spatial indexing (k-d tree); <span class="math inline">\(O(n^2)\)</span> naively.</p>
+</section>
+<section id="advantages-and-limitations" class="level3" data-number="14.2.3">
+<h3 data-number="14.2.3" class="anchored" data-anchor-id="advantages-and-limitations"><span class="header-section-number">14.2.3</span> Advantages and Limitations</h3>
+<table class="table-striped caption-top table">
+<caption>DBSCAN vs.&nbsp;K-Means comparison</caption>
+<thead>
+<tr class="header">
+<th>Feature</th>
+<th>DBSCAN</th>
+<th>K-Means</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Handles arbitrary shapes</td>
+<td>✓</td>
+<td>✗</td>
+</tr>
+<tr class="even">
+<td>Detects outliers/noise</td>
+<td>✓</td>
+<td>✗</td>
+</tr>
+<tr class="odd">
+<td>Number of clusters <span class="math inline">\(K\)</span></td>
+<td>Automatic</td>
+<td>Must specify</td>
+</tr>
+<tr class="even">
+<td>Sensitive to scale</td>
+<td>Yes</td>
+<td>Yes</td>
+</tr>
+<tr class="odd">
+<td>Parameter tuning</td>
+<td><span class="math inline">\(\varepsilon\)</span>, MinPts</td>
+<td><span class="math inline">\(K\)</span></td>
+</tr>
+<tr class="even">
+<td>Scales to large data</td>
+<td>✓ (with indexing)</td>
+<td>✓</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="choosing-varepsilon-the-k-distance-plot" class="level3" data-number="14.2.4">
+<h3 data-number="14.2.4" class="anchored" data-anchor-id="choosing-varepsilon-the-k-distance-plot"><span class="header-section-number">14.2.4</span> Choosing <span class="math inline">\(\varepsilon\)</span>: The <span class="math inline">\(k\)</span>-Distance Plot</h3>
+<p>Sort observations by their distance to the <span class="math inline">\(k\)</span>-th nearest neighbor (typically <span class="math inline">\(k\)</span> = MinPts - 1). Plot these sorted distances. The “elbow” in this plot suggests the optimal <span class="math inline">\(\varepsilon\)</span> — at that distance, the density drops sharply from dense core regions to sparse noise.</p>
+</section>
+</section>
+<section id="example-dbscan-on-spatial-data" class="level2" data-number="14.3">
+<h2 data-number="14.3" class="anchored" data-anchor-id="example-dbscan-on-spatial-data"><span class="header-section-number">14.3</span> Example: DBSCAN on Spatial Data</h2>
+<p><strong>Example 8.4.</strong> GPS coordinates of 500 restaurant locations in a city are clustered with DBSCAN (<span class="math inline">\(\varepsilon = 0.3\)</span> km, MinPts = 5). The algorithm discovers:</p>
+<ul>
+<li>4 natural <strong>restaurant districts</strong> of varying shapes (downtown, university area, shopping mall, tourist zone)</li>
+<li>12 isolated restaurants labeled as <strong>noise</strong> (no nearby neighbors)</li>
+</ul>
+<p>K-Means with <span class="math inline">\(K = 4\)</span> on the same data produces circular, equally-sized regions that cut across natural district boundaries — demonstrating DBSCAN’s advantage for geographic data.</p>
+</section>
+<section id="r-example-dbscan" class="level2" data-number="14.4">
+<h2 data-number="14.4" class="anchored" data-anchor-id="r-example-dbscan"><span class="header-section-number">14.4</span> R Example: DBSCAN</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter08_data_clustering_files/figure-html/dbscan-rings-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter08_data_clustering_files/figure-html/dbscan-eps-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>DBSCAN Results (iris):</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Cluster sizes:</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+ 0  1  2 
+34 45 71 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Noise points (cluster 0): 34 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>      Species
+DBSCAN setosa versicolor virginica
+     0      5         11        18
+     1     45          0         0
+     2      0         39        32</code></pre>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>dbscan::dbscan(x, eps, minPts)</code> runs DBSCAN. Cluster 0 represents noise points — always check how many observations are labeled as noise.</li>
+<li><code>dbscan::kNNdist(x, k)</code> computes the <span class="math inline">\(k\)</span>-nearest neighbor distance for each point; sorting and plotting these produces the <span class="math inline">\(k\)</span>-distance plot.</li>
+<li>The ring example (Panels A and B) is the canonical demonstration of DBSCAN’s advantage — K-Means cannot recover the correct structure while DBSCAN does so effortlessly.</li>
+</ul>
+</section>
+<section id="exercises-3" class="level2" data-number="14.5">
+<h2 data-number="14.5" class="anchored" data-anchor-id="exercises-3"><span class="header-section-number">14.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 8.5
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>faithful</code> dataset (Old Faithful geyser eruptions):</p>
+<ol type="a">
+<li>Plot <code>eruptions</code> vs.&nbsp;<code>waiting</code>. How many clusters do you expect visually?</li>
+<li>Apply DBSCAN. Use the <span class="math inline">\(k\)</span>-distance plot to choose <span class="math inline">\(\varepsilon\)</span>.</li>
+<li>Compare DBSCAN to K-Means for this dataset. Which performs better?</li>
+<li>How does changing MinPts from 3 to 10 affect the clustering? How many noise points are created?</li>
+</ol>
+</div>
+</div>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 8.6
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Generate a dataset with 3 clusters of different densities and one cluster of outliers.</p>
+<ol type="a">
+<li>Show that K-Means struggles (merges the sparse cluster with noise).</li>
+<li>Show that DBSCAN handles it correctly with appropriate parameters.</li>
+<li>What are the trade-offs when choosing a very small vs.&nbsp;very large <span class="math inline">\(\varepsilon\)</span>?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="cluster-validation" class="level1" data-number="15">
+<h1 data-number="15"><span class="header-section-number">15</span> Cluster Validation</h1>
+<section id="introduction-5" class="level2" data-number="15.1">
+<h2 data-number="15.1" class="anchored" data-anchor-id="introduction-5"><span class="header-section-number">15.1</span> Introduction</h2>
+<p>Any clustering algorithm will produce clusters — even on purely random data. <strong>Cluster validation</strong> provides formal, quantitative criteria for evaluating whether a clustering solution is meaningful, stable, and optimal. Without validation, we have no principled basis for choosing between algorithms, comparing solutions with different <span class="math inline">\(K\)</span>, or deciding whether the clusters are real or artifacts.</p>
+</section>
+<section id="theory-4" class="level2" data-number="15.2">
+<h2 data-number="15.2" class="anchored" data-anchor-id="theory-4"><span class="header-section-number">15.2</span> Theory</h2>
+<section id="internal-validation-indices" class="level3" data-number="15.2.1">
+<h3 data-number="15.2.1" class="anchored" data-anchor-id="internal-validation-indices"><span class="header-section-number">15.2.1</span> Internal Validation Indices</h3>
+<p>Internal indices evaluate cluster quality using only the data and cluster assignments — no external labels required.</p>
+<p><strong>Silhouette Index (SI):</strong> <span class="math display">\[\bar{s} = \frac{1}{n}\sum_{i=1}^{n} s(i), \qquad s(i) = \frac{b(i) - a(i)}{\max(a(i), b(i))}\]</span></p>
+<p>Range: <span class="math inline">\([-1, 1]\)</span>. Higher is better. Values above 0.5 indicate reasonable clustering; above 0.7 indicates strong clustering.</p>
+<p><strong>Davies-Bouldin Index (DBI):</strong> <span class="math display">\[\text{DBI} = \frac{1}{K}\sum_{k=1}^{K} \max_{j \neq k} \left(\frac{s_k + s_j}{d_{kj}}\right)\]</span></p>
+<p>where <span class="math inline">\(s_k\)</span> is the average distance within cluster <span class="math inline">\(k\)</span> and <span class="math inline">\(d_{kj}\)</span> is the distance between cluster centroids <span class="math inline">\(k\)</span> and <span class="math inline">\(j\)</span>. <strong>Lower is better</strong> (tighter clusters, farther apart).</p>
+<p><strong>Calinski-Harabasz Index (CHI)</strong> (also called Variance Ratio Criterion): <span class="math display">\[\text{CHI} = \frac{SS_B / (K-1)}{SS_W / (n-K)}\]</span></p>
+<p>where <span class="math inline">\(SS_B\)</span> is between-cluster sum of squares and <span class="math inline">\(SS_W\)</span> is within-cluster sum of squares. <strong>Higher is better</strong>.</p>
+<p><strong>Dunn Index:</strong> <span class="math display">\[\text{DI} = \frac{\min_{k \neq j} d(C_k, C_j)}{\max_k \text{diam}(C_k)}\]</span></p>
+<p>Ratio of minimum inter-cluster distance to maximum cluster diameter. <strong>Higher is better</strong>.</p>
+</section>
+<section id="external-validation-indices" class="level3" data-number="15.2.2">
+<h3 data-number="15.2.2" class="anchored" data-anchor-id="external-validation-indices"><span class="header-section-number">15.2.2</span> External Validation Indices</h3>
+<p>When ground truth labels are available, external indices measure agreement between cluster assignments and true labels.</p>
+<p><strong>Adjusted Rand Index (ARI):</strong> <span class="math display">\[\text{ARI} = \frac{\text{RI} - E[\text{RI}]}{\max(\text{RI}) - E[\text{RI}]}\]</span></p>
+<p>Range: <span class="math inline">\([-1, 1]\)</span>. ARI = 1 means perfect agreement; ARI = 0 means random (no better than chance); ARI &lt; 0 means worse than random. Corrects for agreement due to chance.</p>
+<p><strong>Normalized Mutual Information (NMI):</strong> <span class="math display">\[\text{NMI} = \frac{2 \cdot I(C; T)}{H(C) + H(T)}\]</span></p>
+<p>where <span class="math inline">\(I(C;T)\)</span> is mutual information between clusters and true labels, <span class="math inline">\(H\)</span> is entropy. Range: <span class="math inline">\([0, 1]\)</span>. Higher is better.</p>
+</section>
+<section id="stability-based-validation" class="level3" data-number="15.2.3">
+<h3 data-number="15.2.3" class="anchored" data-anchor-id="stability-based-validation"><span class="header-section-number">15.2.3</span> Stability-Based Validation</h3>
+<p>Bootstrap the data multiple times, cluster each bootstrap sample, and measure how consistent the cluster assignments are. High variability across bootstrap samples suggests the solution is unstable and possibly spurious.</p>
+</section>
+</section>
+<section id="example-comparing-validation-indices" class="level2" data-number="15.3">
+<h2 data-number="15.3" class="anchored" data-anchor-id="example-comparing-validation-indices"><span class="header-section-number">15.3</span> Example: Comparing Validation Indices</h2>
+<p><strong>Example 8.5.</strong> For the <code>iris</code> dataset clustered with K-Means at <span class="math inline">\(K = 2, 3, 4, 5\)</span>:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th><span class="math inline">\(K\)</span></th>
+<th>Silhouette</th>
+<th>Davies-Bouldin</th>
+<th>CHI</th>
+<th>ARI (vs.&nbsp;species)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>2</td>
+<td>0.58</td>
+<td>0.72</td>
+<td>235</td>
+<td>0.57</td>
+</tr>
+<tr class="even">
+<td>3</td>
+<td>0.55</td>
+<td>0.67</td>
+<td>212</td>
+<td>0.73</td>
+</tr>
+<tr class="odd">
+<td>4</td>
+<td>0.50</td>
+<td>0.78</td>
+<td>196</td>
+<td>0.64</td>
+</tr>
+<tr class="even">
+<td>5</td>
+<td>0.45</td>
+<td>0.85</td>
+<td>178</td>
+<td>0.55</td>
+</tr>
+</tbody>
+</table>
+<p>Most indices agree: <span class="math inline">\(K = 3\)</span> is optimal, consistent with the known 3 species in the data. ARI peaks at <span class="math inline">\(K = 3\)</span>, confirming alignment with true labels.</p>
+</section>
+<section id="r-example-cluster-validation" class="level2" data-number="15.4">
+<h2 data-number="15.4" class="anchored" data-anchor-id="r-example-cluster-validation"><span class="header-section-number">15.4</span> R Example: Cluster Validation</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Cluster Validation Indices: iris K-Means</caption>
+<thead>
+<tr class="header">
+<th style="text-align: right;" data-quarto-table-cell-role="th">K</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Silhouette ↑</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Avg Silhouette ↑</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">CHI ↑</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">ARI ↑</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">0.5818</td>
+<td style="text-align: right;">0.5818</td>
+<td style="text-align: right;">251.35</td>
+<td style="text-align: right;">0.5681</td>
+</tr>
+<tr class="even">
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">3</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">0.4599</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">0.4599</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">241.90</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">0.6201</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">0.3839</td>
+<td style="text-align: right;">0.3839</td>
+<td style="text-align: right;">207.27</td>
+<td style="text-align: right;">0.4706</td>
+</tr>
+<tr class="even">
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">0.3419</td>
+<td style="text-align: right;">0.3419</td>
+<td style="text-align: right;">203.27</td>
+<td style="text-align: right;">0.4181</td>
+</tr>
+<tr class="odd">
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">0.3229</td>
+<td style="text-align: right;">0.3229</td>
+<td style="text-align: right;">187.20</td>
+<td style="text-align: right;">0.3501</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter08_data_clustering_files/figure-html/validation-plot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>fpc::cluster.stats()</code> computes many cluster validity indices simultaneously — efficient for comparing multiple solutions.</li>
+<li><code>mclust::adjustedRandIndex()</code> computes ARI between two cluster assignment vectors.</li>
+<li>Normalizing indices to <span class="math inline">\([0,1]\)</span> before plotting allows direct visual comparison of indices on different scales — the peak at <span class="math inline">\(K = 3\)</span> is immediately visible across all indices.</li>
+</ul>
+</section>
+<section id="exercises-4" class="level2" data-number="15.5">
+<h2 data-number="15.5" class="anchored" data-anchor-id="exercises-4"><span class="header-section-number">15.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 8.7
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>USArrests</code> dataset (standardized):</p>
+<ol type="a">
+<li>Compute Silhouette, Davies-Bouldin, and CHI for K-Means with <span class="math inline">\(K = 2, \ldots, 6\)</span>.</li>
+<li>Also compute these for hierarchical clustering (Ward’s) with the same <span class="math inline">\(K\)</span> values.</li>
+<li>Produce a side-by-side comparison plot of validation indices for both methods.</li>
+<li>Which method and <span class="math inline">\(K\)</span> combination has the best overall validation profile?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="gaussian-mixture-models" class="level1" data-number="16">
+<h1 data-number="16"><span class="header-section-number">16</span> Gaussian Mixture Models</h1>
+<section id="introduction-6" class="level2" data-number="16.1">
+<h2 data-number="16.1" class="anchored" data-anchor-id="introduction-6"><span class="header-section-number">16.1</span> Introduction</h2>
+<p>K-Means assigns each observation to exactly one cluster — <strong>hard assignment</strong>. But cluster membership is rarely this clear-cut: an observation near a cluster boundary plausibly belongs to multiple clusters with different degrees of certainty. <strong>Gaussian Mixture Models (GMM)</strong> provide a probabilistic generalization: each observation has a <strong>probability of belonging to each cluster</strong> — a <strong>soft assignment</strong>. GMMs also provide a principled statistical framework with formal model selection criteria.</p>
+</section>
+<section id="theory-5" class="level2" data-number="16.2">
+<h2 data-number="16.2" class="anchored" data-anchor-id="theory-5"><span class="header-section-number">16.2</span> Theory</h2>
+<section id="the-mixture-model" class="level3" data-number="16.2.1">
+<h3 data-number="16.2.1" class="anchored" data-anchor-id="the-mixture-model"><span class="header-section-number">16.2.1</span> The Mixture Model</h3>
+<p>A GMM assumes the data is generated from a mixture of <span class="math inline">\(K\)</span> Gaussian distributions:</p>
+<p><span class="math display">\[p(\mathbf{x}) = \sum_{k=1}^{K} \pi_k \, \mathcal{N}(\mathbf{x} \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)\]</span></p>
+<p>where: - <span class="math inline">\(\pi_k\)</span> are <strong>mixing proportions</strong> (<span class="math inline">\(\sum_k \pi_k = 1\)</span>, <span class="math inline">\(\pi_k \geq 0\)</span>) - <span class="math inline">\(\boldsymbol{\mu}_k\)</span> is the <strong>mean</strong> of component <span class="math inline">\(k\)</span> - <span class="math inline">\(\boldsymbol{\Sigma}_k\)</span> is the <strong>covariance matrix</strong> of component <span class="math inline">\(k\)</span></p>
+</section>
+<section id="the-em-algorithm" class="level3" data-number="16.2.2">
+<h3 data-number="16.2.2" class="anchored" data-anchor-id="the-em-algorithm"><span class="header-section-number">16.2.2</span> The EM Algorithm</h3>
+<p>GMM parameters are estimated by the <strong>Expectation-Maximization (EM)</strong> algorithm:</p>
+<p><strong>E-step:</strong> Compute the <strong>posterior probability</strong> (responsibility) of each component for each observation: <span class="math display">\[r_{ik} = \frac{\pi_k \, \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)}{\sum_{j=1}^{K} \pi_j \, \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_j, \boldsymbol{\Sigma}_j)}\]</span></p>
+<p><strong>M-step:</strong> Update parameters using the responsibilities: <span class="math display">\[\pi_k^{\text{new}} = \frac{\sum_i r_{ik}}{n}, \quad \boldsymbol{\mu}_k^{\text{new}} = \frac{\sum_i r_{ik}\mathbf{x}_i}{\sum_i r_{ik}}, \quad \boldsymbol{\Sigma}_k^{\text{new}} = \frac{\sum_i r_{ik}(\mathbf{x}_i - \boldsymbol{\mu}_k)(\mathbf{x}_i - \boldsymbol{\mu}_k)^T}{\sum_i r_{ik}}\]</span></p>
+<p>EM converges to a local maximum of the log-likelihood. Run multiple times with different initializations.</p>
+</section>
+<section id="covariance-structure" class="level3" data-number="16.2.3">
+<h3 data-number="16.2.3" class="anchored" data-anchor-id="covariance-structure"><span class="header-section-number">16.2.3</span> Covariance Structure</h3>
+<p>The covariance matrix <span class="math inline">\(\boldsymbol{\Sigma}_k\)</span> can be constrained to reduce the number of parameters:</p>
+<table class="table-striped caption-top table">
+<caption>Common GMM covariance models (mclust notation)</caption>
+<colgroup>
+<col style="width: 18%">
+<col style="width: 63%">
+<col style="width: 18%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Model</th>
+<th><span class="math inline">\(\boldsymbol{\Sigma}_k\)</span></th>
+<th>Shape</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>EII (spherical, equal)</td>
+<td><span class="math inline">\(\lambda \mathbf{I}\)</span></td>
+<td>Equal spheres</td>
+</tr>
+<tr class="even">
+<td>VII (spherical, variable)</td>
+<td><span class="math inline">\(\lambda_k \mathbf{I}\)</span></td>
+<td>Different-size spheres</td>
+</tr>
+<tr class="odd">
+<td>EEE (ellipsoidal, equal)</td>
+<td><span class="math inline">\(\boldsymbol{\Sigma}\)</span></td>
+<td>Equal ellipsoids</td>
+</tr>
+<tr class="even">
+<td>VVV (ellipsoidal, variable)</td>
+<td><span class="math inline">\(\boldsymbol{\Sigma}_k\)</span></td>
+<td>Different ellipsoids</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="model-selection-bic" class="level3" data-number="16.2.4">
+<h3 data-number="16.2.4" class="anchored" data-anchor-id="model-selection-bic"><span class="header-section-number">16.2.4</span> Model Selection: BIC</h3>
+<p>The <strong>Bayesian Information Criterion</strong> selects the number of components <span class="math inline">\(K\)</span> and covariance model:</p>
+<p><span class="math display">\[\text{BIC} = -2\ell(\hat{\theta}) + p \log n\]</span></p>
+<p>where <span class="math inline">\(\ell(\hat{\theta})\)</span> is the maximized log-likelihood and <span class="math inline">\(p\)</span> is the number of parameters. <strong>Higher BIC is better</strong> in the <code>mclust</code> package convention (they maximize <span class="math inline">\(-\text{BIC}\)</span>). BIC penalizes complexity, balancing fit against parsimony.</p>
+</section>
+</section>
+<section id="example-gmm-vs.-k-means" class="level2" data-number="16.3">
+<h2 data-number="16.3" class="anchored" data-anchor-id="example-gmm-vs.-k-means"><span class="header-section-number">16.3</span> Example: GMM vs.&nbsp;K-Means</h2>
+<p><strong>Example 8.6.</strong> Two overlapping Gaussian clusters are modeled:</p>
+<ul>
+<li><strong>K-Means</strong> assigns hard boundaries — observations near the boundary are assigned to one cluster with certainty.</li>
+<li><strong>GMM</strong> assigns probabilities — an observation on the boundary might have <span class="math inline">\(P(\text{Cluster 1}) = 0.55\)</span> and <span class="math inline">\(P(\text{Cluster 2}) = 0.45\)</span>, honestly reflecting uncertainty.</li>
+<li>For well-separated clusters, GMM and K-Means give nearly identical results. For overlapping clusters, GMM is more honest and often more accurate.</li>
+</ul>
+</section>
+<section id="r-example-gaussian-mixture-models" class="level2" data-number="16.4">
+<h2 data-number="16.4" class="anchored" data-anchor-id="r-example-gaussian-mixture-models"><span class="header-section-number">16.4</span> R Example: Gaussian Mixture Models</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>=== Best GMM Model ===</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Model type:         VVV </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Number of components: 2 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>BIC:                -790.7 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   Species
+GMM setosa versicolor virginica
+  1     50          0         0
+  2      0         50        50</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter08_data_clustering_files/figure-html/gmm-bic-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter08_data_clustering_files/figure-html/gmm-uncertainty-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>mclust::Mclust(x, G)</code> automatically searches over a range of <span class="math inline">\(K\)</span> values and covariance models, selecting the best by BIC.</li>
+<li><code>gmm_result$uncertainty</code> gives the classification uncertainty for each observation — the probability of the second-best class assignment.</li>
+<li><code>gmm_result$z</code> is the <span class="math inline">\(n \times K\)</span> matrix of posterior probabilities — the soft assignments that distinguish GMM from K-Means.</li>
+<li>Sizing points by uncertainty (Panel A) immediately identifies which observations are most ambiguously assigned.</li>
+</ul>
+</section>
+<section id="exercises-5" class="level2" data-number="16.5">
+<h2 data-number="16.5" class="anchored" data-anchor-id="exercises-5"><span class="header-section-number">16.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 8.8
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>faithful</code> dataset:</p>
+<ol type="a">
+<li>Fit a GMM using <code>mclust::Mclust()</code>. Which model and <span class="math inline">\(K\)</span> does BIC select?</li>
+<li>Plot the fitted density contours over a scatterplot of the data.</li>
+<li>Identify the 5 most uncertain observations. Where do they fall in the scatterplot?</li>
+<li>Compare GMM classification to K-Means (<span class="math inline">\(K = 2\)</span>) on this dataset. Which performs better?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="practical-clustering-workflow" class="level1" data-number="17">
+<h1 data-number="17"><span class="header-section-number">17</span> Practical Clustering Workflow</h1>
+<section id="introduction-7" class="level2" data-number="17.1">
+<h2 data-number="17.1" class="anchored" data-anchor-id="introduction-7"><span class="header-section-number">17.1</span> Introduction</h2>
+<p>The preceding sections introduced individual clustering algorithms. In practice, clustering is an iterative, decision-rich process — there is no single correct approach. This section synthesizes the chapter into a <strong>practical workflow</strong> that guides the end-to-end clustering process from raw data to interpretable cluster profiles.</p>
+</section>
+<section id="theory-6" class="level2" data-number="17.2">
+<h2 data-number="17.2" class="anchored" data-anchor-id="theory-6"><span class="header-section-number">17.2</span> Theory</h2>
+<section id="the-end-to-end-clustering-workflow" class="level3" data-number="17.2.1">
+<h3 data-number="17.2.1" class="anchored" data-anchor-id="the-end-to-end-clustering-workflow"><span class="header-section-number">17.2.1</span> The End-to-End Clustering Workflow</h3>
+<pre><code>1. Define the clustering objective
+        ↓
+2. Preprocess the data
+   - Handle missing values (Chapter 6)
+   - Remove or treat outliers
+   - Scale features (Z-score recommended)
+   - Reduce dimensions if p &gt;&gt; n (Chapter 7)
+        ↓
+3. Choose an algorithm
+   - Spherical clusters, known K → K-Means
+   - Hierarchical structure important → Hierarchical
+   - Arbitrary shapes, noise present → DBSCAN
+   - Probabilistic membership needed → GMM
+   - Very large data (n &gt; 100K) → Mini-batch K-Means
+        ↓
+4. Determine the number of clusters
+   - Elbow method + Silhouette + BIC
+   - Domain knowledge
+        ↓
+5. Validate the solution
+   - Internal: Silhouette, Davies-Bouldin, CHI
+   - External (if labels available): ARI, NMI
+   - Stability: bootstrap resampling
+        ↓
+6. Interpret and profile clusters
+   - Cluster centroids / medoids
+   - Statistical differences between clusters
+   - Visualize in PCA / t-SNE space
+        ↓
+7. Communicate and act
+   - Name clusters meaningfully
+   - Report actionable insights</code></pre>
+</section>
+<section id="algorithm-selection-guide" class="level3" data-number="17.2.2">
+<h3 data-number="17.2.2" class="anchored" data-anchor-id="algorithm-selection-guide"><span class="header-section-number">17.2.2</span> Algorithm Selection Guide</h3>
+<table class="table-striped caption-top table">
+<caption>Clustering algorithm selection guide</caption>
+<thead>
+<tr class="header">
+<th>Data Characteristics</th>
+<th>Recommended Algorithm</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Large <span class="math inline">\(n\)</span>, spherical clusters</td>
+<td>K-Means</td>
+</tr>
+<tr class="even">
+<td>Small <span class="math inline">\(n\)</span>, need hierarchy</td>
+<td>Hierarchical (Ward’s)</td>
+</tr>
+<tr class="odd">
+<td>Outliers, arbitrary shapes</td>
+<td>DBSCAN</td>
+</tr>
+<tr class="even">
+<td>Overlapping clusters, uncertainty</td>
+<td>GMM</td>
+</tr>
+<tr class="odd">
+<td>Mixed data types</td>
+<td>K-Medoids (PAM)</td>
+</tr>
+<tr class="even">
+<td>Very high dimensions</td>
+<td>PCA first, then K-Means</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="cluster-profiling" class="level3" data-number="17.2.3">
+<h3 data-number="17.2.3" class="anchored" data-anchor-id="cluster-profiling"><span class="header-section-number">17.2.3</span> Cluster Profiling</h3>
+<p>After assigning cluster labels, profile each cluster by computing:</p>
+<ul>
+<li><strong>Means/medians</strong> of continuous variables per cluster</li>
+<li><strong>Proportions</strong> of categorical variables per cluster</li>
+<li><strong>Statistical tests</strong> for differences: ANOVA or Kruskal-Wallis for continuous; Chi-square for categorical</li>
+<li><strong>Effect sizes</strong>: <span class="math inline">\(\eta^2\)</span> (ANOVA) or Cramér’s V (chi-square)</li>
+</ul>
+</section>
+</section>
+<section id="r-example-complete-clustering-workflow" class="level2" data-number="17.3">
+<h2 data-number="17.3" class="anchored" data-anchor-id="r-example-complete-clustering-workflow"><span class="header-section-number">17.3</span> R Example: Complete Clustering Workflow</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Optimal K (silhouette): 2 </code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Final solution validation:</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  Average silhouette:  0.4497 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  Davies-Bouldin:      0.4497 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  CHI:                 38.34 </code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Cluster Profiles: mtcars (K=2)</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Cluster</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">n</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">mpg</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">hp</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">wt</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">disp</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">qsec</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">1</td>
+<td style="text-align: right;">14</td>
+<td style="text-align: right;">15.1</td>
+<td style="text-align: right;">209.2</td>
+<td style="text-align: right;">4.00</td>
+<td style="text-align: right;">353.1</td>
+<td style="text-align: right;">16.77</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2</td>
+<td style="text-align: right;">18</td>
+<td style="text-align: right;">24.0</td>
+<td style="text-align: right;">98.1</td>
+<td style="text-align: right;">2.61</td>
+<td style="text-align: right;">135.5</td>
+<td style="text-align: right;">18.69</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>  cluster size ave.sil.width
+1       1   14          0.49
+2       2   18          0.42</code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter08_data_clustering_files/figure-html/workflow-viz-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>nstart = 50</code> in the final K-Means fit ensures the best solution is found reliably.</li>
+<li><code>group_by(Cluster) |&gt; summarise(...)</code> profiles each cluster — this is the most important step for interpretation and business communication.</li>
+<li>The radar-chart-style normalized profile (Panel C) compares clusters across all variables simultaneously, making their distinctive characteristics immediately apparent.</li>
+</ul>
+</section>
+<section id="exercises-6" class="level2" data-number="17.4">
+<h2 data-number="17.4" class="anchored" data-anchor-id="exercises-6"><span class="header-section-number">17.4</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 8.9
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Apply the full clustering workflow to the <code>wine</code> dataset (available via <code>rattle</code> or <code>pgmm</code>):</p>
+<ol type="a">
+<li>Preprocess: standardize all numeric variables.</li>
+<li>Apply K-Means, hierarchical (Ward’s), and GMM. Use validation indices to choose <span class="math inline">\(K\)</span> for each.</li>
+<li>Compare the three solutions using ARI against the true wine variety labels.</li>
+<li>Profile the best cluster solution. Write a 200-word interpretation describing each cluster.</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="chapter-lab-activity-customer-segmentation-with-wholesales-data" class="level1" data-number="18">
+<h1 data-number="18"><span class="header-section-number">18</span> Chapter Lab Activity: Customer Segmentation with <code>wholesales</code> Data</h1>
+<section id="objectives" class="level2" data-number="18.1">
+<h2 data-number="18.1" class="anchored" data-anchor-id="objectives"><span class="header-section-number">18.1</span> Objectives</h2>
+<p>In this lab you will apply the complete clustering workflow to a real-world customer segmentation problem using the <code>Wholesale customers</code> dataset. You will segment customers based on their annual spending across product categories, compare multiple algorithms, validate the solutions, and translate statistical clusters into actionable business insights.</p>
+</section>
+<section id="the-dataset" class="level2" data-number="18.2">
+<h2 data-number="18.2" class="anchored" data-anchor-id="the-dataset"><span class="header-section-number">18.2</span> The Dataset</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Dataset dimensions: 440 × 8 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>     Fresh             Milk          Grocery          Frozen       
+ Min.   :   266   Min.   :  308   Min.   :  322   Min.   :   71.0  
+ 1st Qu.:  2437   1st Qu.: 1664   1st Qu.: 2010   1st Qu.:  941.5  
+ Median :  4269   Median : 2930   Median : 3592   Median : 1866.5  
+ Mean   :  7784   Mean   : 4407   Mean   : 5528   Mean   : 3280.7  
+ 3rd Qu.:  9236   3rd Qu.: 5325   3rd Qu.: 6677   3rd Qu.: 4117.8  
+ Max.   :107044   Max.   :29563   Max.   :43554   Max.   :36176.0  
+   Detergents        Delicassen     
+ Min.   :   18.0   Min.   :   63.0  
+ 1st Qu.:  395.8   1st Qu.:  648.8  
+ Median :  991.0   Median : 1344.5  
+ Mean   : 2009.5   Mean   : 2189.8  
+ 3rd Qu.: 2230.5   3rd Qu.: 2786.8  
+ Max.   :44391.0   Max.   :24303.0  </code></pre>
+</div>
+</div>
+</section>
+<section id="lab-task-1-preprocessing" class="level2" data-number="18.3">
+<h2 data-number="18.3" class="anchored" data-anchor-id="lab-task-1-preprocessing"><span class="header-section-number">18.3</span> Lab Task 1: Preprocessing</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Skewness: Raw vs. Log-Transformed</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Variable</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Skewness (Raw)</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Skewness (Log)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Fresh</td>
+<td style="text-align: left;">Fresh</td>
+<td style="text-align: right;">4.507</td>
+<td style="text-align: right;">0.223</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Milk</td>
+<td style="text-align: left;">Milk</td>
+<td style="text-align: right;">2.678</td>
+<td style="text-align: right;">0.023</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Grocery</td>
+<td style="text-align: left;">Grocery</td>
+<td style="text-align: right;">2.959</td>
+<td style="text-align: right;">0.187</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Frozen</td>
+<td style="text-align: left;">Frozen</td>
+<td style="text-align: right;">3.607</td>
+<td style="text-align: right;">-0.080</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Detergents</td>
+<td style="text-align: left;">Detergents</td>
+<td style="text-align: right;">5.925</td>
+<td style="text-align: right;">0.016</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Delicassen</td>
+<td style="text-align: left;">Delicassen</td>
+<td style="text-align: right;">3.237</td>
+<td style="text-align: right;">-0.016</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="lab-task-2-k-means-segmentation" class="level2" data-number="18.4">
+<h2 data-number="18.4" class="anchored" data-anchor-id="lab-task-2-k-means-segmentation"><span class="header-section-number">18.4</span> Lab Task 2: K-Means Segmentation</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Optimal K: 7 </code></pre>
+</div>
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Customer Segment Profiles (K=7)</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Cluster</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">n</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Fresh</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Milk</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Grocery</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Frozen</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Detergents</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Delicassen</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">1</td>
+<td style="text-align: right;">58</td>
+<td style="text-align: right;">5,578</td>
+<td style="text-align: right;">3,592</td>
+<td style="text-align: right;">3,667</td>
+<td style="text-align: right;">10,002</td>
+<td style="text-align: right;">2,089</td>
+<td style="text-align: right;">855</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">2</td>
+<td style="text-align: right;">69</td>
+<td style="text-align: right;">5,006</td>
+<td style="text-align: right;">4,841</td>
+<td style="text-align: right;">15,356</td>
+<td style="text-align: right;">1,941</td>
+<td style="text-align: right;">962</td>
+<td style="text-align: right;">1,088</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">3</td>
+<td style="text-align: right;">51</td>
+<td style="text-align: right;">3,331</td>
+<td style="text-align: right;">10,031</td>
+<td style="text-align: right;">3,811</td>
+<td style="text-align: right;">3,497</td>
+<td style="text-align: right;">1,685</td>
+<td style="text-align: right;">4,559</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">4</td>
+<td style="text-align: right;">56</td>
+<td style="text-align: right;">6,939</td>
+<td style="text-align: right;">5,587</td>
+<td style="text-align: right;">2,661</td>
+<td style="text-align: right;">1,798</td>
+<td style="text-align: right;">297</td>
+<td style="text-align: right;">841</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">5</td>
+<td style="text-align: right;">71</td>
+<td style="text-align: right;">5,100</td>
+<td style="text-align: right;">2,550</td>
+<td style="text-align: right;">2,693</td>
+<td style="text-align: right;">1,456</td>
+<td style="text-align: right;">5,675</td>
+<td style="text-align: right;">1,287</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">6</td>
+<td style="text-align: right;">69</td>
+<td style="text-align: right;">4,553</td>
+<td style="text-align: right;">1,394</td>
+<td style="text-align: right;">4,092</td>
+<td style="text-align: right;">2,587</td>
+<td style="text-align: right;">906</td>
+<td style="text-align: right;">4,022</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">7</td>
+<td style="text-align: right;">66</td>
+<td style="text-align: right;">23,052</td>
+<td style="text-align: right;">4,466</td>
+<td style="text-align: right;">5,200</td>
+<td style="text-align: right;">2,552</td>
+<td style="text-align: right;">1,949</td>
+<td style="text-align: right;">2,883</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="lab-task-3-hierarchical-and-gmm-comparison" class="level2" data-number="18.5">
+<h2 data-number="18.5" class="anchored" data-anchor-id="lab-task-3-hierarchical-and-gmm-comparison"><span class="header-section-number">18.5</span> Lab Task 3: Hierarchical and GMM Comparison</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>GMM Best Model: EII K = 2 </code></pre>
+</div>
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Agreement Between Clustering Methods (ARI)</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Comparison</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">ARI</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">K-Means vs. Hierarchical</td>
+<td style="text-align: right;">0.274</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">K-Means vs. GMM</td>
+<td style="text-align: right;">0.022</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="lab-task-4-visualization" class="level2" data-number="18.6">
+<h2 data-number="18.6" class="anchored" data-anchor-id="lab-task-4-visualization"><span class="header-section-number">18.6</span> Lab Task 4: Visualization</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter08_data_clustering_files/figure-html/lab-task4-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="lab-discussion-questions" class="level2" data-number="18.7">
+<h2 data-number="18.7" class="anchored" data-anchor-id="lab-discussion-questions"><span class="header-section-number">18.7</span> Lab Discussion Questions</h2>
+<p>Answer the following in writing:</p>
+<ol type="1">
+<li><p><strong>Algorithm Choice:</strong> For customer segmentation, why might K-Means be preferred over DBSCAN? Under what business scenario would DBSCAN be more appropriate?</p></li>
+<li><p><strong>Preprocessing Impact:</strong> In Lab Task 1, you log-transformed the spending variables before clustering. What would happen to the cluster solution if you clustered on the raw (untransformed) data? Would the same customers be grouped together?</p></li>
+<li><p><strong>Agreement Between Methods:</strong> The ARI between K-Means and hierarchical clustering measures their agreement. If ARI is high, does this mean both methods found the “true” clusters? What else could explain high agreement?</p></li>
+<li><p><strong>Business Interpretation:</strong> Based on the cluster profiles in Lab Task 2, assign a descriptive business name to each customer segment (e.g., “High-volume fresh food buyers”). What marketing strategy would you recommend for each segment?</p></li>
+<li><p><strong>Validation Limitations:</strong> Internal validation indices like Silhouette and CHI were used to choose <span class="math inline">\(K\)</span>. What are the limitations of relying solely on these indices? What additional information would make you more confident in the chosen <span class="math inline">\(K\)</span>?</p></li>
+</ol>
+<hr>
+</section>
+</section>
+<section id="chapter-summary" class="level1" data-number="19">
+<h1 data-number="19"><span class="header-section-number">19</span> Chapter Summary</h1>
+<section id="summary" class="level2" data-number="19.1">
+<h2 data-number="19.1" class="anchored" data-anchor-id="summary"><span class="header-section-number">19.1</span> Summary</h2>
+<p>This chapter built a comprehensive clustering toolkit spanning the full spectrum of approaches:</p>
+<ul>
+<li><strong>Introduction</strong> — clustering is unsupervised grouping; algorithm choice must match data geometry; distance measures and scaling are foundational decisions.</li>
+<li><strong>K-Means</strong> — minimizes WCSS; uses the Lloyd algorithm with K-Means++ initialization; elbow and silhouette methods guide <span class="math inline">\(K\)</span> selection; assumes spherical, equal-size clusters.</li>
+<li><strong>Hierarchical clustering</strong> — builds a dendrogram of nested clusters; Ward’s linkage recommended for most applications; cophenetic correlation diagnoses fit; <code>cutree()</code> extracts any <span class="math inline">\(K\)</span>.</li>
+<li><strong>DBSCAN</strong> — density-based; detects arbitrary shapes and noise; requires tuning <span class="math inline">\(\varepsilon\)</span> and MinPts via <span class="math inline">\(k\)</span>-distance plot; more robust than K-Means for spatial and irregular data.</li>
+<li><strong>Cluster validation</strong> — Silhouette, Davies-Bouldin, and CHI for internal validation; ARI and NMI for external; stability analysis for robustness.</li>
+<li><strong>Gaussian Mixture Models</strong> — soft probabilistic assignments; EM algorithm; BIC selects model and <span class="math inline">\(K\)</span>; uncertainty quantification distinguishes GMM from hard methods.</li>
+<li><strong>Practical workflow</strong> — preprocessing → algorithm selection → <span class="math inline">\(K\)</span> determination → validation → profiling → communication; no single algorithm is universally best.</li>
+</ul>
+<div class="callout callout-style-default callout-important callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Important</span>Key Formulas to Know
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>K-Means Objective:</strong> <span class="math display">\[\text{WCSS} = \sum_{k=1}^{K}\sum_{i \in C_k}\|\mathbf{x}_i - \boldsymbol{\mu}_k\|^2\]</span></p>
+<p><strong>Silhouette Score:</strong> <span class="math display">\[s(i) = \frac{b(i) - a(i)}{\max(a(i), b(i))}\]</span></p>
+<p><strong>Davies-Bouldin Index:</strong> <span class="math display">\[\text{DBI} = \frac{1}{K}\sum_{k=1}^{K}\max_{j \neq k}\frac{s_k + s_j}{d_{kj}}\]</span></p>
+<p><strong>GMM Density:</strong> <span class="math display">\[p(\mathbf{x}) = \sum_{k=1}^{K}\pi_k\,\mathcal{N}(\mathbf{x} \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)\]</span></p>
+<p><strong>Adjusted Rand Index:</strong> <span class="math display">\[\text{ARI} = \frac{\text{RI} - E[\text{RI}]}{\max(\text{RI}) - E[\text{RI}]}\]</span></p>
+<p><strong>BIC:</strong> <span class="math display">\[\text{BIC} = -2\ell(\hat{\theta}) + p\log n\]</span></p>
+</div>
+</div>
+</section>
+<section id="references" class="level2" data-number="19.2">
+<h2 data-number="19.2" class="anchored" data-anchor-id="references"><span class="header-section-number">19.2</span> References</h2>
+<p>Davies, D. L., &amp; Bouldin, D. W. (1979). A cluster separation measure. <em>IEEE Transactions on Pattern Analysis and Machine Intelligence</em>, <em>1</em>(2), 224–227.</p>
+<p>Dempster, A. P., Laird, N. M., &amp; Rubin, D. B. (1977). Maximum likelihood from incomplete data via the EM algorithm. <em>Journal of the Royal Statistical Society: Series B</em>, <em>39</em>(1), 1–38.</p>
+<p>Ester, M., Kriegel, H.-P., Sander, J., &amp; Xu, X. (1996). A density-based algorithm for discovering clusters in large spatial databases with noise. In <em>Proceedings of the 2nd International Conference on Knowledge Discovery and Data Mining</em> (pp.&nbsp;226–231). AAAI Press.</p>
+<p>Galili, T. (2015). dendextend: An R package for visualizing, adjusting, and comparing trees of hierarchical clustering. <em>Bioinformatics</em>, <em>31</em>(22), 3718–3720.</p>
+<p>Hahsler, M., Piekenbrock, M., &amp; Doran, D. (2019). dbscan: Fast density-based clustering with R. <em>Journal of Statistical Software</em>, <em>91</em>(1), 1–30.</p>
+<p>Hartigan, J. A., &amp; Wong, M. A. (1979). Algorithm AS 136: A K-means clustering algorithm. <em>Journal of the Royal Statistical Society: Series C</em>, <em>28</em>(1), 100–108.</p>
+<p>Henderson, H. V., &amp; Velleman, P. F. (1981). Building multiple regression models interactively. <em>Biometrics</em>, <em>37</em>(2), 391–411.</p>
+<p>Hennig, C. (2023). <em>fpc: Flexible procedures for clustering</em> (R package version 2.2-10). https://CRAN.R-project.org/package=fpc</p>
+<p>Kassambara, A. (2023). <em>factoextra: Extract and visualize the results of multivariate data analyses</em> (R package version 1.0.7). https://CRAN.R-project.org/package=factoextra</p>
+<p>Maechler, M., Rousseeuw, P., Struyf, A., Hubert, M., &amp; Hornik, K. (2023). <em>cluster: Cluster analysis basics and extensions</em> (R package version 2.1.4). https://CRAN.R-project.org/package=cluster</p>
+<p>Pedersen, T. L. (2022). <em>patchwork: The composer of plots</em> (R package version 1.1.2). https://CRAN.R-project.org/package=patchwork</p>
+<p>R Core Team. (2024). <em>R: A language and environment for statistical computing</em>. R Foundation for Statistical Computing. https://www.R-project.org/</p>
+<p>Rousseeuw, P. J. (1987). Silhouettes: A graphical aid to the interpretation and validation of cluster analysis. <em>Journal of Computational and Applied Mathematics</em>, <em>20</em>, 53–65.</p>
+<p>Schwarz, G. (1978). Estimating the dimension of a model. <em>Annals of Statistics</em>, <em>6</em>(2), 461–464.</p>
+<p>Scrucca, L., Fop, M., Murphy, T. B., &amp; Raftery, A. E. (2016). mclust 5: Clustering, classification and density estimation using Gaussian finite mixture models. <em>The R Journal</em>, <em>8</em>(1), 289–317.</p>
+<p>Slowikowski, K. (2023). <em>ggrepel: Automatically position non-overlapping text labels with ggplot2</em> (R package version 0.9.3). https://CRAN.R-project.org/package=ggrepel</p>
+<p>Ward, J. H., Jr.&nbsp;(1963). Hierarchical grouping to optimize an objective function. <em>Journal of the American Statistical Association</em>, <em>58</em>(301), 236–244.</p>
+<p>Wickham, H. (2016). <em>ggplot2: Elegant graphics for data analysis</em>. Springer.</p>
+<p>Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. <em>Journal of Open Source Software</em>, <em>4</em>(43), 1686.</p>
+<p>Xie, Y. (2015). <em>Dynamic documents with R and knitr</em> (2nd ed.). CRC Press.</p>
+<hr>
+<p><em>End of Chapter 8. Proceed to Chapter 9: Data Classification.</em></p>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./chapter07_dimension_reduction.html" class="pagination-link" aria-label="Chapter 7: Data Dimension Reduction">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Chapter 7: Data Dimension Reduction</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./chapter09_data_classification.html" class="pagination-link" aria-label="Chapter 9: Data Classification">
+        <span class="nav-page-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Chapter 9: Data Classification</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

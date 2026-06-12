@@ -1,0 +1,2604 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>11&nbsp; Chapter 10: Regression Analysis – Statistics for Data Science</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./chapter09_data_classification.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-a06763021a52c43c40a351ac8b799b8f.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-81de787dd4773dbc0001c2dc1cc3016d.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="site_libs/kePrint-0.0.1/kePrint.js"></script>
+
+<link href="site_libs/lightable-0.0.1/lightable.css" rel="stylesheet">
+
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-sidebar floating quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./chapter10_regression_analysis.html"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Chapter 10: Regression Analysis</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">Statistics for Data Science</a> 
+        <div class="sidebar-tools-main">
+    <a href="./Statistics-for-Data-Science.pdf" title="Download PDF" class="quarto-navigation-tool px-1" aria-label="Download PDF"><i class="bi bi-file-pdf"></i></a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Preface</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter01_descriptive_statistics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Chapter 1: Descriptive Statistics</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter02_data_distribution_probability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Chapter 2: Data Distribution and Probability</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter03_hypothesis_testing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Chapter 3: Hypothesis Testing</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter04_test_of_independence.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Chapter 4: Test of Independence of Variables</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter05_data_sampling.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Chapter 5: Data Sampling Techniques</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter06_data_preprocessing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Chapter 6: Data Preprocessing</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter07_dimension_reduction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Chapter 7: Data Dimension Reduction</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter08_data_clustering.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Chapter 8: Data Clustering</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter09_data_classification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Chapter 9: Data Classification</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter10_regression_analysis.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Chapter 10: Regression Analysis</span></span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Contents</h2>
+   
+  <ul>
+  <li><a href="#chapter-overview" id="toc-chapter-overview" class="nav-link active" data-scroll-target="#chapter-overview"><span class="header-section-number">12</span> Chapter Overview</a>
+  <ul class="collapse">
+  <li><a href="#introduction" id="toc-introduction" class="nav-link" data-scroll-target="#introduction"><span class="header-section-number">12.1</span> Introduction</a></li>
+  </ul></li>
+  <li><a href="#simple-linear-regression" id="toc-simple-linear-regression" class="nav-link" data-scroll-target="#simple-linear-regression"><span class="header-section-number">13</span> Simple Linear Regression</a>
+  <ul class="collapse">
+  <li><a href="#introduction-1" id="toc-introduction-1" class="nav-link" data-scroll-target="#introduction-1"><span class="header-section-number">13.1</span> Introduction</a></li>
+  <li><a href="#theory" id="toc-theory" class="nav-link" data-scroll-target="#theory"><span class="header-section-number">13.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#the-simple-linear-regression-model" id="toc-the-simple-linear-regression-model" class="nav-link" data-scroll-target="#the-simple-linear-regression-model"><span class="header-section-number">13.2.1</span> The Simple Linear Regression Model</a></li>
+  <li><a href="#ordinary-least-squares-ols-estimation" id="toc-ordinary-least-squares-ols-estimation" class="nav-link" data-scroll-target="#ordinary-least-squares-ols-estimation"><span class="header-section-number">13.2.2</span> Ordinary Least Squares (OLS) Estimation</a></li>
+  <li><a href="#inference-for-regression-coefficients" id="toc-inference-for-regression-coefficients" class="nav-link" data-scroll-target="#inference-for-regression-coefficients"><span class="header-section-number">13.2.3</span> Inference for Regression Coefficients</a></li>
+  <li><a href="#the-coefficient-of-determination-r2" id="toc-the-coefficient-of-determination-r2" class="nav-link" data-scroll-target="#the-coefficient-of-determination-r2"><span class="header-section-number">13.2.4</span> The Coefficient of Determination <span class="math inline">\(R^2\)</span></a></li>
+  <li><a href="#prediction-vs.-confidence-intervals" id="toc-prediction-vs.-confidence-intervals" class="nav-link" data-scroll-target="#prediction-vs.-confidence-intervals"><span class="header-section-number">13.2.5</span> Prediction vs.&nbsp;Confidence Intervals</a></li>
+  </ul></li>
+  <li><a href="#example-simple-linear-regression" id="toc-example-simple-linear-regression" class="nav-link" data-scroll-target="#example-simple-linear-regression"><span class="header-section-number">13.3</span> Example: Simple Linear Regression</a></li>
+  <li><a href="#r-example-simple-linear-regression" id="toc-r-example-simple-linear-regression" class="nav-link" data-scroll-target="#r-example-simple-linear-regression"><span class="header-section-number">13.4</span> R Example: Simple Linear Regression</a></li>
+  <li><a href="#exercises" id="toc-exercises" class="nav-link" data-scroll-target="#exercises"><span class="header-section-number">13.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#multiple-linear-regression" id="toc-multiple-linear-regression" class="nav-link" data-scroll-target="#multiple-linear-regression"><span class="header-section-number">14</span> Multiple Linear Regression</a>
+  <ul class="collapse">
+  <li><a href="#introduction-2" id="toc-introduction-2" class="nav-link" data-scroll-target="#introduction-2"><span class="header-section-number">14.1</span> Introduction</a></li>
+  <li><a href="#theory-1" id="toc-theory-1" class="nav-link" data-scroll-target="#theory-1"><span class="header-section-number">14.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#the-multiple-regression-model" id="toc-the-multiple-regression-model" class="nav-link" data-scroll-target="#the-multiple-regression-model"><span class="header-section-number">14.2.1</span> The Multiple Regression Model</a></li>
+  <li><a href="#ols-in-matrix-form" id="toc-ols-in-matrix-form" class="nav-link" data-scroll-target="#ols-in-matrix-form"><span class="header-section-number">14.2.2</span> OLS in Matrix Form</a></li>
+  <li><a href="#interpretation-of-coefficients" id="toc-interpretation-of-coefficients" class="nav-link" data-scroll-target="#interpretation-of-coefficients"><span class="header-section-number">14.2.3</span> Interpretation of Coefficients</a></li>
+  <li><a href="#adjusted-r2" id="toc-adjusted-r2" class="nav-link" data-scroll-target="#adjusted-r2"><span class="header-section-number">14.2.4</span> Adjusted <span class="math inline">\(R^2\)</span></a></li>
+  <li><a href="#the-f-test-for-overall-significance" id="toc-the-f-test-for-overall-significance" class="nav-link" data-scroll-target="#the-f-test-for-overall-significance"><span class="header-section-number">14.2.5</span> The F-Test for Overall Significance</a></li>
+  <li><a href="#multicollinearity" id="toc-multicollinearity" class="nav-link" data-scroll-target="#multicollinearity"><span class="header-section-number">14.2.6</span> Multicollinearity</a></li>
+  <li><a href="#classical-regression-assumptions-line" id="toc-classical-regression-assumptions-line" class="nav-link" data-scroll-target="#classical-regression-assumptions-line"><span class="header-section-number">14.2.7</span> Classical Regression Assumptions (LINE)</a></li>
+  </ul></li>
+  <li><a href="#example-multiple-regression" id="toc-example-multiple-regression" class="nav-link" data-scroll-target="#example-multiple-regression"><span class="header-section-number">14.3</span> Example: Multiple Regression</a></li>
+  <li><a href="#r-example-multiple-linear-regression" id="toc-r-example-multiple-linear-regression" class="nav-link" data-scroll-target="#r-example-multiple-linear-regression"><span class="header-section-number">14.4</span> R Example: Multiple Linear Regression</a></li>
+  <li><a href="#exercises-1" id="toc-exercises-1" class="nav-link" data-scroll-target="#exercises-1"><span class="header-section-number">14.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#regression-diagnostics" id="toc-regression-diagnostics" class="nav-link" data-scroll-target="#regression-diagnostics"><span class="header-section-number">15</span> Regression Diagnostics</a>
+  <ul class="collapse">
+  <li><a href="#introduction-3" id="toc-introduction-3" class="nav-link" data-scroll-target="#introduction-3"><span class="header-section-number">15.1</span> Introduction</a></li>
+  <li><a href="#theory-2" id="toc-theory-2" class="nav-link" data-scroll-target="#theory-2"><span class="header-section-number">15.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#residual-analysis" id="toc-residual-analysis" class="nav-link" data-scroll-target="#residual-analysis"><span class="header-section-number">15.2.1</span> Residual Analysis</a></li>
+  <li><a href="#four-diagnostic-plots" id="toc-four-diagnostic-plots" class="nav-link" data-scroll-target="#four-diagnostic-plots"><span class="header-section-number">15.2.2</span> Four Diagnostic Plots</a></li>
+  <li><a href="#leverage-and-influence" id="toc-leverage-and-influence" class="nav-link" data-scroll-target="#leverage-and-influence"><span class="header-section-number">15.2.3</span> Leverage and Influence</a></li>
+  <li><a href="#formal-tests-for-assumption-violations" id="toc-formal-tests-for-assumption-violations" class="nav-link" data-scroll-target="#formal-tests-for-assumption-violations"><span class="header-section-number">15.2.4</span> Formal Tests for Assumption Violations</a></li>
+  <li><a href="#remedies-for-assumption-violations" id="toc-remedies-for-assumption-violations" class="nav-link" data-scroll-target="#remedies-for-assumption-violations"><span class="header-section-number">15.2.5</span> Remedies for Assumption Violations</a></li>
+  </ul></li>
+  <li><a href="#example-diagnosing-a-regression-model" id="toc-example-diagnosing-a-regression-model" class="nav-link" data-scroll-target="#example-diagnosing-a-regression-model"><span class="header-section-number">15.3</span> Example: Diagnosing a Regression Model</a></li>
+  <li><a href="#r-example-regression-diagnostics" id="toc-r-example-regression-diagnostics" class="nav-link" data-scroll-target="#r-example-regression-diagnostics"><span class="header-section-number">15.4</span> R Example: Regression Diagnostics</a></li>
+  <li><a href="#exercises-2" id="toc-exercises-2" class="nav-link" data-scroll-target="#exercises-2"><span class="header-section-number">15.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#variable-selection" id="toc-variable-selection" class="nav-link" data-scroll-target="#variable-selection"><span class="header-section-number">16</span> Variable Selection</a>
+  <ul class="collapse">
+  <li><a href="#introduction-4" id="toc-introduction-4" class="nav-link" data-scroll-target="#introduction-4"><span class="header-section-number">16.1</span> Introduction</a></li>
+  <li><a href="#theory-3" id="toc-theory-3" class="nav-link" data-scroll-target="#theory-3"><span class="header-section-number">16.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#information-criteria" id="toc-information-criteria" class="nav-link" data-scroll-target="#information-criteria"><span class="header-section-number">16.2.1</span> Information Criteria</a></li>
+  <li><a href="#stepwise-selection" id="toc-stepwise-selection" class="nav-link" data-scroll-target="#stepwise-selection"><span class="header-section-number">16.2.2</span> Stepwise Selection</a></li>
+  <li><a href="#cross-validation-for-variable-selection" id="toc-cross-validation-for-variable-selection" class="nav-link" data-scroll-target="#cross-validation-for-variable-selection"><span class="header-section-number">16.2.3</span> Cross-Validation for Variable Selection</a></li>
+  </ul></li>
+  <li><a href="#example-variable-selection-for-housing-prices" id="toc-example-variable-selection-for-housing-prices" class="nav-link" data-scroll-target="#example-variable-selection-for-housing-prices"><span class="header-section-number">16.3</span> Example: Variable Selection for Housing Prices</a></li>
+  <li><a href="#r-example-variable-selection" id="toc-r-example-variable-selection" class="nav-link" data-scroll-target="#r-example-variable-selection"><span class="header-section-number">16.4</span> R Example: Variable Selection</a></li>
+  <li><a href="#exercises-3" id="toc-exercises-3" class="nav-link" data-scroll-target="#exercises-3"><span class="header-section-number">16.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#regularized-regression" id="toc-regularized-regression" class="nav-link" data-scroll-target="#regularized-regression"><span class="header-section-number">17</span> Regularized Regression</a>
+  <ul class="collapse">
+  <li><a href="#introduction-5" id="toc-introduction-5" class="nav-link" data-scroll-target="#introduction-5"><span class="header-section-number">17.1</span> Introduction</a></li>
+  <li><a href="#theory-4" id="toc-theory-4" class="nav-link" data-scroll-target="#theory-4"><span class="header-section-number">17.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#ridge-regression-l2-regularization" id="toc-ridge-regression-l2-regularization" class="nav-link" data-scroll-target="#ridge-regression-l2-regularization"><span class="header-section-number">17.2.1</span> Ridge Regression (L2 Regularization)</a></li>
+  <li><a href="#lasso-regression-l1-regularization" id="toc-lasso-regression-l1-regularization" class="nav-link" data-scroll-target="#lasso-regression-l1-regularization"><span class="header-section-number">17.2.2</span> Lasso Regression (L1 Regularization)</a></li>
+  <li><a href="#choosing-lambda-cross-validation" id="toc-choosing-lambda-cross-validation" class="nav-link" data-scroll-target="#choosing-lambda-cross-validation"><span class="header-section-number">17.2.3</span> Choosing <span class="math inline">\(\lambda\)</span>: Cross-Validation</a></li>
+  </ul></li>
+  <li><a href="#example-lasso-for-variable-selection" id="toc-example-lasso-for-variable-selection" class="nav-link" data-scroll-target="#example-lasso-for-variable-selection"><span class="header-section-number">17.3</span> Example: Lasso for Variable Selection</a></li>
+  <li><a href="#r-example-regularized-regression" id="toc-r-example-regularized-regression" class="nav-link" data-scroll-target="#r-example-regularized-regression"><span class="header-section-number">17.4</span> R Example: Regularized Regression</a></li>
+  <li><a href="#exercises-4" id="toc-exercises-4" class="nav-link" data-scroll-target="#exercises-4"><span class="header-section-number">17.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#non-linear-regression" id="toc-non-linear-regression" class="nav-link" data-scroll-target="#non-linear-regression"><span class="header-section-number">18</span> Non-Linear Regression</a>
+  <ul class="collapse">
+  <li><a href="#introduction-6" id="toc-introduction-6" class="nav-link" data-scroll-target="#introduction-6"><span class="header-section-number">18.1</span> Introduction</a></li>
+  <li><a href="#theory-5" id="toc-theory-5" class="nav-link" data-scroll-target="#theory-5"><span class="header-section-number">18.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#polynomial-regression" id="toc-polynomial-regression" class="nav-link" data-scroll-target="#polynomial-regression"><span class="header-section-number">18.2.1</span> Polynomial Regression</a></li>
+  <li><a href="#regression-splines" id="toc-regression-splines" class="nav-link" data-scroll-target="#regression-splines"><span class="header-section-number">18.2.2</span> Regression Splines</a></li>
+  <li><a href="#generalized-additive-models-gam" id="toc-generalized-additive-models-gam" class="nav-link" data-scroll-target="#generalized-additive-models-gam"><span class="header-section-number">18.2.3</span> Generalized Additive Models (GAM)</a></li>
+  </ul></li>
+  <li><a href="#example-non-linear-effects" id="toc-example-non-linear-effects" class="nav-link" data-scroll-target="#example-non-linear-effects"><span class="header-section-number">18.3</span> Example: Non-Linear Effects</a></li>
+  <li><a href="#r-example-non-linear-regression" id="toc-r-example-non-linear-regression" class="nav-link" data-scroll-target="#r-example-non-linear-regression"><span class="header-section-number">18.4</span> R Example: Non-Linear Regression</a></li>
+  <li><a href="#exercises-5" id="toc-exercises-5" class="nav-link" data-scroll-target="#exercises-5"><span class="header-section-number">18.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#regression-for-count-and-categorical-outcomes" id="toc-regression-for-count-and-categorical-outcomes" class="nav-link" data-scroll-target="#regression-for-count-and-categorical-outcomes"><span class="header-section-number">19</span> Regression for Count and Categorical Outcomes</a>
+  <ul class="collapse">
+  <li><a href="#introduction-7" id="toc-introduction-7" class="nav-link" data-scroll-target="#introduction-7"><span class="header-section-number">19.1</span> Introduction</a></li>
+  <li><a href="#theory-6" id="toc-theory-6" class="nav-link" data-scroll-target="#theory-6"><span class="header-section-number">19.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#the-generalized-linear-model-framework" id="toc-the-generalized-linear-model-framework" class="nav-link" data-scroll-target="#the-generalized-linear-model-framework"><span class="header-section-number">19.2.1</span> The Generalized Linear Model Framework</a></li>
+  <li><a href="#poisson-regression" id="toc-poisson-regression" class="nav-link" data-scroll-target="#poisson-regression"><span class="header-section-number">19.2.2</span> Poisson Regression</a></li>
+  <li><a href="#model-assessment-for-glms" id="toc-model-assessment-for-glms" class="nav-link" data-scroll-target="#model-assessment-for-glms"><span class="header-section-number">19.2.3</span> Model Assessment for GLMs</a></li>
+  </ul></li>
+  <li><a href="#example-poisson-regression" id="toc-example-poisson-regression" class="nav-link" data-scroll-target="#example-poisson-regression"><span class="header-section-number">19.3</span> Example: Poisson Regression</a></li>
+  <li><a href="#r-example-glms-poisson-and-extensions" id="toc-r-example-glms-poisson-and-extensions" class="nav-link" data-scroll-target="#r-example-glms-poisson-and-extensions"><span class="header-section-number">19.4</span> R Example: GLMs — Poisson and Extensions</a></li>
+  <li><a href="#exercises-6" id="toc-exercises-6" class="nav-link" data-scroll-target="#exercises-6"><span class="header-section-number">19.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#chapter-lab-activity-housing-price-regression-with-boston-dataset" id="toc-chapter-lab-activity-housing-price-regression-with-boston-dataset" class="nav-link" data-scroll-target="#chapter-lab-activity-housing-price-regression-with-boston-dataset"><span class="header-section-number">20</span> Chapter Lab Activity: Housing Price Regression with <code>Boston</code> Dataset</a>
+  <ul class="collapse">
+  <li><a href="#objectives" id="toc-objectives" class="nav-link" data-scroll-target="#objectives"><span class="header-section-number">20.1</span> Objectives</a></li>
+  <li><a href="#the-dataset" id="toc-the-dataset" class="nav-link" data-scroll-target="#the-dataset"><span class="header-section-number">20.2</span> The Dataset</a></li>
+  <li><a href="#lab-task-1-exploratory-regression-analysis" id="toc-lab-task-1-exploratory-regression-analysis" class="nav-link" data-scroll-target="#lab-task-1-exploratory-regression-analysis"><span class="header-section-number">20.3</span> Lab Task 1: Exploratory Regression Analysis</a></li>
+  <li><a href="#lab-task-2-ols-and-diagnostics" id="toc-lab-task-2-ols-and-diagnostics" class="nav-link" data-scroll-target="#lab-task-2-ols-and-diagnostics"><span class="header-section-number">20.4</span> Lab Task 2: OLS and Diagnostics</a></li>
+  <li><a href="#lab-task-3-model-comparison" id="toc-lab-task-3-model-comparison" class="nav-link" data-scroll-target="#lab-task-3-model-comparison"><span class="header-section-number">20.5</span> Lab Task 3: Model Comparison</a></li>
+  <li><a href="#lab-task-4-gam-visualization" id="toc-lab-task-4-gam-visualization" class="nav-link" data-scroll-target="#lab-task-4-gam-visualization"><span class="header-section-number">20.6</span> Lab Task 4: GAM Visualization</a></li>
+  <li><a href="#lab-discussion-questions" id="toc-lab-discussion-questions" class="nav-link" data-scroll-target="#lab-discussion-questions"><span class="header-section-number">20.7</span> Lab Discussion Questions</a></li>
+  </ul></li>
+  <li><a href="#chapter-summary" id="toc-chapter-summary" class="nav-link" data-scroll-target="#chapter-summary"><span class="header-section-number">21</span> Chapter Summary</a>
+  <ul class="collapse">
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary"><span class="header-section-number">21.1</span> Summary</a></li>
+  </ul></li>
+  <li><a href="#textbook-epilogue" id="toc-textbook-epilogue" class="nav-link" data-scroll-target="#textbook-epilogue"><span class="header-section-number">22</span> Textbook Epilogue</a>
+  <ul class="collapse">
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">22.1</span> References</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Chapter 10: Regression Analysis</span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<hr>
+<section id="chapter-overview" class="level1" data-number="12">
+<h1 data-number="12"><span class="header-section-number">12</span> Chapter Overview</h1>
+<section id="introduction" class="level2" data-number="12.1">
+<h2 data-number="12.1" class="anchored" data-anchor-id="introduction"><span class="header-section-number">12.1</span> Introduction</h2>
+<p><strong>Regression analysis</strong> is the statistical method for modeling the relationship between a continuous outcome variable and one or more predictor variables. It is arguably the most widely used technique in quantitative research — estimating the effect of education on wages, predicting house prices from property characteristics, quantifying how temperature affects crop yields. Regression bridges descriptive and inferential statistics: it summarizes relationships, tests hypotheses about effects, and makes predictions about new observations.</p>
+<p>This chapter covers:</p>
+<ul>
+<li><strong>Simple Linear Regression</strong> — the foundational one-predictor model</li>
+<li><strong>Multiple Linear Regression</strong> — extending to many predictors, interpretation, and inference</li>
+<li><strong>Regression Diagnostics</strong> — verifying model assumptions and identifying problems</li>
+<li><strong>Variable Selection</strong> — choosing the right predictors systematically</li>
+<li><strong>Regularized Regression</strong> — Ridge and Lasso for high-dimensional data</li>
+<li><strong>Non-Linear Regression</strong> — polynomial, spline, and generalized additive models</li>
+<li><strong>Regression for Count and Categorical Outcomes</strong> — Poisson and logistic regression extensions</li>
+</ul>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>Learning Objectives
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>By the end of this chapter, you will be able to:</p>
+<ol type="1">
+<li>Fit and interpret simple and multiple linear regression models.</li>
+<li>Conduct and report hypothesis tests for regression coefficients.</li>
+<li>Perform systematic regression diagnostics and address violations.</li>
+<li>Apply variable selection methods including stepwise and information criteria.</li>
+<li>Fit regularized regression models (Ridge, Lasso) and tune <span class="math inline">\(\lambda\)</span>.</li>
+<li>Recognize non-linearity and fit polynomial and spline regression models.</li>
+<li>Select the appropriate regression model for count and categorical outcomes.</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="simple-linear-regression" class="level1" data-number="13">
+<h1 data-number="13"><span class="header-section-number">13</span> Simple Linear Regression</h1>
+<section id="introduction-1" class="level2" data-number="13.1">
+<h2 data-number="13.1" class="anchored" data-anchor-id="introduction-1"><span class="header-section-number">13.1</span> Introduction</h2>
+<p><strong>Simple linear regression</strong> models the linear relationship between a single predictor <span class="math inline">\(X\)</span> and a continuous outcome <span class="math inline">\(Y\)</span>. It is simultaneously the simplest and most foundational regression model — and despite its simplicity, it remains the first tool a data scientist should reach for when exploring a bivariate relationship. Understanding it deeply prepares the ground for all extensions covered in this chapter.</p>
+</section>
+<section id="theory" class="level2" data-number="13.2">
+<h2 data-number="13.2" class="anchored" data-anchor-id="theory"><span class="header-section-number">13.2</span> Theory</h2>
+<section id="the-simple-linear-regression-model" class="level3" data-number="13.2.1">
+<h3 data-number="13.2.1" class="anchored" data-anchor-id="the-simple-linear-regression-model"><span class="header-section-number">13.2.1</span> The Simple Linear Regression Model</h3>
+<p><span class="math display">\[Y_i = \beta_0 + \beta_1 X_i + \varepsilon_i, \qquad \varepsilon_i \sim N(0, \sigma^2)\]</span></p>
+<p>where: - <span class="math inline">\(\beta_0\)</span> is the <strong>intercept</strong> — the expected value of <span class="math inline">\(Y\)</span> when <span class="math inline">\(X = 0\)</span> - <span class="math inline">\(\beta_1\)</span> is the <strong>slope</strong> — the expected change in <span class="math inline">\(Y\)</span> for a one-unit increase in <span class="math inline">\(X\)</span> - <span class="math inline">\(\varepsilon_i\)</span> are independent, normally distributed errors with constant variance <span class="math inline">\(\sigma^2\)</span></p>
+</section>
+<section id="ordinary-least-squares-ols-estimation" class="level3" data-number="13.2.2">
+<h3 data-number="13.2.2" class="anchored" data-anchor-id="ordinary-least-squares-ols-estimation"><span class="header-section-number">13.2.2</span> Ordinary Least Squares (OLS) Estimation</h3>
+<p>The OLS estimators minimize the <strong>residual sum of squares (RSS)</strong>:</p>
+<p><span class="math display">\[\text{RSS} = \sum_{i=1}^{n}(y_i - \hat{y}_i)^2 = \sum_{i=1}^{n}(y_i - \hat{\beta}_0 - \hat{\beta}_1 x_i)^2\]</span></p>
+<p>The closed-form solutions are:</p>
+<p><span class="math display">\[\hat{\beta}_1 = \frac{\sum_{i=1}^{n}(x_i - \bar{x})(y_i - \bar{y})}{\sum_{i=1}^{n}(x_i - \bar{x})^2} = \frac{S_{XY}}{S_{XX}}, \qquad \hat{\beta}_0 = \bar{y} - \hat{\beta}_1\bar{x}\]</span></p>
+<p>The <strong>Gauss-Markov theorem</strong> guarantees that OLS is the Best Linear Unbiased Estimator (BLUE) when the classical assumptions hold.</p>
+</section>
+<section id="inference-for-regression-coefficients" class="level3" data-number="13.2.3">
+<h3 data-number="13.2.3" class="anchored" data-anchor-id="inference-for-regression-coefficients"><span class="header-section-number">13.2.3</span> Inference for Regression Coefficients</h3>
+<p>The standard error of <span class="math inline">\(\hat{\beta}_1\)</span> is:</p>
+<p><span class="math display">\[\text{SE}(\hat{\beta}_1) = \frac{s}{\sqrt{S_{XX}}}, \qquad s = \sqrt{\frac{\text{RSS}}{n-2}}\]</span></p>
+<p>where <span class="math inline">\(s\)</span> is the <strong>residual standard error</strong> (estimated <span class="math inline">\(\sigma\)</span>). The t-test for <span class="math inline">\(H_0: \beta_1 = 0\)</span>:</p>
+<p><span class="math display">\[t = \frac{\hat{\beta}_1}{\text{SE}(\hat{\beta}_1)} \sim t(n-2) \text{ under } H_0\]</span></p>
+</section>
+<section id="the-coefficient-of-determination-r2" class="level3" data-number="13.2.4">
+<h3 data-number="13.2.4" class="anchored" data-anchor-id="the-coefficient-of-determination-r2"><span class="header-section-number">13.2.4</span> The Coefficient of Determination <span class="math inline">\(R^2\)</span></h3>
+<p><span class="math inline">\(R^2\)</span> measures the proportion of total variance in <span class="math inline">\(Y\)</span> explained by <span class="math inline">\(X\)</span>:</p>
+<p><span class="math display">\[R^2 = 1 - \frac{\text{RSS}}{\text{TSS}} = 1 - \frac{\sum(y_i - \hat{y}_i)^2}{\sum(y_i - \bar{y})^2}\]</span></p>
+<p><span class="math inline">\(R^2 \in [0, 1]\)</span>; higher values indicate better fit. For simple linear regression, <span class="math inline">\(R^2 = r_{XY}^2\)</span> — the square of the Pearson correlation coefficient.</p>
+</section>
+<section id="prediction-vs.-confidence-intervals" class="level3" data-number="13.2.5">
+<h3 data-number="13.2.5" class="anchored" data-anchor-id="prediction-vs.-confidence-intervals"><span class="header-section-number">13.2.5</span> Prediction vs.&nbsp;Confidence Intervals</h3>
+<ul>
+<li><strong>Confidence interval for the mean response</strong> at <span class="math inline">\(x_0\)</span>: Interval for <span class="math inline">\(E[Y \mid X = x_0]\)</span> — uncertainty about the population mean.</li>
+<li><strong>Prediction interval</strong> for a new observation at <span class="math inline">\(x_0\)</span>: Wider interval accounting for both mean uncertainty and individual-level variability (<span class="math inline">\(\sigma^2\)</span>).</li>
+</ul>
+<p><span class="math display">\[\text{PI} = \hat{y}_0 \pm t^*_{n-2} \cdot s\sqrt{1 + \frac{1}{n} + \frac{(x_0 - \bar{x})^2}{S_{XX}}}\]</span></p>
+</section>
+</section>
+<section id="example-simple-linear-regression" class="level2" data-number="13.3">
+<h2 data-number="13.3" class="anchored" data-anchor-id="example-simple-linear-regression"><span class="header-section-number">13.3</span> Example: Simple Linear Regression</h2>
+<p><strong>Example 10.1.</strong> The relationship between car weight (<code>wt</code>, in 1000 lbs) and fuel efficiency (<code>mpg</code>) in the <code>mtcars</code> dataset.</p>
+<p>Fitted model: <span class="math inline">\(\hat{\text{mpg}} = 37.29 - 5.34 \times \text{wt}\)</span></p>
+<p><strong>Interpretation:</strong> - Intercept: A car weighing 0 lbs would have an expected mpg of 37.29 — extrapolation beyond the data range; not meaningful. - Slope: Each additional 1,000 lbs of weight is associated with a decrease of 5.34 mpg, on average. - <span class="math inline">\(R^2 = 0.753\)</span>: Weight explains 75.3% of the variance in fuel efficiency. - <span class="math inline">\(t = -9.56\)</span>, <span class="math inline">\(p &lt; 0.001\)</span>: The slope is highly significantly different from zero.</p>
+</section>
+<section id="r-example-simple-linear-regression" class="level2" data-number="13.4">
+<h2 data-number="13.4" class="anchored" data-anchor-id="r-example-simple-linear-regression"><span class="header-section-number">13.4</span> R Example: Simple Linear Regression</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = mpg ~ wt, data = mtcars)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-4.5432 -2.3647 -0.1252  1.4096  6.8727 
+
+Coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept)  37.2851     1.8776  19.858  &lt; 2e-16 ***
+wt           -5.3445     0.5591  -9.559 1.29e-10 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 3.046 on 30 degrees of freedom
+Multiple R-squared:  0.7528,    Adjusted R-squared:  0.7446 
+F-statistic: 91.38 on 1 and 30 DF,  p-value: 1.294e-10</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Simple Linear Regression: mpg ~ wt</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Term</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Estimate</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">SE</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">t</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">p-value</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">CI Lower</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">CI Upper</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Intercept</td>
+<td style="text-align: right;">37.2851</td>
+<td style="text-align: right;">1.8776</td>
+<td style="text-align: right;">19.8576</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">33.4505</td>
+<td style="text-align: right;">41.1198</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">wt</td>
+<td style="text-align: right;">-5.3445</td>
+<td style="text-align: right;">0.5591</td>
+<td style="text-align: right;">-9.5590</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">-6.4863</td>
+<td style="text-align: right;">-4.2026</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter10_regression_analysis_files/figure-html/slr-plot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>broom::tidy(model, conf.int = TRUE)</code> produces a clean data frame of coefficients, SEs, t-values, p-values, and confidence intervals.</li>
+<li><code>predict(model, newdata, interval = "confidence")</code> gives the CI for the mean; <code>interval = "prediction"</code> gives the wider PI for a new observation.</li>
+<li>The plot shows both bands simultaneously — the darker inner band is the CI (uncertainty about the mean), the lighter outer band is the PI (uncertainty for an individual prediction).</li>
+</ul>
+</section>
+<section id="exercises" class="level2" data-number="13.5">
+<h2 data-number="13.5" class="anchored" data-anchor-id="exercises"><span class="header-section-number">13.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 10.1
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>airquality</code> dataset (complete cases only):</p>
+<ol type="a">
+<li>Fit a simple linear regression of <code>Ozone</code> on <code>Temp</code>. Interpret <span class="math inline">\(\hat{\beta}_0\)</span>, <span class="math inline">\(\hat{\beta}_1\)</span>, and <span class="math inline">\(R^2\)</span>.</li>
+<li>Test <span class="math inline">\(H_0: \beta_1 = 0\)</span>. Report the t-statistic, p-value, and conclusion.</li>
+<li>Construct a 95% prediction interval for <code>Ozone</code> when <code>Temp = 90°F</code>.</li>
+<li>Plot the regression line with CI and PI bands. Does the linear model appear adequate?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="multiple-linear-regression" class="level1" data-number="14">
+<h1 data-number="14"><span class="header-section-number">14</span> Multiple Linear Regression</h1>
+<section id="introduction-2" class="level2" data-number="14.1">
+<h2 data-number="14.1" class="anchored" data-anchor-id="introduction-2"><span class="header-section-number">14.1</span> Introduction</h2>
+<p>In practice, outcomes are rarely determined by a single predictor. <strong>Multiple linear regression</strong> extends the simple model to include <span class="math inline">\(p\)</span> predictors simultaneously. This serves two purposes: improving prediction accuracy by including relevant information, and <strong>controlling for confounders</strong> — isolating the effect of one predictor while holding others constant. The ability to control for confounders is what makes regression a tool for causal inference (under strong assumptions), not just prediction.</p>
+</section>
+<section id="theory-1" class="level2" data-number="14.2">
+<h2 data-number="14.2" class="anchored" data-anchor-id="theory-1"><span class="header-section-number">14.2</span> Theory</h2>
+<section id="the-multiple-regression-model" class="level3" data-number="14.2.1">
+<h3 data-number="14.2.1" class="anchored" data-anchor-id="the-multiple-regression-model"><span class="header-section-number">14.2.1</span> The Multiple Regression Model</h3>
+<p><span class="math display">\[Y_i = \beta_0 + \beta_1 X_{i1} + \beta_2 X_{i2} + \cdots + \beta_p X_{ip} + \varepsilon_i\]</span></p>
+<p>In matrix notation: <span class="math inline">\(\mathbf{Y} = \mathbf{X}\boldsymbol{\beta} + \boldsymbol{\varepsilon}\)</span>, where <span class="math inline">\(\mathbf{X}\)</span> is the <span class="math inline">\(n \times (p+1)\)</span> design matrix (including a column of ones for the intercept).</p>
+</section>
+<section id="ols-in-matrix-form" class="level3" data-number="14.2.2">
+<h3 data-number="14.2.2" class="anchored" data-anchor-id="ols-in-matrix-form"><span class="header-section-number">14.2.2</span> OLS in Matrix Form</h3>
+<p><span class="math display">\[\hat{\boldsymbol{\beta}} = (\mathbf{X}^T\mathbf{X})^{-1}\mathbf{X}^T\mathbf{Y}\]</span></p>
+<p>This requires <span class="math inline">\(\mathbf{X}^T\mathbf{X}\)</span> to be invertible — violated when predictors are perfectly collinear (see multicollinearity below).</p>
+</section>
+<section id="interpretation-of-coefficients" class="level3" data-number="14.2.3">
+<h3 data-number="14.2.3" class="anchored" data-anchor-id="interpretation-of-coefficients"><span class="header-section-number">14.2.3</span> Interpretation of Coefficients</h3>
+<p><span class="math inline">\(\beta_j\)</span> is the expected change in <span class="math inline">\(Y\)</span> for a one-unit increase in <span class="math inline">\(X_j\)</span>, <strong>holding all other predictors constant</strong>. This partial effect interpretation is the key advantage of multiple regression over bivariate analysis.</p>
+</section>
+<section id="adjusted-r2" class="level3" data-number="14.2.4">
+<h3 data-number="14.2.4" class="anchored" data-anchor-id="adjusted-r2"><span class="header-section-number">14.2.4</span> Adjusted <span class="math inline">\(R^2\)</span></h3>
+<p>Adding more predictors always increases <span class="math inline">\(R^2\)</span>, even if they are noise. <strong>Adjusted <span class="math inline">\(R^2\)</span></strong> penalizes for the number of predictors:</p>
+<p><span class="math display">\[\bar{R}^2 = 1 - \frac{\text{RSS}/(n-p-1)}{\text{TSS}/(n-1)} = 1 - (1-R^2)\frac{n-1}{n-p-1}\]</span></p>
+<p>Use <span class="math inline">\(\bar{R}^2\)</span> (not <span class="math inline">\(R^2\)</span>) to compare models with different numbers of predictors.</p>
+</section>
+<section id="the-f-test-for-overall-significance" class="level3" data-number="14.2.5">
+<h3 data-number="14.2.5" class="anchored" data-anchor-id="the-f-test-for-overall-significance"><span class="header-section-number">14.2.5</span> The F-Test for Overall Significance</h3>
+<p>Tests whether at least one predictor has a non-zero coefficient:</p>
+<p><span class="math display">\[H_0: \beta_1 = \beta_2 = \cdots = \beta_p = 0\]</span></p>
+<p><span class="math display">\[F = \frac{(TSS - RSS)/p}{RSS/(n-p-1)} = \frac{MS_{\text{Reg}}}{MS_{\text{Res}}} \sim F(p, n-p-1) \text{ under } H_0\]</span></p>
+</section>
+<section id="multicollinearity" class="level3" data-number="14.2.6">
+<h3 data-number="14.2.6" class="anchored" data-anchor-id="multicollinearity"><span class="header-section-number">14.2.6</span> Multicollinearity</h3>
+<p>When predictors are highly correlated, coefficient estimates become unstable and standard errors inflate. The <strong>Variance Inflation Factor (VIF)</strong> measures how much the variance of <span class="math inline">\(\hat{\beta}_j\)</span> is inflated by collinearity:</p>
+<p><span class="math display">\[\text{VIF}_j = \frac{1}{1 - R_j^2}\]</span></p>
+<p>where <span class="math inline">\(R_j^2\)</span> is the <span class="math inline">\(R^2\)</span> from regressing <span class="math inline">\(X_j\)</span> on all other predictors.</p>
+<p><strong>Rules of thumb:</strong> VIF &gt; 5 is concerning; VIF &gt; 10 indicates serious multicollinearity.</p>
+<p><strong>Remedies:</strong> Remove one of the correlated predictors, combine them (e.g., PCA, Chapter 7), or use regularized regression (Section 5).</p>
+</section>
+<section id="classical-regression-assumptions-line" class="level3" data-number="14.2.7">
+<h3 data-number="14.2.7" class="anchored" data-anchor-id="classical-regression-assumptions-line"><span class="header-section-number">14.2.7</span> Classical Regression Assumptions (LINE)</h3>
+<table class="table-striped caption-top table">
+<caption>The LINE assumptions of linear regression</caption>
+<colgroup>
+<col style="width: 26%">
+<col style="width: 31%">
+<col style="width: 41%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Assumption</th>
+<th>Description</th>
+<th>Violation Effect</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>L</strong>inearity</td>
+<td><span class="math inline">\(E[Y\|X] = \mathbf{X}\boldsymbol{\beta}\)</span></td>
+<td>Biased predictions</td>
+</tr>
+<tr class="even">
+<td><strong>I</strong>ndependence</td>
+<td>Errors are independent</td>
+<td>Invalid SE and inference</td>
+</tr>
+<tr class="odd">
+<td><strong>N</strong>ormality</td>
+<td><span class="math inline">\(\varepsilon_i \sim N(0, \sigma^2)\)</span></td>
+<td>Invalid small-sample inference</td>
+</tr>
+<tr class="even">
+<td><strong>E</strong>qual variance</td>
+<td><span class="math inline">\(\text{Var}(\varepsilon_i) = \sigma^2\)</span> (homoscedasticity)</td>
+<td>Inefficient; invalid SE</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="example-multiple-regression" class="level2" data-number="14.3">
+<h2 data-number="14.3" class="anchored" data-anchor-id="example-multiple-regression"><span class="header-section-number">14.3</span> Example: Multiple Regression</h2>
+<p><strong>Example 10.2.</strong> Predicting <code>mpg</code> from <code>wt</code>, <code>hp</code>, and <code>am</code> (transmission) in <code>mtcars</code>:</p>
+<p><span class="math display">\[\hat{\text{mpg}} = 34.00 - 2.88 \cdot \text{wt} - 0.037 \cdot \text{hp} + 2.08 \cdot \text{am}\]</span></p>
+<p><strong>Interpretation:</strong> - Each 1,000 lbs increase in weight decreases mpg by 2.88, <strong>holding hp and am constant</strong>. - Each additional horsepower decreases mpg by 0.037, holding wt and am constant. - Manual transmission (am = 1) increases mpg by 2.08 compared to automatic, holding wt and hp constant. - <span class="math inline">\(\bar{R}^2 = 0.826\)</span>: The model explains 82.6% of variance after adjusting for the 3 predictors.</p>
+</section>
+<section id="r-example-multiple-linear-regression" class="level2" data-number="14.4">
+<h2 data-number="14.4" class="anchored" data-anchor-id="r-example-multiple-linear-regression"><span class="header-section-number">14.4</span> R Example: Multiple Linear Regression</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+lm(formula = mpg ~ wt + hp + am, data = mtcars)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-3.4221 -1.7924 -0.3788  1.2249  5.5317 
+
+Coefficients:
+             Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept) 34.002875   2.642659  12.867 2.82e-13 ***
+wt          -2.878575   0.904971  -3.181 0.003574 ** 
+hp          -0.037479   0.009605  -3.902 0.000546 ***
+am           2.083710   1.376420   1.514 0.141268    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 2.538 on 28 degrees of freedom
+Multiple R-squared:  0.8399,    Adjusted R-squared:  0.8227 
+F-statistic: 48.96 on 3 and 28 DF,  p-value: 2.908e-11</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>ANOVA Table: Multiple Regression</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Df</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Sum Sq</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Mean Sq</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">F value</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Pr(&gt;F)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">wt</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">847.7252</td>
+<td style="text-align: right;">847.7252</td>
+<td style="text-align: right;">131.6555</td>
+<td style="text-align: right;">0.0000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">hp</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">83.2742</td>
+<td style="text-align: right;">83.2742</td>
+<td style="text-align: right;">12.9328</td>
+<td style="text-align: right;">0.0012</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">am</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">14.7567</td>
+<td style="text-align: right;">14.7567</td>
+<td style="text-align: right;">2.2918</td>
+<td style="text-align: right;">0.1413</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Residuals</td>
+<td style="text-align: right;">28</td>
+<td style="text-align: right;">180.2911</td>
+<td style="text-align: right;">6.4390</td>
+<td style="text-align: right;">NA</td>
+<td style="text-align: right;">NA</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Variance Inflation Factors</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Variable</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">VIF</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Status</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">wt</td>
+<td style="text-align: left;">wt</td>
+<td style="text-align: right; font-weight: bold; color: darkgreen !important;">3.775</td>
+<td style="text-align: left;">OK</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">hp</td>
+<td style="text-align: left;">hp</td>
+<td style="text-align: right; font-weight: bold; color: darkgreen !important;">2.088</td>
+<td style="text-align: left;">OK</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">am</td>
+<td style="text-align: left;">am</td>
+<td style="text-align: right; font-weight: bold; color: darkgreen !important;">2.271</td>
+<td style="text-align: left;">OK</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Model Comparison</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Model</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">R²</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Adj. R²</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">AIC</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Residual SE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">SLR (wt only)</td>
+<td style="text-align: right;">0.7528</td>
+<td style="text-align: right;">0.7446</td>
+<td style="text-align: right;">166.03</td>
+<td style="text-align: right;">3.0459</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">MLR (wt + hp + am)</td>
+<td style="text-align: right;">0.8399</td>
+<td style="text-align: right;">0.8227</td>
+<td style="text-align: right;">156.13</td>
+<td style="text-align: right;">2.5375</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">MLR (5 predictors)</td>
+<td style="text-align: right;">0.8551</td>
+<td style="text-align: right;">0.8273</td>
+<td style="text-align: right;">156.93</td>
+<td style="text-align: right;">2.5048</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>car::vif(model)</code> computes VIFs for all predictors — always check multicollinearity in multiple regression.</li>
+<li><code>broom::tidy()</code> and <code>broom::glance()</code> provide consistent data frame outputs from <code>lm</code> objects, facilitating comparison tables.</li>
+<li>The model comparison table shows that adjusted <span class="math inline">\(R^2\)</span> peaks at 3 predictors — adding <code>disp</code> and <code>cyl</code> raises <span class="math inline">\(R^2\)</span> but lowers adjusted <span class="math inline">\(R^2\)</span> (and raises AIC), indicating those predictors add noise, not signal.</li>
+</ul>
+</section>
+<section id="exercises-1" class="level2" data-number="14.5">
+<h2 data-number="14.5" class="anchored" data-anchor-id="exercises-1"><span class="header-section-number">14.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 10.2
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>Boston</code> dataset from <code>MASS</code> (predict median house value <code>medv</code>):</p>
+<ol type="a">
+<li>Fit a multiple regression with all 13 predictors. Report <span class="math inline">\(\bar{R}^2\)</span> and the F-statistic.</li>
+<li>Compute VIFs. Are any predictors highly collinear? Which ones?</li>
+<li>Interpret the coefficient for <code>rm</code> (average rooms per dwelling).</li>
+<li>Test whether <code>chas</code> (Charles River dummy) significantly improves the model using an F-test (<code>anova(model1, model2)</code>).</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="regression-diagnostics" class="level1" data-number="15">
+<h1 data-number="15"><span class="header-section-number">15</span> Regression Diagnostics</h1>
+<section id="introduction-3" class="level2" data-number="15.1">
+<h2 data-number="15.1" class="anchored" data-anchor-id="introduction-3"><span class="header-section-number">15.1</span> Introduction</h2>
+<p>Fitting a regression model is only half the job. The other half is checking whether the model assumptions are satisfied — and if they are not, understanding what that means for the validity of the inference. <strong>Regression diagnostics</strong> are the formal tools for this verification. Skipping this step is among the most common errors in applied regression analysis.</p>
+</section>
+<section id="theory-2" class="level2" data-number="15.2">
+<h2 data-number="15.2" class="anchored" data-anchor-id="theory-2"><span class="header-section-number">15.2</span> Theory</h2>
+<section id="residual-analysis" class="level3" data-number="15.2.1">
+<h3 data-number="15.2.1" class="anchored" data-anchor-id="residual-analysis"><span class="header-section-number">15.2.1</span> Residual Analysis</h3>
+<p>The <strong>residuals</strong> <span class="math inline">\(\hat{\varepsilon}_i = y_i - \hat{y}_i\)</span> are the primary diagnostic tool. If the model is correctly specified and assumptions hold:</p>
+<ul>
+<li>Residuals should have <strong>mean zero</strong> and <strong>constant variance</strong> (homoscedasticity)</li>
+<li>Residuals should be <strong>approximately normally distributed</strong></li>
+<li>Residuals should show <strong>no pattern</strong> when plotted against fitted values or predictors</li>
+</ul>
+</section>
+<section id="four-diagnostic-plots" class="level3" data-number="15.2.2">
+<h3 data-number="15.2.2" class="anchored" data-anchor-id="four-diagnostic-plots"><span class="header-section-number">15.2.2</span> Four Diagnostic Plots</h3>
+<p><strong>Plot 1 — Residuals vs.&nbsp;Fitted:</strong> Tests linearity and homoscedasticity. A random horizontal band around zero is ideal; patterns indicate non-linearity; funnel shapes indicate heteroscedasticity.</p>
+<p><strong>Plot 2 — Normal Q-Q Plot:</strong> Tests normality of residuals. Points should fall on the diagonal line; heavy tails or systematic curves indicate non-normality.</p>
+<p><strong>Plot 3 — Scale-Location (√|residuals| vs.&nbsp;Fitted):</strong> Tests homoscedasticity more clearly. A flat horizontal line is ideal; an upward trend indicates variance increasing with fitted values.</p>
+<p><strong>Plot 4 — Residuals vs.&nbsp;Leverage:</strong> Identifies <strong>influential observations</strong> — points that, if removed, would substantially change the fitted model.</p>
+</section>
+<section id="leverage-and-influence" class="level3" data-number="15.2.3">
+<h3 data-number="15.2.3" class="anchored" data-anchor-id="leverage-and-influence"><span class="header-section-number">15.2.3</span> Leverage and Influence</h3>
+<p><strong>Leverage</strong> <span class="math inline">\(h_{ii}\)</span> measures how far observation <span class="math inline">\(i\)</span> is from the mean of the predictor space:</p>
+<p><span class="math display">\[h_{ii} = [\mathbf{X}(\mathbf{X}^T\mathbf{X})^{-1}\mathbf{X}^T]_{ii}\]</span></p>
+<p>High leverage: <span class="math inline">\(h_{ii} &gt; 2(p+1)/n\)</span>. High leverage observations pull the regression line toward them.</p>
+<p><strong>Cook’s Distance</strong> combines leverage and residual size to measure overall influence:</p>
+<p><span class="math display">\[D_i = \frac{\hat{\varepsilon}_i^2}{(p+1)s^2} \cdot \frac{h_{ii}}{(1-h_{ii})^2}\]</span></p>
+<p>Observations with <span class="math inline">\(D_i &gt; 4/n\)</span> or <span class="math inline">\(D_i &gt; 1\)</span> are potentially influential.</p>
+</section>
+<section id="formal-tests-for-assumption-violations" class="level3" data-number="15.2.4">
+<h3 data-number="15.2.4" class="anchored" data-anchor-id="formal-tests-for-assumption-violations"><span class="header-section-number">15.2.4</span> Formal Tests for Assumption Violations</h3>
+<table class="table-striped caption-top table">
+<caption>Formal tests for regression assumption violations</caption>
+<colgroup>
+<col style="width: 21%">
+<col style="width: 39%">
+<col style="width: 39%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Test</th>
+<th>Assumption</th>
+<th>R Function</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Shapiro-Wilk</td>
+<td>Normality of residuals</td>
+<td><code>shapiro.test(residuals(model))</code></td>
+</tr>
+<tr class="even">
+<td>Breusch-Pagan</td>
+<td>Homoscedasticity</td>
+<td><code>lmtest::bptest(model)</code></td>
+</tr>
+<tr class="odd">
+<td>Durbin-Watson</td>
+<td>Independence (autocorrelation)</td>
+<td><code>lmtest::dwtest(model)</code></td>
+</tr>
+<tr class="even">
+<td>RESET test</td>
+<td>Linearity</td>
+<td><code>lmtest::resettest(model)</code></td>
+</tr>
+<tr class="odd">
+<td>Goldfeld-Quandt</td>
+<td>Homoscedasticity</td>
+<td><code>lmtest::gqtest(model)</code></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="remedies-for-assumption-violations" class="level3" data-number="15.2.5">
+<h3 data-number="15.2.5" class="anchored" data-anchor-id="remedies-for-assumption-violations"><span class="header-section-number">15.2.5</span> Remedies for Assumption Violations</h3>
+<table class="table-striped caption-top table">
+<caption>Remedies for regression assumption violations</caption>
+<colgroup>
+<col style="width: 57%">
+<col style="width: 42%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Violation</th>
+<th>Remedy</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Non-linearity</td>
+<td>Transform <span class="math inline">\(Y\)</span> or <span class="math inline">\(X\)</span>; add polynomial terms; use GAM</td>
+</tr>
+<tr class="even">
+<td>Heteroscedasticity</td>
+<td>Transform <span class="math inline">\(Y\)</span> (log); weighted least squares; robust SE</td>
+</tr>
+<tr class="odd">
+<td>Non-normality of residuals</td>
+<td>Transform <span class="math inline">\(Y\)</span>; use robust regression</td>
+</tr>
+<tr class="even">
+<td>Autocorrelation</td>
+<td>Add lag terms; time series models; use HAC standard errors</td>
+</tr>
+<tr class="odd">
+<td>Multicollinearity</td>
+<td>Remove predictors; PCA; regularized regression</td>
+</tr>
+<tr class="even">
+<td>Influential outliers</td>
+<td>Investigate; robust regression; winsorize</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="example-diagnosing-a-regression-model" class="level2" data-number="15.3">
+<h2 data-number="15.3" class="anchored" data-anchor-id="example-diagnosing-a-regression-model"><span class="header-section-number">15.3</span> Example: Diagnosing a Regression Model</h2>
+<p><strong>Example 10.3.</strong> The simple regression of <code>Ozone ~ Temp</code> in <code>airquality</code> shows:</p>
+<ul>
+<li><strong>Residuals vs.&nbsp;Fitted:</strong> Curved pattern → non-linearity (log transformation of Ozone needed)</li>
+<li><strong>QQ Plot:</strong> Heavy right tail → non-normality (consistent with skewed ozone distribution)</li>
+<li><strong>Scale-Location:</strong> Upward trend → heteroscedasticity</li>
+<li><strong>Cook’s Distance:</strong> Observation 117 has <span class="math inline">\(D = 0.23 &gt; 4/111 = 0.036\)</span> — potentially influential</li>
+</ul>
+<p>Remedy: Log-transform Ozone, refit, and recheck diagnostics.</p>
+</section>
+<section id="r-example-regression-diagnostics" class="level2" data-number="15.4">
+<h2 data-number="15.4" class="anchored" data-anchor-id="r-example-regression-diagnostics"><span class="header-section-number">15.4</span> R Example: Regression Diagnostics</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter10_regression_analysis_files/figure-html/diagnostics-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>=== Formal Assumption Tests ===</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Shapiro-Wilk (normality):</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  W = 0.8898  p = 0 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Breusch-Pagan (homoscedasticity):</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  BP = 1.5088  p = 0.2193 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>RESET test (linearity):</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  F = 7.0944  p = 0.0013 </code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Diagnostics: Before and After Log Transformation</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Metric</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Before</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">After</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Shapiro-Wilk p</td>
+<td style="text-align: right;">0.0000</td>
+<td style="text-align: right; font-weight: bold; color: darkgreen !important;">0.0487</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Breusch-Pagan p</td>
+<td style="text-align: right;">0.2193</td>
+<td style="text-align: right; font-weight: bold; color: steelblue !important;">0.0109</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">RESET p</td>
+<td style="text-align: right;">0.0013</td>
+<td style="text-align: right; font-weight: bold; color: darkgreen !important;">0.5066</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Adj. R²</td>
+<td style="text-align: right;">0.4833</td>
+<td style="text-align: right; font-weight: bold; color: darkgreen !important;">0.5507</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>plot(lm_model, which = 1:4)</code> produces all four standard diagnostic plots. <code>par(mfrow = c(2,2))</code> arranges them in a 2×2 grid.</li>
+<li><code>lmtest::bptest()</code> runs the Breusch-Pagan test for heteroscedasticity — a significant result (<span class="math inline">\(p &lt; 0.05\)</span>) means variance is not constant.</li>
+<li><code>lmtest::resettest()</code> runs Ramsey’s RESET test — a significant result indicates omitted non-linear terms.</li>
+<li>Comparing diagnostic p-values before and after transformation quantifies the improvement — all p-values increase (less evidence of violation) after log-transforming Ozone.</li>
+</ul>
+</section>
+<section id="exercises-2" class="level2" data-number="15.5">
+<h2 data-number="15.5" class="anchored" data-anchor-id="exercises-2"><span class="header-section-number">15.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 10.3
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the multiple regression from Exercise 10.2 (<code>Boston</code> dataset):</p>
+<ol type="a">
+<li>Produce the four standard diagnostic plots. Describe any violations you observe.</li>
+<li>Run Shapiro-Wilk, Breusch-Pagan, and RESET tests. Which assumptions are violated?</li>
+<li>Identify the most influential observation using Cook’s distance.</li>
+<li>Apply an appropriate remedy and refit. How do the diagnostics improve?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="variable-selection" class="level1" data-number="16">
+<h1 data-number="16"><span class="header-section-number">16</span> Variable Selection</h1>
+<section id="introduction-4" class="level2" data-number="16.1">
+<h2 data-number="16.1" class="anchored" data-anchor-id="introduction-4"><span class="header-section-number">16.1</span> Introduction</h2>
+<p>When <span class="math inline">\(p\)</span> potential predictors are available, choosing which to include in the final model requires balancing <strong>goodness of fit</strong> against <strong>model complexity</strong>. Including too many predictors leads to overfitting; too few causes underfitting. <strong>Variable selection</strong> methods provide systematic approaches to this problem, ranging from sequential stepwise algorithms to information-theoretic criteria.</p>
+</section>
+<section id="theory-3" class="level2" data-number="16.2">
+<h2 data-number="16.2" class="anchored" data-anchor-id="theory-3"><span class="header-section-number">16.2</span> Theory</h2>
+<section id="information-criteria" class="level3" data-number="16.2.1">
+<h3 data-number="16.2.1" class="anchored" data-anchor-id="information-criteria"><span class="header-section-number">16.2.1</span> Information Criteria</h3>
+<p><strong>Akaike Information Criterion (AIC):</strong> <span class="math display">\[\text{AIC} = -2\ell(\hat{\boldsymbol{\beta}}) + 2p\]</span></p>
+<p><strong>Bayesian Information Criterion (BIC):</strong> <span class="math display">\[\text{BIC} = -2\ell(\hat{\boldsymbol{\beta}}) + p\log n\]</span></p>
+<p>Both penalize model complexity. BIC penalizes more heavily for large <span class="math inline">\(n\)</span> — it tends to select smaller models. <strong>Lower is better</strong> for both.</p>
+<p><strong>Adjusted <span class="math inline">\(R^2\)</span>:</strong> Equivalent to minimizing the residual variance estimate <span class="math inline">\(s^2\)</span> — a simpler alternative.</p>
+</section>
+<section id="stepwise-selection" class="level3" data-number="16.2.2">
+<h3 data-number="16.2.2" class="anchored" data-anchor-id="stepwise-selection"><span class="header-section-number">16.2.2</span> Stepwise Selection</h3>
+<p><strong>Forward selection:</strong> Start with no predictors; add the predictor that most improves AIC at each step.</p>
+<p><strong>Backward elimination:</strong> Start with all predictors; remove the predictor whose removal most improves (or least worsens) AIC.</p>
+<p><strong>Bidirectional stepwise:</strong> At each step, consider both adding and removing predictors.</p>
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Warning</span>Limitations of Stepwise Selection
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Stepwise selection has serious statistical problems: p-values are invalid (multiple testing), confidence intervals are too narrow, and the selected model is optimistic for its training data. It should be treated as an exploratory tool, not a definitive selection procedure. Cross-validation or regularization (Section 5) are more principled alternatives.</p>
+</div>
+</div>
+</section>
+<section id="cross-validation-for-variable-selection" class="level3" data-number="16.2.3">
+<h3 data-number="16.2.3" class="anchored" data-anchor-id="cross-validation-for-variable-selection"><span class="header-section-number">16.2.3</span> Cross-Validation for Variable Selection</h3>
+<p>The most principled approach: evaluate each candidate model by <span class="math inline">\(K\)</span>-fold cross-validated MSE and select the model with the lowest CV error. This directly optimizes predictive performance rather than a penalized likelihood.</p>
+</section>
+</section>
+<section id="example-variable-selection-for-housing-prices" class="level2" data-number="16.3">
+<h2 data-number="16.3" class="anchored" data-anchor-id="example-variable-selection-for-housing-prices"><span class="header-section-number">16.3</span> Example: Variable Selection for Housing Prices</h2>
+<p><strong>Example 10.4.</strong> Starting from 13 predictors in the <code>Boston</code> dataset, backward stepwise selection (AIC) retains 11 predictors, removing <code>indus</code> and <code>age</code>. BIC retains only 9 predictors, applying heavier penalization. Cross-validation selects 10 predictors. All methods agree that <code>lstat</code> (lower status population) and <code>rm</code> (average rooms) are the most important predictors.</p>
+</section>
+<section id="r-example-variable-selection" class="level2" data-number="16.4">
+<h2 data-number="16.4" class="anchored" data-anchor-id="r-example-variable-selection"><span class="header-section-number">16.4</span> R Example: Variable Selection</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Variable Selection Comparison</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Method</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th"># Variables</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Adj. R²</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">AIC</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">BIC</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Full Model</td>
+<td style="text-align: right;">13</td>
+<td style="text-align: right;">0.7338</td>
+<td style="text-align: right;">3027.61</td>
+<td style="text-align: right;">3091.01</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Stepwise AIC</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: right;">0.7348</td>
+<td style="text-align: right;">3023.73</td>
+<td style="text-align: right;">3078.67</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Stepwise BIC</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: right;">0.7348</td>
+<td style="text-align: right;">3023.73</td>
+<td style="text-align: right;">3078.67</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>10-Fold CV MSE: Variable Selection</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Model</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">CV_MSE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Full (13 vars)</td>
+<td style="text-align: right; font-weight: bold; color: steelblue !important;">24.0093</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">AIC selected</td>
+<td style="text-align: right; font-weight: bold; color: darkgreen !important;">23.6242</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">BIC selected</td>
+<td style="text-align: right; font-weight: bold; color: steelblue !important;">23.7438</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>MASS::stepAIC(model, direction, k)</code> performs stepwise selection. <code>k = 2</code> uses AIC penalty; <code>k = log(n)</code> uses BIC penalty.</li>
+<li><code>formula(step_model)</code> extracts the selected formula for use in other functions — avoiding manual retyping.</li>
+<li>The CV MSE comparison is the most honest performance comparison — it measures true predictive performance on held-out data, not training set fit.</li>
+</ul>
+</section>
+<section id="exercises-3" class="level2" data-number="16.5">
+<h2 data-number="16.5" class="anchored" data-anchor-id="exercises-3"><span class="header-section-number">16.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 10.4
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>mtcars</code> dataset (predict <code>mpg</code>):</p>
+<ol type="a">
+<li>Apply both forward and backward stepwise AIC. Do they select the same model?</li>
+<li>Apply BIC-based stepwise. How does the selected model differ from AIC?</li>
+<li>Implement 10-fold CV to compare all candidate models. Which minimizes CV MSE?</li>
+<li>Reflect: why might the stepwise-selected model not be the best cross-validated model?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="regularized-regression" class="level1" data-number="17">
+<h1 data-number="17"><span class="header-section-number">17</span> Regularized Regression</h1>
+<section id="introduction-5" class="level2" data-number="17.1">
+<h2 data-number="17.1" class="anchored" data-anchor-id="introduction-5"><span class="header-section-number">17.1</span> Introduction</h2>
+<p>When <span class="math inline">\(p\)</span> is large (many predictors) or predictors are highly correlated, OLS becomes unstable — coefficient estimates have high variance, and the model overfits. <strong>Regularized regression</strong> addresses this by adding a <strong>penalty</strong> on coefficient size to the OLS objective, shrinking coefficients toward zero. This introduces a small bias but dramatically reduces variance, improving generalization. Ridge and Lasso are the two principal regularization methods, each with distinct properties.</p>
+</section>
+<section id="theory-4" class="level2" data-number="17.2">
+<h2 data-number="17.2" class="anchored" data-anchor-id="theory-4"><span class="header-section-number">17.2</span> Theory</h2>
+<section id="ridge-regression-l2-regularization" class="level3" data-number="17.2.1">
+<h3 data-number="17.2.1" class="anchored" data-anchor-id="ridge-regression-l2-regularization"><span class="header-section-number">17.2.1</span> Ridge Regression (L2 Regularization)</h3>
+<p>Ridge minimizes the penalized RSS:</p>
+<p><span class="math display">\[\text{RSS}_{\text{Ridge}} = \sum_{i=1}^{n}(y_i - \hat{y}_i)^2 + \lambda\sum_{j=1}^{p}\beta_j^2\]</span></p>
+<p>The L2 penalty shrinks all coefficients toward zero but <strong>never exactly to zero</strong>. Ridge is particularly effective when many predictors have small true effects (dense signal).</p>
+<p><strong>Closed-form solution:</strong> <span class="math inline">\(\hat{\boldsymbol{\beta}}_{\text{Ridge}} = (\mathbf{X}^T\mathbf{X} + \lambda\mathbf{I})^{-1}\mathbf{X}^T\mathbf{Y}\)</span></p>
+<p>Ridge always has a solution (the added <span class="math inline">\(\lambda\mathbf{I}\)</span> ensures invertibility) even when <span class="math inline">\(p &gt; n\)</span>.</p>
+</section>
+<section id="lasso-regression-l1-regularization" class="level3" data-number="17.2.2">
+<h3 data-number="17.2.2" class="anchored" data-anchor-id="lasso-regression-l1-regularization"><span class="header-section-number">17.2.2</span> Lasso Regression (L1 Regularization)</h3>
+<p>Lasso uses an L1 penalty:</p>
+<p><span class="math display">\[\text{RSS}_{\text{Lasso}} = \sum_{i=1}^{n}(y_i - \hat{y}_i)^2 + \lambda\sum_{j=1}^{p}|\beta_j|\]</span></p>
+<p>Unlike Ridge, the L1 penalty can <strong>shrink coefficients exactly to zero</strong> — performing automatic variable selection. Lasso is preferred when the true model is sparse (few predictors with large effects).</p>
+</section>
+<section id="choosing-lambda-cross-validation" class="level3" data-number="17.2.3">
+<h3 data-number="17.2.3" class="anchored" data-anchor-id="choosing-lambda-cross-validation"><span class="header-section-number">17.2.3</span> Choosing <span class="math inline">\(\lambda\)</span>: Cross-Validation</h3>
+<p>The regularization parameter <span class="math inline">\(\lambda\)</span> is a hyperparameter tuned by cross-validation. <code>cv.glmnet()</code> in R computes the CV error across a grid of <span class="math inline">\(\lambda\)</span> values and returns:</p>
+<ul>
+<li><code>lambda.min</code>: <span class="math inline">\(\lambda\)</span> that minimizes CV error</li>
+<li><code>lambda.1se</code>: Largest <span class="math inline">\(\lambda\)</span> within one SE of the minimum (more parsimonious model)</li>
+</ul>
+<p><strong>Important:</strong> Always standardize predictors before regularization — the penalty treats all coefficients equally, so scale matters.</p>
+</section>
+</section>
+<section id="example-lasso-for-variable-selection" class="level2" data-number="17.3">
+<h2 data-number="17.3" class="anchored" data-anchor-id="example-lasso-for-variable-selection"><span class="header-section-number">17.3</span> Example: Lasso for Variable Selection</h2>
+<p><strong>Example 10.5.</strong> Applying Lasso to the <code>Boston</code> dataset with <span class="math inline">\(\lambda\)</span> selected by 10-fold CV:</p>
+<ul>
+<li><code>lambda.min</code> retains all 13 predictors with shrunken coefficients.</li>
+<li><code>lambda.1se</code> sets <code>indus</code> and <code>age</code> to exactly zero — automatic selection.</li>
+</ul>
+<p>The selected predictors match the stepwise AIC result, but with the advantage that Lasso’s selection is stable and cross-validated rather than dependent on the sequential testing procedure of stepwise.</p>
+</section>
+<section id="r-example-regularized-regression" class="level2" data-number="17.4">
+<h2 data-number="17.4" class="anchored" data-anchor-id="r-example-regularized-regression"><span class="header-section-number">17.4</span> R Example: Regularized Regression</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>=== Optimal Lambda Values ===</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Ridge  lambda.min: 0.6778 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Lasso  lambda.min: 0.016 </code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Coefficient Comparison: OLS vs. Regularized</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Variable</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">OLS</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Ridge</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Lasso</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">crim</td>
+<td style="text-align: left;">crim</td>
+<td style="text-align: right;">-0.1080</td>
+<td style="text-align: right; font-weight: bold; color: black !important;">-0.0876</td>
+<td style="text-align: right;">-0.1025</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">zn</td>
+<td style="text-align: left;">zn</td>
+<td style="text-align: right;">0.0464</td>
+<td style="text-align: right; font-weight: bold; color: black !important;">0.0327</td>
+<td style="text-align: right;">0.0433</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">indus</td>
+<td style="text-align: left;">indus</td>
+<td style="text-align: right;">0.0206</td>
+<td style="text-align: right; font-weight: bold; color: tomato !important;">-0.0380</td>
+<td style="text-align: right;">0.0000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">chas</td>
+<td style="text-align: left;">chas</td>
+<td style="text-align: right;">2.6867</td>
+<td style="text-align: right; font-weight: bold; color: black !important;">2.8998</td>
+<td style="text-align: right;">2.7004</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">nox</td>
+<td style="text-align: left;">nox</td>
+<td style="text-align: right;">-17.7666</td>
+<td style="text-align: right; font-weight: bold; color: black !important;">-11.9134</td>
+<td style="text-align: right;">-16.7558</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">rm</td>
+<td style="text-align: left;">rm</td>
+<td style="text-align: right;">3.8099</td>
+<td style="text-align: right; font-weight: bold; color: black !important;">4.0113</td>
+<td style="text-align: right;">3.8400</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">age</td>
+<td style="text-align: left;">age</td>
+<td style="text-align: right;">0.0007</td>
+<td style="text-align: right; font-weight: bold; color: tomato !important;">-0.0037</td>
+<td style="text-align: right;">0.0000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">dis</td>
+<td style="text-align: left;">dis</td>
+<td style="text-align: right;">-1.4756</td>
+<td style="text-align: right; font-weight: bold; color: black !important;">-1.1189</td>
+<td style="text-align: right;">-1.4367</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">rad</td>
+<td style="text-align: left;">rad</td>
+<td style="text-align: right;">0.3060</td>
+<td style="text-align: right; font-weight: bold; color: black !important;">0.1537</td>
+<td style="text-align: right;">0.2721</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">tax</td>
+<td style="text-align: left;">tax</td>
+<td style="text-align: right;">-0.0123</td>
+<td style="text-align: right; font-weight: bold; color: black !important;">-0.0058</td>
+<td style="text-align: right;">-0.0106</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">ptratio</td>
+<td style="text-align: left;">ptratio</td>
+<td style="text-align: right;">-0.9527</td>
+<td style="text-align: right; font-weight: bold; color: black !important;">-0.8550</td>
+<td style="text-align: right;">-0.9369</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">black</td>
+<td style="text-align: left;">black</td>
+<td style="text-align: right;">0.0093</td>
+<td style="text-align: right; font-weight: bold; color: black !important;">0.0091</td>
+<td style="text-align: right;">0.0091</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">lstat</td>
+<td style="text-align: left;">lstat</td>
+<td style="text-align: right;">-0.5248</td>
+<td style="text-align: right; font-weight: bold; color: black !important;">-0.4724</td>
+<td style="text-align: right;">-0.5225</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter10_regression_analysis_files/figure-html/regularized-plot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter10_regression_analysis_files/figure-html/regularized-plot-2.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>cv.glmnet(X, y, alpha, nfolds)</code> fits the regularized model with cross-validation. <code>alpha = 0</code> is Ridge, <code>alpha = 1</code> is Lasso.</li>
+<li><code>coef(cv_model, s = "lambda.min")</code> extracts coefficients at the optimal lambda. <code>[-1]</code> removes the intercept.</li>
+<li>The coefficient path plot shows how each predictor’s coefficient changes as <span class="math inline">\(\lambda\)</span> increases — variables entering/leaving the model from right to left as regularization decreases.</li>
+</ul>
+</section>
+<section id="exercises-4" class="level2" data-number="17.5">
+<h2 data-number="17.5" class="anchored" data-anchor-id="exercises-4"><span class="header-section-number">17.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 10.5
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>mtcars</code> dataset (all predictors for <code>mpg</code>):</p>
+<ol type="a">
+<li>Fit Ridge and Lasso using 10-fold CV.</li>
+<li>Plot the coefficient paths for Lasso. At what <span class="math inline">\(\lambda\)</span> does each predictor enter the model?</li>
+<li>Compare CV MSE for OLS, Ridge, and Lasso. Which generalizes best?</li>
+<li>Which predictors does Lasso set to zero at <code>lambda.1se</code>? Is this consistent with stepwise selection?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="non-linear-regression" class="level1" data-number="18">
+<h1 data-number="18"><span class="header-section-number">18</span> Non-Linear Regression</h1>
+<section id="introduction-6" class="level2" data-number="18.1">
+<h2 data-number="18.1" class="anchored" data-anchor-id="introduction-6"><span class="header-section-number">18.1</span> Introduction</h2>
+<p>Linear regression assumes that the relationship between <span class="math inline">\(Y\)</span> and each predictor is linear — a strong and often unrealistic assumption. Many real relationships are curved: the effect of age on income follows an inverted U-shape; the response to drug dosage is often sigmoidal; temperature effects on crop yield are non-linear. <strong>Non-linear regression</strong> methods extend the linear model to capture these patterns while maintaining the interpretability and inference framework of regression.</p>
+</section>
+<section id="theory-5" class="level2" data-number="18.2">
+<h2 data-number="18.2" class="anchored" data-anchor-id="theory-5"><span class="header-section-number">18.2</span> Theory</h2>
+<section id="polynomial-regression" class="level3" data-number="18.2.1">
+<h3 data-number="18.2.1" class="anchored" data-anchor-id="polynomial-regression"><span class="header-section-number">18.2.1</span> Polynomial Regression</h3>
+<p>Add powers of <span class="math inline">\(X\)</span> as additional predictors:</p>
+<p><span class="math display">\[Y = \beta_0 + \beta_1 X + \beta_2 X^2 + \cdots + \beta_d X^d + \varepsilon\]</span></p>
+<p>This is still a linear model in the coefficients — OLS estimation applies directly. The choice of degree <span class="math inline">\(d\)</span> involves a bias-variance tradeoff: higher degree fits more flexibly but overfits more easily. Cross-validation or AIC selects the optimal degree.</p>
+<p><strong>Caution:</strong> Polynomial regression extrapolates poorly beyond the range of training data — avoid high-degree polynomials.</p>
+</section>
+<section id="regression-splines" class="level3" data-number="18.2.2">
+<h3 data-number="18.2.2" class="anchored" data-anchor-id="regression-splines"><span class="header-section-number">18.2.2</span> Regression Splines</h3>
+<p>Splines divide the predictor range into intervals at <strong>knot</strong> locations and fit polynomial pieces within each interval, subject to smoothness constraints at the knots. <strong>Natural cubic splines</strong> additionally constrain the function to be linear beyond the boundary knots, reducing erratic extrapolation.</p>
+<p>A degree-<span class="math inline">\(d\)</span> spline with <span class="math inline">\(K\)</span> knots has <span class="math inline">\(d + K\)</span> degrees of freedom.</p>
+</section>
+<section id="generalized-additive-models-gam" class="level3" data-number="18.2.3">
+<h3 data-number="18.2.3" class="anchored" data-anchor-id="generalized-additive-models-gam"><span class="header-section-number">18.2.3</span> Generalized Additive Models (GAM)</h3>
+<p>GAMs extend multiple regression by allowing each predictor to have a <strong>non-parametric smooth effect</strong>:</p>
+<p><span class="math display">\[Y = \beta_0 + f_1(X_1) + f_2(X_2) + \cdots + f_p(X_p) + \varepsilon\]</span></p>
+<p>Each <span class="math inline">\(f_j\)</span> is a smooth function estimated from data (typically a spline). GAMs are interpretable — you can plot each <span class="math inline">\(f_j\)</span> separately — yet flexible enough to capture non-linear relationships. The <code>mgcv</code> package in R fits GAMs with automatic smoothness selection.</p>
+</section>
+</section>
+<section id="example-non-linear-effects" class="level2" data-number="18.3">
+<h2 data-number="18.3" class="anchored" data-anchor-id="example-non-linear-effects"><span class="header-section-number">18.3</span> Example: Non-Linear Effects</h2>
+<p><strong>Example 10.6.</strong> Modeling the relationship between <code>age</code> and <code>wage</code> from the <code>Wage</code> dataset:</p>
+<ul>
+<li>Linear model: <span class="math inline">\(\bar{R}^2 = 0.074\)</span> — poor fit; misses the curved relationship.</li>
+<li>Polynomial (degree 4): <span class="math inline">\(\bar{R}^2 = 0.096\)</span> — better but extrapolates poorly.</li>
+<li>Natural cubic spline (4 knots): <span class="math inline">\(\bar{R}^2 = 0.097\)</span> — similar fit, more stable.</li>
+<li>GAM with smooth: <span class="math inline">\(\bar{R}^2 = 0.097\)</span> — similar fit with automatic smoothness selection.</li>
+</ul>
+<p>All non-linear methods agree: wages increase steeply in early career, plateau around age 40–50, then decline slightly.</p>
+</section>
+<section id="r-example-non-linear-regression" class="level2" data-number="18.4">
+<h2 data-number="18.4" class="anchored" data-anchor-id="r-example-non-linear-regression"><span class="header-section-number">18.4</span> R Example: Non-Linear Regression</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Non-Linear Model Comparison: mpg ~ hp</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Model</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Adj. R²</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">AIC</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Linear</td>
+<td style="text-align: left;">Linear</td>
+<td style="text-align: right; font-weight: bold; color: steelblue !important;">0.5892</td>
+<td style="text-align: right;">181.24</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Poly2</td>
+<td style="text-align: left;">Poly2</td>
+<td style="text-align: right; font-weight: bold; color: darkgreen !important;">0.7393</td>
+<td style="text-align: right;">167.60</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Poly3</td>
+<td style="text-align: left;">Poly3</td>
+<td style="text-align: right; font-weight: bold; color: steelblue !important;">0.7349</td>
+<td style="text-align: right;">169.01</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Spline</td>
+<td style="text-align: left;">Spline</td>
+<td style="text-align: right; font-weight: bold; color: steelblue !important;">0.7178</td>
+<td style="text-align: right;">172.64</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter10_regression_analysis_files/figure-html/nonlinear-plot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Family: gaussian 
+Link function: identity 
+
+Formula:
+mpg ~ s(wt) + s(hp) + am
+
+Parametric coefficients:
+            Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept)  19.8639     0.6926   28.68   &lt;2e-16 ***
+am            0.5580     1.4315    0.39      0.7    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Approximate significance of smooth terms:
+        edf Ref.df     F p-value   
+s(wt) 2.263  2.750 5.822 0.00461 **
+s(hp) 2.418  3.026 5.150 0.00620 **
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+R-sq.(adj) =  0.875   Deviance explained = 89.8%
+-REML = 68.682  Scale est. = 4.5284    n = 32</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter10_regression_analysis_files/figure-html/gam-plot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>poly(x, d)</code> creates orthogonal polynomial terms — preferred over <code>I(x^2)</code> for numerical stability.</li>
+<li><code>splines::bs(x, df)</code> creates a B-spline basis; <code>df</code> controls flexibility (more df = more knots = more flexible).</li>
+<li><code>mgcv::gam(formula, method = "REML")</code> fits a GAM with REML-based smoothness selection — automatic and principled.</li>
+<li><code>plot(gam_model, shade = TRUE)</code> visualizes each smooth term with confidence bands — the key interpretive output of a GAM.</li>
+</ul>
+</section>
+<section id="exercises-5" class="level2" data-number="18.5">
+<h2 data-number="18.5" class="anchored" data-anchor-id="exercises-5"><span class="header-section-number">18.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 10.6
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>airquality</code> dataset (complete cases):</p>
+<ol type="a">
+<li>Fit linear, polynomial (d=2,3), and spline regression of <code>log(Ozone)</code> on <code>Temp</code>. Compare AIC.</li>
+<li>Fit a GAM: <code>log(Ozone) ~ s(Temp) + s(Wind) + s(Solar.R)</code>. Plot the smooth terms.</li>
+<li>Compare the GAM to the best polynomial model by CV MSE. Does the GAM generalize better?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="regression-for-count-and-categorical-outcomes" class="level1" data-number="19">
+<h1 data-number="19"><span class="header-section-number">19</span> Regression for Count and Categorical Outcomes</h1>
+<section id="introduction-7" class="level2" data-number="19.1">
+<h2 data-number="19.1" class="anchored" data-anchor-id="introduction-7"><span class="header-section-number">19.1</span> Introduction</h2>
+<p>The linear regression model assumes a continuous, normally distributed outcome. Many real outcomes violate this — <strong>counts</strong> of events (number of hospital visits, number of defects) follow discrete, non-negative distributions; <strong>proportions</strong> are bounded between 0 and 1; <strong>binary outcomes</strong> are 0 or 1. <strong>Generalized Linear Models (GLMs)</strong> extend regression to handle these outcome types through a <strong>link function</strong> that connects the linear predictor to the expected outcome.</p>
+</section>
+<section id="theory-6" class="level2" data-number="19.2">
+<h2 data-number="19.2" class="anchored" data-anchor-id="theory-6"><span class="header-section-number">19.2</span> Theory</h2>
+<section id="the-generalized-linear-model-framework" class="level3" data-number="19.2.1">
+<h3 data-number="19.2.1" class="anchored" data-anchor-id="the-generalized-linear-model-framework"><span class="header-section-number">19.2.1</span> The Generalized Linear Model Framework</h3>
+<p>A GLM has three components:</p>
+<ol type="1">
+<li><strong>Random component:</strong> The distribution of <span class="math inline">\(Y\)</span> from the exponential family (<span class="math inline">\(Y \sim\)</span> Normal, Binomial, Poisson, Gamma, etc.)</li>
+<li><strong>Systematic component:</strong> The linear predictor <span class="math inline">\(\eta_i = \boldsymbol{\beta}^T\mathbf{x}_i\)</span></li>
+<li><strong>Link function:</strong> <span class="math inline">\(g(\mu_i) = \eta_i\)</span>, connecting the mean <span class="math inline">\(\mu_i = E[Y_i]\)</span> to the linear predictor</li>
+</ol>
+<table class="table-striped caption-top table">
+<caption>Generalized Linear Models by outcome type</caption>
+<colgroup>
+<col style="width: 27%">
+<col style="width: 27%">
+<col style="width: 29%">
+<col style="width: 14%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Outcome Type</th>
+<th>Distribution</th>
+<th>Link Function</th>
+<th>Model</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Continuous</td>
+<td>Normal</td>
+<td>Identity: <span class="math inline">\(\mu = \eta\)</span></td>
+<td>Linear regression</td>
+</tr>
+<tr class="even">
+<td>Binary</td>
+<td>Binomial</td>
+<td>Logit: <span class="math inline">\(\log(\mu/(1-\mu)) = \eta\)</span></td>
+<td>Logistic regression</td>
+</tr>
+<tr class="odd">
+<td>Count</td>
+<td>Poisson</td>
+<td>Log: <span class="math inline">\(\log(\mu) = \eta\)</span></td>
+<td>Poisson regression</td>
+</tr>
+<tr class="even">
+<td>Rate</td>
+<td>Poisson</td>
+<td>Log with offset</td>
+<td>Poisson with offset</td>
+</tr>
+<tr class="odd">
+<td>Overdispersed count</td>
+<td>Negative Binomial</td>
+<td>Log</td>
+<td>NB regression</td>
+</tr>
+<tr class="even">
+<td>Proportion</td>
+<td>Beta</td>
+<td>Logit</td>
+<td>Beta regression</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="poisson-regression" class="level3" data-number="19.2.2">
+<h3 data-number="19.2.2" class="anchored" data-anchor-id="poisson-regression"><span class="header-section-number">19.2.2</span> Poisson Regression</h3>
+<p>For count data <span class="math inline">\(Y_i \sim \text{Poisson}(\mu_i)\)</span>:</p>
+<p><span class="math display">\[\log(\mu_i) = \beta_0 + \beta_1 X_{i1} + \cdots + \beta_p X_{ip}\]</span></p>
+<p><strong>Interpretation:</strong> <span class="math inline">\(e^{\beta_j}\)</span> is the multiplicative change in the <strong>rate</strong> <span class="math inline">\(\mu\)</span> for a one-unit increase in <span class="math inline">\(X_j\)</span>. A coefficient of <span class="math inline">\(\beta_j = 0.3\)</span> means the expected count multiplies by <span class="math inline">\(e^{0.3} = 1.35\)</span> — a 35% increase.</p>
+<p><strong>Offset:</strong> When modeling rates (events per exposure), include <span class="math inline">\(\log(\text{exposure})\)</span> as an offset with coefficient fixed at 1:</p>
+<p><span class="math display">\[\log(\mu_i) = \log(n_i) + \beta_0 + \beta_1 X_{i1} + \cdots\]</span></p>
+<p><strong>Overdispersion:</strong> Poisson assumes <span class="math inline">\(\text{Var}(Y) = \mu\)</span>. If the observed variance exceeds the mean (common with count data), use <strong>quasi-Poisson</strong> or <strong>Negative Binomial</strong> regression.</p>
+</section>
+<section id="model-assessment-for-glms" class="level3" data-number="19.2.3">
+<h3 data-number="19.2.3" class="anchored" data-anchor-id="model-assessment-for-glms"><span class="header-section-number">19.2.3</span> Model Assessment for GLMs</h3>
+<ul>
+<li><strong>Deviance</strong> replaces RSS: <span class="math inline">\(D = -2[\ell(\hat{\boldsymbol{\mu}}) - \ell(\mathbf{y})]\)</span></li>
+<li><strong>Null deviance:</strong> Deviance of intercept-only model</li>
+<li><strong>Residual deviance:</strong> Deviance of fitted model</li>
+<li><strong>Pseudo-<span class="math inline">\(R^2\)</span>:</strong> <span class="math inline">\(1 - D/D_0\)</span> (not directly comparable to linear <span class="math inline">\(R^2\)</span>)</li>
+<li><strong>AIC:</strong> <span class="math inline">\(-2\ell + 2p\)</span> (same formula, different likelihood)</li>
+</ul>
+</section>
+</section>
+<section id="example-poisson-regression" class="level2" data-number="19.3">
+<h2 data-number="19.3" class="anchored" data-anchor-id="example-poisson-regression"><span class="header-section-number">19.3</span> Example: Poisson Regression</h2>
+<p><strong>Example 10.7.</strong> Hospital data records the number of emergency admissions (<code>count</code>) for 50 hospitals, along with hospital size (<code>beds</code>) and region (<code>region</code>). Poisson regression with offset for beds:</p>
+<p><span class="math display">\[\log(\text{admissions}) = \log(\text{beds}) + \beta_0 + \beta_1 \cdot \text{region}\]</span></p>
+<p><span class="math inline">\(e^{\beta_1} = 1.42\)</span>: Hospitals in Region 2 have 42% higher admission rates than Region 1, controlling for hospital size.</p>
+</section>
+<section id="r-example-glms-poisson-and-extensions" class="level2" data-number="19.4">
+<h2 data-number="19.4" class="anchored" data-anchor-id="r-example-glms-poisson-and-extensions"><span class="header-section-number">19.4</span> R Example: GLMs — Poisson and Extensions</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Outcome variable (breaks) summary:</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Mean: 28.14815 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Variance: 174.2041 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Overdispersion ratio: 6.19 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Call:
+glm(formula = breaks ~ wool + tension, family = poisson(link = "log"), 
+    data = warpbreaks)
+
+Coefficients:
+            Estimate Std. Error z value Pr(&gt;|z|)    
+(Intercept)  3.69196    0.04541  81.302  &lt; 2e-16 ***
+woolB       -0.20599    0.05157  -3.994 6.49e-05 ***
+tensionM    -0.32132    0.06027  -5.332 9.73e-08 ***
+tensionH    -0.51849    0.06396  -8.107 5.21e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+(Dispersion parameter for poisson family taken to be 1)
+
+    Null deviance: 297.37  on 53  degrees of freedom
+Residual deviance: 210.39  on 50  degrees of freedom
+AIC: 493.06
+
+Number of Fisher Scoring iterations: 4</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Poisson Regression: Incidence Rate Ratios</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Term</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">IRR</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">95% CI Lower</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">95% CI Upper</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">p-value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">woolB</td>
+<td style="text-align: left; font-weight: bold; color: steelblue !important;">woolB</td>
+<td style="text-align: right;">0.8138</td>
+<td style="text-align: right;">0.7355</td>
+<td style="text-align: right;">0.9003</td>
+<td style="text-align: right;">1e-04</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">tensionM</td>
+<td style="text-align: left; font-weight: bold; color: steelblue !important;">tensionM</td>
+<td style="text-align: right;">0.7252</td>
+<td style="text-align: right;">0.6441</td>
+<td style="text-align: right;">0.8158</td>
+<td style="text-align: right;">0e+00</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">tensionH</td>
+<td style="text-align: left; font-weight: bold; color: steelblue !important;">tensionH</td>
+<td style="text-align: right;">0.5954</td>
+<td style="text-align: right;">0.5249</td>
+<td style="text-align: right;">0.6745</td>
+<td style="text-align: right;">0e+00</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Standard Error Comparison: Overdispersion Handling</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Term</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Poisson SE</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Quasi-Poisson SE</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">NB SE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">woolB</td>
+<td style="text-align: left; font-weight: bold; color: tomato !important;">woolB</td>
+<td style="text-align: right;">0.0516</td>
+<td style="text-align: right;">0.1065</td>
+<td style="text-align: right;">0.1010</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">tensionM</td>
+<td style="text-align: left; font-weight: bold; color: tomato !important;">tensionM</td>
+<td style="text-align: right;">0.0603</td>
+<td style="text-align: right;">0.1244</td>
+<td style="text-align: right;">0.1217</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">tensionH</td>
+<td style="text-align: left; font-weight: bold; color: tomato !important;">tensionH</td>
+<td style="text-align: right;">0.0640</td>
+<td style="text-align: right;">0.1320</td>
+<td style="text-align: right;">0.1237</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter10_regression_analysis_files/figure-html/glm-plot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>glm(formula, family = poisson(link = "log"))</code> fits Poisson regression. <code>exp(coef())</code> converts to incidence rate ratios (IRRs).</li>
+<li><code>family = quasipoisson()</code> uses the same point estimates as Poisson but inflates standard errors by the <strong>dispersion factor</strong> — correcting for overdispersion without changing the model structure.</li>
+<li><code>MASS::glm.nb()</code> fits a Negative Binomial model — a more principled solution to overdispersion that estimates the dispersion parameter from the data.</li>
+<li>Comparing SEs across models shows how overdispersion inflates uncertainty: Quasi-Poisson and NB SEs are larger than Poisson SEs, correcting the overconfidence of the basic Poisson model.</li>
+</ul>
+</section>
+<section id="exercises-6" class="level2" data-number="19.5">
+<h2 data-number="19.5" class="anchored" data-anchor-id="exercises-6"><span class="header-section-number">19.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 10.7
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>quine</code> dataset from <code>MASS</code> (days absent from school):</p>
+<ol type="a">
+<li>Examine the distribution of <code>Days</code>. Is it consistent with Poisson? Check mean vs.&nbsp;variance.</li>
+<li>Fit a Poisson regression of <code>Days ~ Eth + Sex + Age + Lrn</code>.</li>
+<li>Test for overdispersion. If present, fit quasi-Poisson and Negative Binomial models.</li>
+<li>Compare AIC for Poisson and NB models. Which fits better? Interpret the key coefficients as IRRs.</li>
+</ol>
+</div>
+</div>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 10.8 (Challenge)
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Build a complete regression pipeline for the <code>Boston</code> dataset:</p>
+<ol type="a">
+<li>Fit OLS, Ridge, Lasso, and a GAM (<code>medv ~ s(lstat) + s(rm) + ...</code>).</li>
+<li>Evaluate all models by 10-fold CV MSE.</li>
+<li>Perform full diagnostics on the OLS model. Address any violations.</li>
+<li>Which model performs best? Write a 200-word comparison discussing predictive accuracy, interpretability, and assumption compliance.</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="chapter-lab-activity-housing-price-regression-with-boston-dataset" class="level1" data-number="20">
+<h1 data-number="20"><span class="header-section-number">20</span> Chapter Lab Activity: Housing Price Regression with <code>Boston</code> Dataset</h1>
+<section id="objectives" class="level2" data-number="20.1">
+<h2 data-number="20.1" class="anchored" data-anchor-id="objectives"><span class="header-section-number">20.1</span> Objectives</h2>
+<p>In this lab you will apply the complete regression pipeline — exploratory analysis, model building, diagnostics, variable selection, regularization, and non-linear extensions — to the classic <code>Boston</code> housing dataset. You will compare the full spectrum of regression approaches and make a principled recommendation.</p>
+</section>
+<section id="the-dataset" class="level2" data-number="20.2">
+<h2 data-number="20.2" class="anchored" data-anchor-id="the-dataset"><span class="header-section-number">20.2</span> The Dataset</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Dimensions: 506 × 14 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Rows: 506
+Columns: 14
+$ crim    &lt;dbl&gt; 0.00632, 0.02731, 0.02729, 0.03237, 0.06905, 0.02985, 0.08829,…
+$ zn      &lt;dbl&gt; 18.0, 0.0, 0.0, 0.0, 0.0, 0.0, 12.5, 12.5, 12.5, 12.5, 12.5, 1…
+$ indus   &lt;dbl&gt; 2.31, 7.07, 7.07, 2.18, 2.18, 2.18, 7.87, 7.87, 7.87, 7.87, 7.…
+$ chas    &lt;int&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,…
+$ nox     &lt;dbl&gt; 0.538, 0.469, 0.469, 0.458, 0.458, 0.458, 0.524, 0.524, 0.524,…
+$ rm      &lt;dbl&gt; 6.575, 6.421, 7.185, 6.998, 7.147, 6.430, 6.012, 6.172, 5.631,…
+$ age     &lt;dbl&gt; 65.2, 78.9, 61.1, 45.8, 54.2, 58.7, 66.6, 96.1, 100.0, 85.9, 9…
+$ dis     &lt;dbl&gt; 4.0900, 4.9671, 4.9671, 6.0622, 6.0622, 6.0622, 5.5605, 5.9505…
+$ rad     &lt;int&gt; 1, 2, 2, 3, 3, 3, 5, 5, 5, 5, 5, 5, 5, 4, 4, 4, 4, 4, 4, 4, 4,…
+$ tax     &lt;dbl&gt; 296, 242, 242, 222, 222, 222, 311, 311, 311, 311, 311, 311, 31…
+$ ptratio &lt;dbl&gt; 15.3, 17.8, 17.8, 18.7, 18.7, 18.7, 15.2, 15.2, 15.2, 15.2, 15…
+$ black   &lt;dbl&gt; 396.90, 396.90, 392.83, 394.63, 396.90, 394.12, 395.60, 396.90…
+$ lstat   &lt;dbl&gt; 4.98, 9.14, 4.03, 2.94, 5.33, 5.21, 12.43, 19.15, 29.93, 17.10…
+$ medv    &lt;dbl&gt; 24.0, 21.6, 34.7, 33.4, 36.2, 28.7, 22.9, 27.1, 16.5, 18.9, 15…</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Missing values: 0 </code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter10_regression_analysis_files/figure-html/lab-intro2-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="lab-task-1-exploratory-regression-analysis" class="level2" data-number="20.3">
+<h2 data-number="20.3" class="anchored" data-anchor-id="lab-task-1-exploratory-regression-analysis"><span class="header-section-number">20.3</span> Lab Task 1: Exploratory Regression Analysis</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Predictor Correlations with medv</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Variable</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Correlation</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">rm</td>
+<td style="text-align: left; font-weight: bold; color: tomato !important;">rm</td>
+<td style="text-align: right;">0.6954</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">zn</td>
+<td style="text-align: left; font-weight: bold; color: steelblue !important;">zn</td>
+<td style="text-align: right;">0.3604</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">black</td>
+<td style="text-align: left; font-weight: bold; color: steelblue !important;">black</td>
+<td style="text-align: right;">0.3335</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">dis</td>
+<td style="text-align: left; font-weight: bold; color: steelblue !important;">dis</td>
+<td style="text-align: right;">0.2499</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">chas</td>
+<td style="text-align: left; font-weight: bold; color: steelblue !important;">chas</td>
+<td style="text-align: right;">0.1753</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">age</td>
+<td style="text-align: left; font-weight: bold; color: steelblue !important;">age</td>
+<td style="text-align: right;">-0.3770</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">rad</td>
+<td style="text-align: left; font-weight: bold; color: steelblue !important;">rad</td>
+<td style="text-align: right;">-0.3816</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">crim</td>
+<td style="text-align: left; font-weight: bold; color: steelblue !important;">crim</td>
+<td style="text-align: right;">-0.3883</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">nox</td>
+<td style="text-align: left; font-weight: bold; color: steelblue !important;">nox</td>
+<td style="text-align: right;">-0.4273</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">tax</td>
+<td style="text-align: left; font-weight: bold; color: steelblue !important;">tax</td>
+<td style="text-align: right;">-0.4685</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">indus</td>
+<td style="text-align: left; font-weight: bold; color: steelblue !important;">indus</td>
+<td style="text-align: right;">-0.4837</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">ptratio</td>
+<td style="text-align: left; font-weight: bold; color: tomato !important;">ptratio</td>
+<td style="text-align: right;">-0.5078</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">lstat</td>
+<td style="text-align: left; font-weight: bold; color: tomato !important;">lstat</td>
+<td style="text-align: right;">-0.7377</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="lab-task-2-ols-and-diagnostics" class="level2" data-number="20.4">
+<h2 data-number="20.4" class="anchored" data-anchor-id="lab-task-2-ols-and-diagnostics"><span class="header-section-number">20.4</span> Lab Task 2: OLS and Diagnostics</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>OLS Model Summary:</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Adj. R²: 0.7338 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Residual SE: 4.7453 </code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter10_regression_analysis_files/figure-html/lab-task2-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Regression Diagnostic Tests</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Test</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">p_value</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Decision</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Shapiro-Wilk (normality)</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left; font-weight: bold; color: tomato !important;">Violated ✗</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Breusch-Pagan (homoscedasticity)</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left; font-weight: bold; color: tomato !important;">Violated ✗</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">RESET (linearity)</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left; font-weight: bold; color: tomato !important;">Violated ✗</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="lab-task-3-model-comparison" class="level2" data-number="20.5">
+<h2 data-number="20.5" class="anchored" data-anchor-id="lab-task-3-model-comparison"><span class="header-section-number">20.5</span> Lab Task 3: Model Comparison</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Final Model Comparison: 10-Fold CV MSE</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Model</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th"># Parameters</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">CV MSE</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">GAM</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">104</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">8.962</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">OLS (full)</td>
+<td style="text-align: right;">13</td>
+<td style="text-align: right;">21.898</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Stepwise AIC</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: right;">21.903</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Lasso</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: right;">23.979</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Ridge</td>
+<td style="text-align: right;">13</td>
+<td style="text-align: right;">24.287</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="lab-task-4-gam-visualization" class="level2" data-number="20.6">
+<h2 data-number="20.6" class="anchored" data-anchor-id="lab-task-4-gam-visualization"><span class="header-section-number">20.6</span> Lab Task 4: GAM Visualization</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter10_regression_analysis_files/figure-html/lab-task4-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="lab-discussion-questions" class="level2" data-number="20.7">
+<h2 data-number="20.7" class="anchored" data-anchor-id="lab-discussion-questions"><span class="header-section-number">20.7</span> Lab Discussion Questions</h2>
+<p>Answer the following in writing:</p>
+<ol type="1">
+<li><p><strong>Assumption Violations:</strong> The diagnostic tests in Lab Task 2 reveal violations of homoscedasticity and linearity. What are the practical consequences for inference (confidence intervals and p-values) from the OLS model? How does the GAM address the linearity violation?</p></li>
+<li><p><strong>Regularization vs.&nbsp;Selection:</strong> Lasso performs variable selection automatically, while stepwise AIC uses sequential testing. Compare their CV MSEs. Which approach is more principled from a statistical perspective, and why?</p></li>
+<li><p><strong>GAM Interpretation:</strong> From the smooth term plots in Lab Task 4, describe the relationship between <code>lstat</code> (lower status population) and <code>medv</code>. Is it linear? At what values of <code>lstat</code> does the effect of additional lower-status population appear largest?</p></li>
+<li><p><strong>Model Recommendation:</strong> Based on the full comparison table, which model would you recommend for (a) a real estate valuation company that needs accurate predictions, and (b) a city planner who needs to understand which neighborhood characteristics drive housing prices?</p></li>
+<li><p><strong>The Bias-Variance Perspective:</strong> The GAM is the most flexible model but not necessarily the best by CV MSE. Explain this in terms of the bias-variance tradeoff. Under what conditions would the OLS model outperform the GAM in out-of-sample prediction?</p></li>
+</ol>
+<hr>
+</section>
+</section>
+<section id="chapter-summary" class="level1" data-number="21">
+<h1 data-number="21"><span class="header-section-number">21</span> Chapter Summary</h1>
+<section id="summary" class="level2" data-number="21.1">
+<h2 data-number="21.1" class="anchored" data-anchor-id="summary"><span class="header-section-number">21.1</span> Summary</h2>
+<p>This final chapter completed the regression toolkit from foundations to advanced methods:</p>
+<ul>
+<li><strong>Simple linear regression</strong> — OLS estimation, slope interpretation, <span class="math inline">\(R^2\)</span>, confidence vs.&nbsp;prediction intervals; the Gauss-Markov theorem justifies OLS under the LINE assumptions.</li>
+<li><strong>Multiple regression</strong> — partial effects, adjusted <span class="math inline">\(R^2\)</span>, F-test, multicollinearity (VIF), and the importance of controlling for confounders in observational data.</li>
+<li><strong>Regression diagnostics</strong> — the four diagnostic plots, formal tests (Shapiro-Wilk, Breusch-Pagan, RESET), Cook’s distance; transformations and robust SE as remedies.</li>
+<li><strong>Variable selection</strong> — AIC, BIC, stepwise methods, and cross-validation; stepwise has known statistical problems; CV is more principled.</li>
+<li><strong>Regularized regression</strong> — Ridge (L2) shrinks all coefficients; Lasso (L1) performs selection; <span class="math inline">\(\lambda\)</span> tuned by CV.</li>
+<li><strong>Non-linear regression</strong> — polynomial, spline, and GAM flexibly capture curved relationships while maintaining interpretability; GAM smooth plots are the key diagnostic output.</li>
+<li><strong>GLMs for count and categorical outcomes</strong> — Poisson regression for counts, with quasi-Poisson or Negative Binomial for overdispersion; link functions connect the linear predictor to the outcome scale.</li>
+</ul>
+<div class="callout callout-style-default callout-important callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Important</span>Key Formulas to Know
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>OLS Estimator:</strong> <span class="math display">\[\hat{\boldsymbol{\beta}} = (\mathbf{X}^T\mathbf{X})^{-1}\mathbf{X}^T\mathbf{Y}\]</span></p>
+<p><strong>Adjusted <span class="math inline">\(R^2\)</span>:</strong> <span class="math display">\[\bar{R}^2 = 1 - \frac{\text{RSS}/(n-p-1)}{\text{TSS}/(n-1)}\]</span></p>
+<p><strong>Ridge Objective:</strong> <span class="math display">\[\text{RSS} + \lambda\sum_{j}\beta_j^2\]</span></p>
+<p><strong>Lasso Objective:</strong> <span class="math display">\[\text{RSS} + \lambda\sum_{j}|\beta_j|\]</span></p>
+<p><strong>VIF:</strong> <span class="math display">\[\text{VIF}_j = \frac{1}{1 - R_j^2}\]</span></p>
+<p><strong>Poisson Log-Link:</strong> <span class="math display">\[\log(\mu_i) = \beta_0 + \boldsymbol{\beta}^T\mathbf{x}_i, \quad \text{IRR} = e^{\beta_j}\]</span></p>
+<p><strong>GAM:</strong> <span class="math display">\[Y = \beta_0 + \sum_{j=1}^{p} f_j(X_j) + \varepsilon\]</span></p>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="textbook-epilogue" class="level1" data-number="22">
+<h1 data-number="22"><span class="header-section-number">22</span> Textbook Epilogue</h1>
+<p>Congratulations on completing <em>Statistics for Data Science</em>. Over ten chapters, you have built a comprehensive statistical toolkit — from describing and visualizing data (Chapters 1–2), through the formal machinery of inference (Chapters 3–4), to the practical realities of data collection and preparation (Chapters 5–6), and finally to the analytical methods that drive modern data science (Chapters 7–10).</p>
+<p>The journey from descriptive statistics to dimension reduction, clustering, classification, and regression reflects the actual workflow of a data scientist: understand your data, prepare it carefully, find structure within it, and build models that are both accurate and interpretable.</p>
+<p>Three principles have threaded through every chapter:</p>
+<ol type="1">
+<li><p><strong>Assumptions matter.</strong> Every method rests on assumptions. Violating them silently is not an option — it is a research integrity issue. Always check and report.</p></li>
+<li><p><strong>Effect size and practical significance are as important as p-values.</strong> Statistical significance does not equal importance. Always accompany test results with measures of effect magnitude and uncertainty.</p></li>
+<li><p><strong>Generalization is the goal.</strong> Training accuracy, <span class="math inline">\(R^2\)</span>, and within-sample fit are not the end goal. Cross-validation, out-of-sample testing, and honest uncertainty quantification are.</p></li>
+</ol>
+<p>The field continues to evolve rapidly. The methods in this textbook are the stable, well-validated foundations — from here, you are equipped to engage with the research literature, implement new methods, and evaluate claims critically.</p>
+<p><em>Good luck with your research and data science practice.</em></p>
+<section id="references" class="level2" data-number="22.1">
+<h2 data-number="22.1" class="anchored" data-anchor-id="references"><span class="header-section-number">22.1</span> References</h2>
+<p>Box, G. E. P., &amp; Cox, D. R. (1964). An analysis of transformations. <em>Journal of the Royal Statistical Society: Series B</em>, <em>26</em>(2), 211–243.</p>
+<p>Breusch, T. S., &amp; Pagan, A. R. (1979). A simple test for heteroscedasticity and random coefficient variation. <em>Econometrica</em>, <em>47</em>(5), 1287–1294.</p>
+<p>Cook, R. D. (1977). Detection of influential observation in linear regression. <em>Technometrics</em>, <em>19</em>(1), 15–18.</p>
+<p>Durbin, J., &amp; Watson, G. S. (1950). Testing for serial correlation in least squares regression, I. <em>Biometrika</em>, <em>37</em>(3/4), 409–428.</p>
+<p>Fisher, R. A. (1925). <em>Statistical methods for research workers</em>. Oliver and Boyd.</p>
+<p>Fox, J., &amp; Weisberg, S. (2019). <em>An R companion to applied regression</em> (3rd ed.). SAGE.</p>
+<p>Friedman, J., Hastie, T., &amp; Tibshirani, R. (2010). Regularization paths for generalized linear models via coordinate descent. <em>Journal of Statistical Software</em>, <em>33</em>(1), 1–22.</p>
+<p>Harrison, D., &amp; Rubinfeld, D. L. (1978). Hedonic housing prices and the demand for clean air. <em>Journal of Environmental Economics and Management</em>, <em>5</em>(1), 81–102.</p>
+<p>Hastie, T., Tibshirani, R., &amp; Friedman, J. (2009). <em>The elements of statistical learning</em> (2nd ed.). Springer. https://hastie.su.domains/ElemStatLearn/</p>
+<p>Henderson, H. V., &amp; Velleman, P. F. (1981). Building multiple regression models interactively. <em>Biometrics</em>, <em>37</em>(2), 391–411.</p>
+<p>Hoerl, A. E., &amp; Kennard, R. W. (1970). Ridge regression: Biased estimation for nonorthogonal problems. <em>Technometrics</em>, <em>12</em>(1), 55–67.</p>
+<p>James, G., Witten, D., Hastie, T., &amp; Tibshirani, R. (2021). <em>An introduction to statistical learning with applications in R</em> (2nd ed.). Springer. https://www.statlearning.com</p>
+<p>McCullagh, P., &amp; Nelder, J. A. (1989). <em>Generalized linear models</em> (2nd ed.). Chapman and Hall.</p>
+<p>New York State Department of Conservation. (1973). <em>Daily air quality measurements in New York, May–September 1973</em>.</p>
+<p>Pedersen, T. L. (2022). <em>patchwork: The composer of plots</em> (R package version 1.1.2). https://CRAN.R-project.org/package=patchwork</p>
+<p>R Core Team. (2024). <em>R: A language and environment for statistical computing</em>. R Foundation for Statistical Computing. https://www.R-project.org/</p>
+<p>Ramsey, J. B. (1969). Tests for specification errors in classical linear least squares regression analysis. <em>Journal of the Royal Statistical Society: Series B</em>, <em>31</em>(2), 350–371.</p>
+<p>Robinson, D., Hayes, A., &amp; Couch, S. (2023). <em>broom: Convert statistical objects into tidy tibbles</em> (R package version 1.0.5). https://CRAN.R-project.org/package=broom</p>
+<p>Schwarz, G. (1978). Estimating the dimension of a model. <em>Annals of Statistics</em>, <em>6</em>(2), 461–464.</p>
+<p>Tibshirani, R. (1996). Regression shrinkage and selection via the Lasso. <em>Journal of the Royal Statistical Society: Series B</em>, <em>58</em>(1), 267–288.</p>
+<p>Venables, W. N., &amp; Ripley, B. D. (2002). <em>Modern applied statistics with S</em> (4th ed.). Springer.</p>
+<p>Wickham, H. (2016). <em>ggplot2: Elegant graphics for data analysis</em>. Springer.</p>
+<p>Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. <em>Journal of Open Source Software</em>, <em>4</em>(43), 1686.</p>
+<p>Wood, S. N. (2011). Fast stable restricted maximum likelihood and marginal likelihood estimation of semiparametric generalized linear models. <em>Journal of the Royal Statistical Society: Series B</em>, <em>73</em>(1), 3–36.</p>
+<p>Wood, S. N. (2023). <em>mgcv: Mixed GAM computation vehicle</em> (R package version 1.9-0). https://CRAN.R-project.org/package=mgcv</p>
+<p>Xie, Y. (2015). <em>Dynamic documents with R and knitr</em> (2nd ed.). CRC Press.</p>
+<p>Zeileis, A., &amp; Hothorn, T. (2002). Diagnostic checking in regression relationships. <em>R News</em>, <em>2</em>(3), 7–10.</p>
+<p>Zou, H., &amp; Hastie, T. (2005). Regularization and variable selection via the elastic net. <em>Journal of the Royal Statistical Society: Series B</em>, <em>67</em>(2), 301–320.</p>
+<hr>
+<p><em>End of Chapter 10 and the Textbook.</em></p>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./chapter09_data_classification.html" class="pagination-link" aria-label="Chapter 9: Data Classification">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Chapter 9: Data Classification</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

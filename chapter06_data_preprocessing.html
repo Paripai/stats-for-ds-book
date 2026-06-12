@@ -1,0 +1,2560 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.36">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+
+<title>7&nbsp; Chapter 6: Data Preprocessing – Statistics for Data Science</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+</style>
+
+
+<script src="site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="site_libs/quarto-nav/headroom.min.js"></script>
+<script src="site_libs/clipboard/clipboard.min.js"></script>
+<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="site_libs/quarto-search/fuse.min.js"></script>
+<script src="site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="./">
+<link href="./chapter07_dimension_reduction.html" rel="next">
+<link href="./chapter05_data_sampling.html" rel="prev">
+<script src="site_libs/quarto-html/quarto.js" type="module"></script>
+<script src="site_libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="site_libs/quarto-html/popper.min.js"></script>
+<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="site_libs/quarto-html/anchor.min.js"></script>
+<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="site_libs/quarto-html/quarto-syntax-highlighting-a06763021a52c43c40a351ac8b799b8f.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="site_libs/bootstrap/bootstrap-81de787dd4773dbc0001c2dc1cc3016d.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<script id="quarto-search-options" type="application/json">{
+  "location": "sidebar",
+  "copy-button": false,
+  "collapse-after": 3,
+  "panel-placement": "start",
+  "type": "textbox",
+  "limit": 50,
+  "keyboard-shortcut": [
+    "f",
+    "/",
+    "s"
+  ],
+  "show-item-context": false,
+  "language": {
+    "search-no-results-text": "No results",
+    "search-matching-documents-text": "matching documents",
+    "search-copy-link-title": "Copy link to search",
+    "search-hide-matches-text": "Hide additional matches",
+    "search-more-match-text": "more match in this document",
+    "search-more-matches-text": "more matches in this document",
+    "search-clear-button-title": "Clear",
+    "search-text-placeholder": "",
+    "search-detached-cancel-button-title": "Cancel",
+    "search-submit-button-title": "Submit",
+    "search-label": "Search"
+  }
+}</script>
+<script src="site_libs/kePrint-0.0.1/kePrint.js"></script>
+
+<link href="site_libs/lightable-0.0.1/lightable.css" rel="stylesheet">
+
+
+  <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
+  <script defer="" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml-full.js" type="text/javascript"></script>
+
+<script type="text/javascript">
+const typesetMath = (el) => {
+  if (window.MathJax) {
+    // MathJax Typeset
+    window.MathJax.typeset([el]);
+  } else if (window.katex) {
+    // KaTeX Render
+    var mathElements = el.getElementsByClassName("math");
+    var macros = [];
+    for (var i = 0; i < mathElements.length; i++) {
+      var texText = mathElements[i].firstChild;
+      if (mathElements[i].tagName == "SPAN" && texText && texText.data) {
+        window.katex.render(texText.data, mathElements[i], {
+          displayMode: mathElements[i].classList.contains('display'),
+          throwOnError: false,
+          macros: macros,
+          fleqn: false
+        });
+      }
+    }
+  }
+}
+window.Quarto = {
+  typesetMath
+};
+</script>
+
+</head>
+
+<body class="nav-sidebar floating quarto-light">
+
+<div id="quarto-search-results"></div>
+  <header id="quarto-header" class="headroom fixed-top">
+  <nav class="quarto-secondary-nav">
+    <div class="container-fluid d-flex">
+      <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" role="button" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
+        <i class="bi bi-layout-text-sidebar-reverse"></i>
+      </button>
+        <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="./chapter06_data_preprocessing.html"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Chapter 6: Data Preprocessing</span></a></li></ol></nav>
+        <a class="flex-grow-1" role="navigation" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
+        </a>
+      <button type="button" class="btn quarto-search-button" aria-label="Search" onclick="window.quartoOpenSearch();">
+        <i class="bi bi-search"></i>
+      </button>
+    </div>
+  </nav>
+</header>
+<!-- content -->
+<div id="quarto-content" class="quarto-container page-columns page-rows-contents page-layout-article">
+<!-- sidebar -->
+  <nav id="quarto-sidebar" class="sidebar collapse collapse-horizontal quarto-sidebar-collapse-item sidebar-navigation floating overflow-auto">
+    <div class="pt-lg-2 mt-2 text-left sidebar-header">
+    <div class="sidebar-title mb-0 py-0">
+      <a href="./">Statistics for Data Science</a> 
+        <div class="sidebar-tools-main">
+    <a href="./Statistics-for-Data-Science.pdf" title="Download PDF" class="quarto-navigation-tool px-1" aria-label="Download PDF"><i class="bi bi-file-pdf"></i></a>
+</div>
+    </div>
+      </div>
+        <div class="mt-2 flex-shrink-0 align-items-center">
+        <div class="sidebar-search">
+        <div id="quarto-search" class="" title="Search"></div>
+        </div>
+        </div>
+    <div class="sidebar-menu-container"> 
+    <ul class="list-unstyled mt-1">
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./index.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">1</span>&nbsp; <span class="chapter-title">Preface</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter01_descriptive_statistics.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">2</span>&nbsp; <span class="chapter-title">Chapter 1: Descriptive Statistics</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter02_data_distribution_probability.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">3</span>&nbsp; <span class="chapter-title">Chapter 2: Data Distribution and Probability</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter03_hypothesis_testing.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">4</span>&nbsp; <span class="chapter-title">Chapter 3: Hypothesis Testing</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter04_test_of_independence.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">5</span>&nbsp; <span class="chapter-title">Chapter 4: Test of Independence of Variables</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter05_data_sampling.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Chapter 5: Data Sampling Techniques</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter06_data_preprocessing.html" class="sidebar-item-text sidebar-link active">
+ <span class="menu-text"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Chapter 6: Data Preprocessing</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter07_dimension_reduction.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Chapter 7: Data Dimension Reduction</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter08_data_clustering.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">9</span>&nbsp; <span class="chapter-title">Chapter 8: Data Clustering</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter09_data_classification.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">10</span>&nbsp; <span class="chapter-title">Chapter 9: Data Classification</span></span></a>
+  </div>
+</li>
+        <li class="sidebar-item">
+  <div class="sidebar-item-container"> 
+  <a href="./chapter10_regression_analysis.html" class="sidebar-item-text sidebar-link">
+ <span class="menu-text"><span class="chapter-number">11</span>&nbsp; <span class="chapter-title">Chapter 10: Regression Analysis</span></span></a>
+  </div>
+</li>
+    </ul>
+    </div>
+</nav>
+<div id="quarto-sidebar-glass" class="quarto-sidebar-collapse-item" data-bs-toggle="collapse" data-bs-target=".quarto-sidebar-collapse-item"></div>
+<!-- margin-sidebar -->
+    <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+        <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Contents</h2>
+   
+  <ul>
+  <li><a href="#chapter-overview" id="toc-chapter-overview" class="nav-link active" data-scroll-target="#chapter-overview"><span class="header-section-number">8</span> Chapter Overview</a>
+  <ul class="collapse">
+  <li><a href="#introduction" id="toc-introduction" class="nav-link" data-scroll-target="#introduction"><span class="header-section-number">8.1</span> Introduction</a></li>
+  </ul></li>
+  <li><a href="#why-preprocessing-matters" id="toc-why-preprocessing-matters" class="nav-link" data-scroll-target="#why-preprocessing-matters"><span class="header-section-number">9</span> Why Preprocessing Matters</a>
+  <ul class="collapse">
+  <li><a href="#introduction-1" id="toc-introduction-1" class="nav-link" data-scroll-target="#introduction-1"><span class="header-section-number">9.1</span> Introduction</a></li>
+  <li><a href="#theory" id="toc-theory" class="nav-link" data-scroll-target="#theory"><span class="header-section-number">9.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#the-data-preprocessing-pipeline" id="toc-the-data-preprocessing-pipeline" class="nav-link" data-scroll-target="#the-data-preprocessing-pipeline"><span class="header-section-number">9.2.1</span> The Data Preprocessing Pipeline</a></li>
+  <li><a href="#why-each-step-matters" id="toc-why-each-step-matters" class="nav-link" data-scroll-target="#why-each-step-matters"><span class="header-section-number">9.2.2</span> Why Each Step Matters</a></li>
+  <li><a href="#the-leakage-problem" id="toc-the-leakage-problem" class="nav-link" data-scroll-target="#the-leakage-problem"><span class="header-section-number">9.2.3</span> The Leakage Problem</a></li>
+  </ul></li>
+  <li><a href="#example-the-cost-of-skipping-preprocessing" id="toc-example-the-cost-of-skipping-preprocessing" class="nav-link" data-scroll-target="#example-the-cost-of-skipping-preprocessing"><span class="header-section-number">9.3</span> Example: The Cost of Skipping Preprocessing</a></li>
+  <li><a href="#r-example-initial-data-inspection" id="toc-r-example-initial-data-inspection" class="nav-link" data-scroll-target="#r-example-initial-data-inspection"><span class="header-section-number">9.4</span> R Example: Initial Data Inspection</a></li>
+  <li><a href="#exercises" id="toc-exercises" class="nav-link" data-scroll-target="#exercises"><span class="header-section-number">9.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#handling-missing-data" id="toc-handling-missing-data" class="nav-link" data-scroll-target="#handling-missing-data"><span class="header-section-number">10</span> Handling Missing Data</a>
+  <ul class="collapse">
+  <li><a href="#introduction-2" id="toc-introduction-2" class="nav-link" data-scroll-target="#introduction-2"><span class="header-section-number">10.1</span> Introduction</a></li>
+  <li><a href="#theory-1" id="toc-theory-1" class="nav-link" data-scroll-target="#theory-1"><span class="header-section-number">10.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#types-of-missingness" id="toc-types-of-missingness" class="nav-link" data-scroll-target="#types-of-missingness"><span class="header-section-number">10.2.1</span> Types of Missingness</a></li>
+  <li><a href="#strategies-for-handling-missing-data" id="toc-strategies-for-handling-missing-data" class="nav-link" data-scroll-target="#strategies-for-handling-missing-data"><span class="header-section-number">10.2.2</span> Strategies for Handling Missing Data</a></li>
+  <li><a href="#diagnosing-the-missingness-mechanism" id="toc-diagnosing-the-missingness-mechanism" class="nav-link" data-scroll-target="#diagnosing-the-missingness-mechanism"><span class="header-section-number">10.2.3</span> Diagnosing the Missingness Mechanism</a></li>
+  </ul></li>
+  <li><a href="#example-missing-data-in-a-clinical-study" id="toc-example-missing-data-in-a-clinical-study" class="nav-link" data-scroll-target="#example-missing-data-in-a-clinical-study"><span class="header-section-number">10.3</span> Example: Missing Data in a Clinical Study</a></li>
+  <li><a href="#r-example-missing-data-analysis-and-imputation" id="toc-r-example-missing-data-analysis-and-imputation" class="nav-link" data-scroll-target="#r-example-missing-data-analysis-and-imputation"><span class="header-section-number">10.4</span> R Example: Missing Data Analysis and Imputation</a></li>
+  <li><a href="#exercises-1" id="toc-exercises-1" class="nav-link" data-scroll-target="#exercises-1"><span class="header-section-number">10.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#outlier-detection-and-treatment" id="toc-outlier-detection-and-treatment" class="nav-link" data-scroll-target="#outlier-detection-and-treatment"><span class="header-section-number">11</span> Outlier Detection and Treatment</a>
+  <ul class="collapse">
+  <li><a href="#introduction-3" id="toc-introduction-3" class="nav-link" data-scroll-target="#introduction-3"><span class="header-section-number">11.1</span> Introduction</a></li>
+  <li><a href="#theory-2" id="toc-theory-2" class="nav-link" data-scroll-target="#theory-2"><span class="header-section-number">11.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#univariate-methods" id="toc-univariate-methods" class="nav-link" data-scroll-target="#univariate-methods"><span class="header-section-number">11.2.1</span> Univariate Methods</a></li>
+  <li><a href="#multivariate-methods" id="toc-multivariate-methods" class="nav-link" data-scroll-target="#multivariate-methods"><span class="header-section-number">11.2.2</span> Multivariate Methods</a></li>
+  <li><a href="#treatment-options" id="toc-treatment-options" class="nav-link" data-scroll-target="#treatment-options"><span class="header-section-number">11.2.3</span> Treatment Options</a></li>
+  </ul></li>
+  <li><a href="#example-outlier-detection" id="toc-example-outlier-detection" class="nav-link" data-scroll-target="#example-outlier-detection"><span class="header-section-number">11.3</span> Example: Outlier Detection</a></li>
+  <li><a href="#r-example-outlier-detection-and-treatment" id="toc-r-example-outlier-detection-and-treatment" class="nav-link" data-scroll-target="#r-example-outlier-detection-and-treatment"><span class="header-section-number">11.4</span> R Example: Outlier Detection and Treatment</a></li>
+  <li><a href="#exercises-2" id="toc-exercises-2" class="nav-link" data-scroll-target="#exercises-2"><span class="header-section-number">11.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#data-transformation" id="toc-data-transformation" class="nav-link" data-scroll-target="#data-transformation"><span class="header-section-number">12</span> Data Transformation</a>
+  <ul class="collapse">
+  <li><a href="#introduction-4" id="toc-introduction-4" class="nav-link" data-scroll-target="#introduction-4"><span class="header-section-number">12.1</span> Introduction</a></li>
+  <li><a href="#theory-3" id="toc-theory-3" class="nav-link" data-scroll-target="#theory-3"><span class="header-section-number">12.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#log-transformation" id="toc-log-transformation" class="nav-link" data-scroll-target="#log-transformation"><span class="header-section-number">12.2.1</span> Log Transformation</a></li>
+  <li><a href="#square-root-transformation" id="toc-square-root-transformation" class="nav-link" data-scroll-target="#square-root-transformation"><span class="header-section-number">12.2.2</span> Square Root Transformation</a></li>
+  <li><a href="#box-cox-transformation" id="toc-box-cox-transformation" class="nav-link" data-scroll-target="#box-cox-transformation"><span class="header-section-number">12.2.3</span> Box-Cox Transformation</a></li>
+  <li><a href="#yeo-johnson-transformation" id="toc-yeo-johnson-transformation" class="nav-link" data-scroll-target="#yeo-johnson-transformation"><span class="header-section-number">12.2.4</span> Yeo-Johnson Transformation</a></li>
+  <li><a href="#normalization-vs.-standardization" id="toc-normalization-vs.-standardization" class="nav-link" data-scroll-target="#normalization-vs.-standardization"><span class="header-section-number">12.2.5</span> Normalization vs.&nbsp;Standardization</a></li>
+  </ul></li>
+  <li><a href="#example-choosing-a-transformation" id="toc-example-choosing-a-transformation" class="nav-link" data-scroll-target="#example-choosing-a-transformation"><span class="header-section-number">12.3</span> Example: Choosing a Transformation</a></li>
+  <li><a href="#r-example-data-transformations" id="toc-r-example-data-transformations" class="nav-link" data-scroll-target="#r-example-data-transformations"><span class="header-section-number">12.4</span> R Example: Data Transformations</a></li>
+  <li><a href="#exercises-3" id="toc-exercises-3" class="nav-link" data-scroll-target="#exercises-3"><span class="header-section-number">12.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#encoding-categorical-variables" id="toc-encoding-categorical-variables" class="nav-link" data-scroll-target="#encoding-categorical-variables"><span class="header-section-number">13</span> Encoding Categorical Variables</a>
+  <ul class="collapse">
+  <li><a href="#introduction-5" id="toc-introduction-5" class="nav-link" data-scroll-target="#introduction-5"><span class="header-section-number">13.1</span> Introduction</a></li>
+  <li><a href="#theory-4" id="toc-theory-4" class="nav-link" data-scroll-target="#theory-4"><span class="header-section-number">13.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#dummy-coding-treatment-coding" id="toc-dummy-coding-treatment-coding" class="nav-link" data-scroll-target="#dummy-coding-treatment-coding"><span class="header-section-number">13.2.1</span> Dummy Coding (Treatment Coding)</a></li>
+  <li><a href="#one-hot-encoding" id="toc-one-hot-encoding" class="nav-link" data-scroll-target="#one-hot-encoding"><span class="header-section-number">13.2.2</span> One-Hot Encoding</a></li>
+  <li><a href="#ordinal-encoding" id="toc-ordinal-encoding" class="nav-link" data-scroll-target="#ordinal-encoding"><span class="header-section-number">13.2.3</span> Ordinal Encoding</a></li>
+  <li><a href="#target-encoding-mean-encoding" id="toc-target-encoding-mean-encoding" class="nav-link" data-scroll-target="#target-encoding-mean-encoding"><span class="header-section-number">13.2.4</span> Target Encoding (Mean Encoding)</a></li>
+  <li><a href="#binary-encoding" id="toc-binary-encoding" class="nav-link" data-scroll-target="#binary-encoding"><span class="header-section-number">13.2.5</span> Binary Encoding</a></li>
+  <li><a href="#encoding-selection-guide" id="toc-encoding-selection-guide" class="nav-link" data-scroll-target="#encoding-selection-guide"><span class="header-section-number">13.2.6</span> Encoding Selection Guide</a></li>
+  </ul></li>
+  <li><a href="#example-encoding-faculty-variable" id="toc-example-encoding-faculty-variable" class="nav-link" data-scroll-target="#example-encoding-faculty-variable"><span class="header-section-number">13.3</span> Example: Encoding Faculty Variable</a></li>
+  <li><a href="#r-example-categorical-encoding" id="toc-r-example-categorical-encoding" class="nav-link" data-scroll-target="#r-example-categorical-encoding"><span class="header-section-number">13.4</span> R Example: Categorical Encoding</a></li>
+  <li><a href="#exercises-4" id="toc-exercises-4" class="nav-link" data-scroll-target="#exercises-4"><span class="header-section-number">13.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#feature-scaling" id="toc-feature-scaling" class="nav-link" data-scroll-target="#feature-scaling"><span class="header-section-number">14</span> Feature Scaling</a>
+  <ul class="collapse">
+  <li><a href="#introduction-6" id="toc-introduction-6" class="nav-link" data-scroll-target="#introduction-6"><span class="header-section-number">14.1</span> Introduction</a></li>
+  <li><a href="#theory-5" id="toc-theory-5" class="nav-link" data-scroll-target="#theory-5"><span class="header-section-number">14.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#min-max-normalization" id="toc-min-max-normalization" class="nav-link" data-scroll-target="#min-max-normalization"><span class="header-section-number">14.2.1</span> Min-Max Normalization</a></li>
+  <li><a href="#z-score-standardization" id="toc-z-score-standardization" class="nav-link" data-scroll-target="#z-score-standardization"><span class="header-section-number">14.2.2</span> Z-Score Standardization</a></li>
+  <li><a href="#robust-scaling" id="toc-robust-scaling" class="nav-link" data-scroll-target="#robust-scaling"><span class="header-section-number">14.2.3</span> Robust Scaling</a></li>
+  <li><a href="#maxabs-scaling" id="toc-maxabs-scaling" class="nav-link" data-scroll-target="#maxabs-scaling"><span class="header-section-number">14.2.4</span> MaxAbs Scaling</a></li>
+  <li><a href="#when-to-scale" id="toc-when-to-scale" class="nav-link" data-scroll-target="#when-to-scale"><span class="header-section-number">14.2.5</span> When to Scale</a></li>
+  </ul></li>
+  <li><a href="#example-effect-of-scaling-on-knn" id="toc-example-effect-of-scaling-on-knn" class="nav-link" data-scroll-target="#example-effect-of-scaling-on-knn"><span class="header-section-number">14.3</span> Example: Effect of Scaling on KNN</a></li>
+  <li><a href="#r-example-feature-scaling" id="toc-r-example-feature-scaling" class="nav-link" data-scroll-target="#r-example-feature-scaling"><span class="header-section-number">14.4</span> R Example: Feature Scaling</a></li>
+  <li><a href="#exercises-5" id="toc-exercises-5" class="nav-link" data-scroll-target="#exercises-5"><span class="header-section-number">14.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#data-integration-and-reshaping" id="toc-data-integration-and-reshaping" class="nav-link" data-scroll-target="#data-integration-and-reshaping"><span class="header-section-number">15</span> Data Integration and Reshaping</a>
+  <ul class="collapse">
+  <li><a href="#introduction-7" id="toc-introduction-7" class="nav-link" data-scroll-target="#introduction-7"><span class="header-section-number">15.1</span> Introduction</a></li>
+  <li><a href="#theory-6" id="toc-theory-6" class="nav-link" data-scroll-target="#theory-6"><span class="header-section-number">15.2</span> Theory</a>
+  <ul class="collapse">
+  <li><a href="#tidy-data-principles" id="toc-tidy-data-principles" class="nav-link" data-scroll-target="#tidy-data-principles"><span class="header-section-number">15.2.1</span> Tidy Data Principles</a></li>
+  <li><a href="#pivoting-wide-long" id="toc-pivoting-wide-long" class="nav-link" data-scroll-target="#pivoting-wide-long"><span class="header-section-number">15.2.2</span> Pivoting: Wide ↔︎ Long</a></li>
+  <li><a href="#joining-tables" id="toc-joining-tables" class="nav-link" data-scroll-target="#joining-tables"><span class="header-section-number">15.2.3</span> Joining Tables</a></li>
+  <li><a href="#string-and-date-handling" id="toc-string-and-date-handling" class="nav-link" data-scroll-target="#string-and-date-handling"><span class="header-section-number">15.2.4</span> String and Date Handling</a></li>
+  </ul></li>
+  <li><a href="#example-reshaping-for-analysis" id="toc-example-reshaping-for-analysis" class="nav-link" data-scroll-target="#example-reshaping-for-analysis"><span class="header-section-number">15.3</span> Example: Reshaping for Analysis</a></li>
+  <li><a href="#r-example-data-integration-and-reshaping" id="toc-r-example-data-integration-and-reshaping" class="nav-link" data-scroll-target="#r-example-data-integration-and-reshaping"><span class="header-section-number">15.4</span> R Example: Data Integration and Reshaping</a></li>
+  <li><a href="#exercises-6" id="toc-exercises-6" class="nav-link" data-scroll-target="#exercises-6"><span class="header-section-number">15.5</span> Exercises</a></li>
+  </ul></li>
+  <li><a href="#chapter-lab-activity-full-preprocessing-pipeline-with-msleep" id="toc-chapter-lab-activity-full-preprocessing-pipeline-with-msleep" class="nav-link" data-scroll-target="#chapter-lab-activity-full-preprocessing-pipeline-with-msleep"><span class="header-section-number">16</span> Chapter Lab Activity: Full Preprocessing Pipeline with <code>msleep</code></a>
+  <ul class="collapse">
+  <li><a href="#objectives" id="toc-objectives" class="nav-link" data-scroll-target="#objectives"><span class="header-section-number">16.1</span> Objectives</a></li>
+  <li><a href="#the-dataset" id="toc-the-dataset" class="nav-link" data-scroll-target="#the-dataset"><span class="header-section-number">16.2</span> The Dataset</a></li>
+  <li><a href="#lab-task-1-missing-data-handling" id="toc-lab-task-1-missing-data-handling" class="nav-link" data-scroll-target="#lab-task-1-missing-data-handling"><span class="header-section-number">16.3</span> Lab Task 1: Missing Data Handling</a></li>
+  <li><a href="#lab-task-2-outlier-detection" id="toc-lab-task-2-outlier-detection" class="nav-link" data-scroll-target="#lab-task-2-outlier-detection"><span class="header-section-number">16.4</span> Lab Task 2: Outlier Detection</a></li>
+  <li><a href="#lab-task-3-transformation" id="toc-lab-task-3-transformation" class="nav-link" data-scroll-target="#lab-task-3-transformation"><span class="header-section-number">16.5</span> Lab Task 3: Transformation</a></li>
+  <li><a href="#lab-task-4-encoding-and-scaling" id="toc-lab-task-4-encoding-and-scaling" class="nav-link" data-scroll-target="#lab-task-4-encoding-and-scaling"><span class="header-section-number">16.6</span> Lab Task 4: Encoding and Scaling</a></li>
+  <li><a href="#lab-task-5-final-clean-dataset-and-visualization" id="toc-lab-task-5-final-clean-dataset-and-visualization" class="nav-link" data-scroll-target="#lab-task-5-final-clean-dataset-and-visualization"><span class="header-section-number">16.7</span> Lab Task 5: Final Clean Dataset and Visualization</a></li>
+  <li><a href="#lab-discussion-questions" id="toc-lab-discussion-questions" class="nav-link" data-scroll-target="#lab-discussion-questions"><span class="header-section-number">16.8</span> Lab Discussion Questions</a></li>
+  </ul></li>
+  <li><a href="#chapter-summary" id="toc-chapter-summary" class="nav-link" data-scroll-target="#chapter-summary"><span class="header-section-number">17</span> Chapter Summary</a>
+  <ul class="collapse">
+  <li><a href="#summary" id="toc-summary" class="nav-link" data-scroll-target="#summary"><span class="header-section-number">17.1</span> Summary</a></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">17.2</span> References</a></li>
+  </ul></li>
+  </ul>
+</nav>
+    </div>
+<!-- main -->
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title"><span class="chapter-number">7</span>&nbsp; <span class="chapter-title">Chapter 6: Data Preprocessing</span></h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<hr>
+<section id="chapter-overview" class="level1" data-number="8">
+<h1 data-number="8"><span class="header-section-number">8</span> Chapter Overview</h1>
+<section id="introduction" class="level2" data-number="8.1">
+<h2 data-number="8.1" class="anchored" data-anchor-id="introduction"><span class="header-section-number">8.1</span> Introduction</h2>
+<p>Raw data is almost never ready for analysis. In practice, data scientists spend the majority of their time — estimates range from 60% to 80% — cleaning, transforming, and preparing data before any modeling begins. This is not merely a technical chore: the decisions made during preprocessing directly shape the conclusions drawn from the analysis. A model trained on poorly preprocessed data is unreliable regardless of its algorithmic sophistication.</p>
+<p>This chapter covers:</p>
+<ul>
+<li><strong>Why Preprocessing Matters</strong> — the preprocessing pipeline and its role in data science</li>
+<li><strong>Handling Missing Data</strong> — types of missingness, deletion strategies, and imputation</li>
+<li><strong>Outlier Detection and Treatment</strong> — IQR, z-score, and multivariate methods</li>
+<li><strong>Data Transformation</strong> — log, Box-Cox, normalization, and standardization</li>
+<li><strong>Encoding Categorical Variables</strong> — dummy, one-hot, ordinal, and target encoding</li>
+<li><strong>Feature Scaling</strong> — min-max, z-score, and robust scaling</li>
+<li><strong>Data Integration and Reshaping</strong> — merging, pivoting, and tidy data principles</li>
+</ul>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>Learning Objectives
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>By the end of this chapter, you will be able to:</p>
+<ol type="1">
+<li>Describe the role of preprocessing in the data science pipeline.</li>
+<li>Identify the type of missingness and apply appropriate handling strategies.</li>
+<li>Detect and treat outliers using univariate and multivariate methods.</li>
+<li>Apply appropriate transformations to correct distributional issues.</li>
+<li>Encode categorical variables correctly for statistical and machine learning models.</li>
+<li>Scale features appropriately for distance-based and gradient-based algorithms.</li>
+<li>Reshape and integrate data using tidyverse tools following tidy data principles.</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="why-preprocessing-matters" class="level1" data-number="9">
+<h1 data-number="9"><span class="header-section-number">9</span> Why Preprocessing Matters</h1>
+<section id="introduction-1" class="level2" data-number="9.1">
+<h2 data-number="9.1" class="anchored" data-anchor-id="introduction-1"><span class="header-section-number">9.1</span> Introduction</h2>
+<p>The phrase <strong>“garbage in, garbage out”</strong> (GIGO) captures a fundamental truth in data science: the quality of any analysis is bounded by the quality of its input data. Missing values, outliers, inconsistent formatting, wrong data types, and poorly scaled features can silently distort statistical estimates, inflate model error, and lead to conclusions that seem analytically sound but are empirically baseless. Preprocessing is the systematic process of transforming raw data into a form suitable for analysis.</p>
+</section>
+<section id="theory" class="level2" data-number="9.2">
+<h2 data-number="9.2" class="anchored" data-anchor-id="theory"><span class="header-section-number">9.2</span> Theory</h2>
+<section id="the-data-preprocessing-pipeline" class="level3" data-number="9.2.1">
+<h3 data-number="9.2.1" class="anchored" data-anchor-id="the-data-preprocessing-pipeline"><span class="header-section-number">9.2.1</span> The Data Preprocessing Pipeline</h3>
+<p>A typical preprocessing pipeline consists of sequential steps applied before modeling:</p>
+<pre><code>Raw Data
+    ↓
+1. Data Inspection      — understand structure, types, missingness
+    ↓
+2. Missing Data         — identify, understand, and handle NAs
+    ↓
+3. Outlier Treatment    — detect and decide: remove, cap, or keep
+    ↓
+4. Transformation       — correct distributional shape
+    ↓
+5. Encoding             — convert categorical to numeric
+    ↓
+6. Scaling              — normalize feature magnitudes
+    ↓
+7. Integration          — merge sources, reshape to tidy format
+    ↓
+Clean Data → Analysis / Modeling</code></pre>
+<p>The order matters: outliers should be addressed before scaling; missing data should be handled before transformation; encoding precedes scaling for newly created numeric features.</p>
+</section>
+<section id="why-each-step-matters" class="level3" data-number="9.2.2">
+<h3 data-number="9.2.2" class="anchored" data-anchor-id="why-each-step-matters"><span class="header-section-number">9.2.2</span> Why Each Step Matters</h3>
+<table class="table-striped caption-top table">
+<caption>Consequences of skipping preprocessing steps</caption>
+<colgroup>
+<col style="width: 14%">
+<col style="width: 46%">
+<col style="width: 38%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Issue</th>
+<th>Consequence if Ignored</th>
+<th>Preprocessing Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Missing values</td>
+<td>Biased estimates, model errors</td>
+<td>Imputation or deletion</td>
+</tr>
+<tr class="even">
+<td>Outliers</td>
+<td>Inflated variance, distorted means</td>
+<td>Detection + treatment</td>
+</tr>
+<tr class="odd">
+<td>Skewed distributions</td>
+<td>Violated normality assumptions</td>
+<td>Log/Box-Cox transformation</td>
+</tr>
+<tr class="even">
+<td>Mixed scales</td>
+<td>Distance-based models dominated by large-scale features</td>
+<td>Standardization</td>
+</tr>
+<tr class="odd">
+<td>Raw categories</td>
+<td>Most algorithms require numeric input</td>
+<td>Encoding</td>
+</tr>
+<tr class="even">
+<td>Inconsistent formats</td>
+<td>Merge failures, incorrect grouping</td>
+<td>Cleaning + reshaping</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="the-leakage-problem" class="level3" data-number="9.2.3">
+<h3 data-number="9.2.3" class="anchored" data-anchor-id="the-leakage-problem"><span class="header-section-number">9.2.3</span> The Leakage Problem</h3>
+<p>A critical principle in preprocessing: <strong>all transformations must be fitted on training data only and then applied to test data</strong>. Fitting a scaler or imputer on the full dataset before splitting allows test set information to “leak” into the training process, producing overly optimistic performance estimates. This is why preprocessing pipelines (like <code>recipes</code> in R or <code>sklearn.pipeline</code> in Python) are best practice — they enforce the correct order of operations and prevent leakage.</p>
+</section>
+</section>
+<section id="example-the-cost-of-skipping-preprocessing" class="level2" data-number="9.3">
+<h2 data-number="9.3" class="anchored" data-anchor-id="example-the-cost-of-skipping-preprocessing"><span class="header-section-number">9.3</span> Example: The Cost of Skipping Preprocessing</h2>
+<p><strong>Example 6.1.</strong> A data scientist trains a regression model to predict hospital readmission risk. The dataset has:</p>
+<ul>
+<li>18% missing values in the key predictor “number of prior admissions” (not handled → model drops these rows, losing 18% of data and biasing toward patients with complete records)</li>
+<li>One outlier patient with 47 prior admissions (not handled → inflates the regression slope)</li>
+<li>Age in years and income in dollars (not scaled → income dominates distance calculations)</li>
+<li>Insurance type as a string variable (not encoded → model crashes or silently drops it)</li>
+</ul>
+<p>Each issue independently degrades model performance. Together, they produce a model that is unreliable despite sophisticated methodology.</p>
+</section>
+<section id="r-example-initial-data-inspection" class="level2" data-number="9.4">
+<h2 data-number="9.4" class="anchored" data-anchor-id="r-example-initial-data-inspection"><span class="header-section-number">9.4</span> R Example: Initial Data Inspection</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>=== Dataset Structure ===</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Rows: 153
+Columns: 6
+$ Ozone   &lt;int&gt; 41, 36, 12, 18, NA, 28, 23, 19, 8, NA, 7, 16, 11, 14, 18, 14, …
+$ Solar.R &lt;int&gt; 190, 118, 149, 313, NA, NA, 299, 99, 19, 194, NA, 256, 290, 27…
+$ Wind    &lt;dbl&gt; 7.4, 8.0, 12.6, 11.5, 14.3, 14.9, 8.6, 13.8, 20.1, 8.6, 6.9, 9…
+$ Temp    &lt;int&gt; 67, 72, 74, 62, 56, 66, 65, 59, 61, 69, 74, 69, 66, 68, 58, 64…
+$ Month   &lt;int&gt; 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,…
+$ Day     &lt;int&gt; 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18,…</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+=== Missing Values ===</code></pre>
+</div>
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Variable Overview and Missing Data</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Variable</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Type</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">N Missing</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">% Missing</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Ozone</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: right;">37</td>
+<td style="text-align: right; font-weight: bold; color: tomato !important;">24.2</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Solar.R</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: right; font-weight: bold; color: tomato !important;">4.6</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Wind</td>
+<td style="text-align: left;">numeric</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right; font-weight: bold; color: darkgreen !important;">0.0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Temp</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right; font-weight: bold; color: darkgreen !important;">0.0</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Month</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right; font-weight: bold; color: darkgreen !important;">0.0</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Day</td>
+<td style="text-align: left;">integer</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right; font-weight: bold; color: darkgreen !important;">0.0</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>     Ozone           Solar.R           Wind             Temp      
+ Min.   :  1.00   Min.   :  7.0   Min.   : 1.700   Min.   :56.00  
+ 1st Qu.: 18.00   1st Qu.:115.8   1st Qu.: 7.400   1st Qu.:72.00  
+ Median : 31.50   Median :205.0   Median : 9.700   Median :79.00  
+ Mean   : 42.13   Mean   :185.9   Mean   : 9.958   Mean   :77.88  
+ 3rd Qu.: 63.25   3rd Qu.:258.8   3rd Qu.:11.500   3rd Qu.:85.00  
+ Max.   :168.00   Max.   :334.0   Max.   :20.700   Max.   :97.00  
+ NA's   :37       NA's   :7                                       
+     Month            Day      
+ Min.   :5.000   Min.   : 1.0  
+ 1st Qu.:6.000   1st Qu.: 8.0  
+ Median :7.000   Median :16.0  
+ Mean   :6.993   Mean   :15.8  
+ 3rd Qu.:8.000   3rd Qu.:23.0  
+ Max.   :9.000   Max.   :31.0  
+                               </code></pre>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>glimpse()</code> provides a compact structural overview: variable names, types, and first few values — always the first step.</li>
+<li>Building a custom <code>miss_summary</code> data frame is more informative than <code>is.na()</code> alone — it quantifies the scale of the missing data problem per variable.</li>
+<li><code>summary()</code> gives a quick distributional picture including min, max, quartiles, and NA counts — useful for spotting impossible values and gross outliers.</li>
+</ul>
+</section>
+<section id="exercises" class="level2" data-number="9.5">
+<h2 data-number="9.5" class="anchored" data-anchor-id="exercises"><span class="header-section-number">9.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 6.1
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Load the <code>mtcars</code> dataset and perform a full initial inspection:</p>
+<ol type="a">
+<li>Check variable types with <code>str()</code> and <code>glimpse()</code>. Which variables are stored incorrectly?</li>
+<li>Create a missing value summary table. Are there any missing values?</li>
+<li>Use <code>summary()</code> to identify any suspicious values (impossible ranges, extreme outliers).</li>
+<li>Write a 100-word “data quality report” describing the state of the data before preprocessing.</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="handling-missing-data" class="level1" data-number="10">
+<h1 data-number="10"><span class="header-section-number">10</span> Handling Missing Data</h1>
+<section id="introduction-2" class="level2" data-number="10.1">
+<h2 data-number="10.1" class="anchored" data-anchor-id="introduction-2"><span class="header-section-number">10.1</span> Introduction</h2>
+<p>Missing data is one of the most pervasive problems in real-world datasets. How missing values are handled has a profound effect on the validity of subsequent analysis — and the wrong strategy can introduce bias far worse than the original missingness. The first step is always to understand <strong>why</strong> data is missing, because the appropriate handling strategy depends on the mechanism of missingness.</p>
+</section>
+<section id="theory-1" class="level2" data-number="10.2">
+<h2 data-number="10.2" class="anchored" data-anchor-id="theory-1"><span class="header-section-number">10.2</span> Theory</h2>
+<section id="types-of-missingness" class="level3" data-number="10.2.1">
+<h3 data-number="10.2.1" class="anchored" data-anchor-id="types-of-missingness"><span class="header-section-number">10.2.1</span> Types of Missingness</h3>
+<p><strong>Little and Rubin (1987)</strong> established the canonical taxonomy of missing data mechanisms:</p>
+<p><strong>Missing Completely At Random (MCAR):</strong> The probability of missingness is unrelated to any variable — observed or missing. The missing data is a random subsample of the complete data.</p>
+<p><span class="math display">\[P(\text{missing} \mid Y_{\text{obs}}, Y_{\text{mis}}) = P(\text{missing})\]</span></p>
+<p><em>Example:</em> A sensor randomly malfunctions regardless of the measurement value. MCAR is the most benign mechanism — complete case analysis (listwise deletion) is unbiased, though it loses power.</p>
+<p><strong>Missing At Random (MAR):</strong> The probability of missingness depends on <strong>observed</strong> variables but not on the missing values themselves — after conditioning on observed data.</p>
+<p><span class="math display">\[P(\text{missing} \mid Y_{\text{obs}}, Y_{\text{mis}}) = P(\text{missing} \mid Y_{\text{obs}})\]</span></p>
+<p><em>Example:</em> Older patients are less likely to complete a digital survey (age is observed; the missing survey responses are not related to their content). MAR is the most common mechanism and supports valid imputation.</p>
+<p><strong>Missing Not At Random (MNAR):</strong> The probability of missingness depends on the <strong>missing values themselves</strong> — even after conditioning on observed data.</p>
+<p><span class="math display">\[P(\text{missing} \mid Y_{\text{obs}}, Y_{\text{mis}}) \neq P(\text{missing} \mid Y_{\text{obs}})\]</span></p>
+<p><em>Example:</em> People with very high incomes decline to report income. MNAR is the most problematic — no standard statistical method can fully correct for it without additional assumptions or external data.</p>
+</section>
+<section id="strategies-for-handling-missing-data" class="level3" data-number="10.2.2">
+<h3 data-number="10.2.2" class="anchored" data-anchor-id="strategies-for-handling-missing-data"><span class="header-section-number">10.2.2</span> Strategies for Handling Missing Data</h3>
+<p><strong>1. Complete Case Analysis (Listwise Deletion)</strong></p>
+<p>Remove all rows containing any missing value. Simple and default in most software.</p>
+<ul>
+<li>✓ Valid and unbiased under MCAR</li>
+<li>✗ Loses power; biased under MAR or MNAR</li>
+<li>✗ Can lose substantial data if missingness is spread across many variables</li>
+</ul>
+<p><strong>2. Mean / Median / Mode Imputation</strong></p>
+<p>Replace missing values with the variable’s mean (continuous), median (skewed/ordinal), or mode (categorical).</p>
+<ul>
+<li>✓ Simple and fast</li>
+<li>✗ Underestimates variance (artificially concentrates values at center)</li>
+<li>✗ Distorts correlations between variables</li>
+<li>✗ Valid only approximately under MCAR</li>
+</ul>
+<p><strong>3. Multiple Imputation (MI)</strong></p>
+<p>Generate <span class="math inline">\(m\)</span> complete datasets by imputing missing values <span class="math inline">\(m\)</span> times using a statistical model (typically a multivariate normal or predictive mean matching), analyze each, and combine results using <strong>Rubin’s rules</strong>.</p>
+<p><span class="math display">\[\hat{\theta} = \frac{1}{m}\sum_{i=1}^{m}\hat{\theta}_i, \qquad \text{Var}(\hat{\theta}) = \bar{W} + \left(1 + \frac{1}{m}\right)B\]</span></p>
+<p>where <span class="math inline">\(\bar{W}\)</span> is the within-imputation variance and <span class="math inline">\(B\)</span> is the between-imputation variance.</p>
+<ul>
+<li>✓ Valid under MAR; gold standard for missing data handling</li>
+<li>✓ Correctly propagates uncertainty from missingness</li>
+<li>✗ More complex to implement and interpret</li>
+</ul>
+<p><strong>4. Model-Based Imputation</strong></p>
+<p>Use a regression model to predict missing values from other variables (K-nearest neighbors imputation, random forest imputation).</p>
+<ul>
+<li>✓ Preserves relationships between variables better than mean imputation</li>
+<li>✓ Works well for MAR data</li>
+<li>✗ Risk of overfitting if not cross-validated</li>
+</ul>
+</section>
+<section id="diagnosing-the-missingness-mechanism" class="level3" data-number="10.2.3">
+<h3 data-number="10.2.3" class="anchored" data-anchor-id="diagnosing-the-missingness-mechanism"><span class="header-section-number">10.2.3</span> Diagnosing the Missingness Mechanism</h3>
+<table class="table-striped caption-top table">
+<caption>Missingness diagnostics</caption>
+<colgroup>
+<col style="width: 40%">
+<col style="width: 60%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Test</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Compare observed vs.&nbsp;missing on other variables</td>
+<td>Check for MAR patterns</td>
+</tr>
+<tr class="even">
+<td>Little’s MCAR test</td>
+<td>Formal test of MCAR assumption</td>
+</tr>
+<tr class="odd">
+<td>Missing data pattern visualization</td>
+<td>Identify which variables co-occur in missingness</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="example-missing-data-in-a-clinical-study" class="level2" data-number="10.3">
+<h2 data-number="10.3" class="anchored" data-anchor-id="example-missing-data-in-a-clinical-study"><span class="header-section-number">10.3</span> Example: Missing Data in a Clinical Study</h2>
+<p><strong>Example 6.2.</strong> A clinical dataset records blood pressure, cholesterol, age, and BMI for 500 patients. Cholesterol has 22% missing values. Investigation reveals: older patients (age &gt; 65) are less likely to have cholesterol measured (they were referred to a different lab). Since age is observed and the missingness depends on age (not on the cholesterol value itself), this is <strong>MAR</strong> — multiple imputation using age and other observed variables as predictors is the appropriate strategy.</p>
+<p>If instead, patients with very high cholesterol avoided the test (fearing bad news), this would be <strong>MNAR</strong> — no standard imputation method can fully correct for this without external information.</p>
+</section>
+<section id="r-example-missing-data-analysis-and-imputation" class="level2" data-number="10.4">
+<h2 data-number="10.4" class="anchored" data-anchor-id="r-example-missing-data-analysis-and-imputation"><span class="header-section-number">10.4</span> R Example: Missing Data Analysis and Imputation</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter06_data_preprocessing_files/figure-html/missing-viz-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Variable Means by Ozone Missingness Status</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Ozone Missing?</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">n</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Mean Temp</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Mean Wind</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Mean Solar.R</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">FALSE</td>
+<td style="text-align: right;">116</td>
+<td style="text-align: right;">77.87</td>
+<td style="text-align: right;">9.86</td>
+<td style="text-align: right;">184.80</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">TRUE</td>
+<td style="text-align: right;">37</td>
+<td style="text-align: right;">77.92</td>
+<td style="text-align: right;">10.26</td>
+<td style="text-align: right;">189.51</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Complete cases: 111 of 153 </code></pre>
+</div>
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Imputation Method Comparison: Ozone Variable</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Method</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">n</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Mean Ozone</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">SD Ozone</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Complete Cases</td>
+<td style="text-align: right;">111</td>
+<td style="text-align: right;">42.10</td>
+<td style="text-align: right;">33.28</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Mean Imputation</td>
+<td style="text-align: right;">153</td>
+<td style="text-align: right;">42.13</td>
+<td style="text-align: right;">28.69</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Multiple Imputation (MI)</td>
+<td style="text-align: right;">153</td>
+<td style="text-align: right;">41.50</td>
+<td style="text-align: right;">30.91</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter06_data_preprocessing_files/figure-html/imputation-plot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>naniar::vis_miss()</code> produces a tile plot of missingness — each column is a variable, each row an observation, and missing values appear in a contrasting color.</li>
+<li><code>mice(data, m=5, method="pmm")</code> runs multiple imputation with predictive mean matching — the most robust method for continuous variables. <code>m=5</code> creates 5 imputed datasets.</li>
+<li>The density plot reveals why mean imputation is problematic: it creates an artificial spike at the mean, underestimating variance and distorting the distribution.</li>
+</ul>
+</section>
+<section id="exercises-1" class="level2" data-number="10.5">
+<h2 data-number="10.5" class="anchored" data-anchor-id="exercises-1"><span class="header-section-number">10.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 6.2
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>airquality</code> dataset:</p>
+<ol type="a">
+<li>Test whether <code>Ozone</code> missingness is related to <code>Month</code> using a chi-square test or proportion comparison. What type of missingness does this suggest?</li>
+<li>Implement KNN imputation using <code>VIM::kNN()</code>. Compare the distribution of imputed Ozone to mean imputation and MI.</li>
+<li>After multiple imputation (m=5), pool results using <code>mice::pool()</code> for a linear regression of Ozone on Temp and Wind. Report the pooled coefficients.</li>
+</ol>
+</div>
+</div>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 6.3
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Create a dataset with MNAR missingness: simulate 200 observations of income where values above 100,000 are set to NA (high earners hide income).</p>
+<ol type="a">
+<li>Apply mean imputation and MI. Compare estimates of the mean income to the true value.</li>
+<li>Show that neither method recovers the true mean. What does this demonstrate about MNAR?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="outlier-detection-and-treatment" class="level1" data-number="11">
+<h1 data-number="11"><span class="header-section-number">11</span> Outlier Detection and Treatment</h1>
+<section id="introduction-3" class="level2" data-number="11.1">
+<h2 data-number="11.1" class="anchored" data-anchor-id="introduction-3"><span class="header-section-number">11.1</span> Introduction</h2>
+<p>An <strong>outlier</strong> is an observation that deviates markedly from the general pattern of the data. Outliers arise from data entry errors, measurement failures, genuine extreme values, or population heterogeneity. The key question is always: <em>Is this outlier an error to be corrected, or a genuine extreme value to be retained?</em> Blindly removing outliers is as dangerous as blindly keeping them — context and domain knowledge are essential.</p>
+</section>
+<section id="theory-2" class="level2" data-number="11.2">
+<h2 data-number="11.2" class="anchored" data-anchor-id="theory-2"><span class="header-section-number">11.2</span> Theory</h2>
+<section id="univariate-methods" class="level3" data-number="11.2.1">
+<h3 data-number="11.2.1" class="anchored" data-anchor-id="univariate-methods"><span class="header-section-number">11.2.1</span> Univariate Methods</h3>
+<p><strong>IQR Method (Tukey’s Fences):</strong></p>
+<p>An observation is a potential outlier if it falls below the lower fence or above the upper fence:</p>
+<p><span class="math display">\[\text{Lower fence} = Q_1 - 1.5 \times \text{IQR}\]</span> <span class="math display">\[\text{Upper fence} = Q_3 + 1.5 \times \text{IQR}\]</span></p>
+<p>Using a multiplier of 3.0 instead of 1.5 defines <strong>extreme outliers</strong>. This method is robust — it uses quartiles rather than the mean, so it is not affected by the outliers it is trying to detect.</p>
+<p><strong>Z-Score Method:</strong></p>
+<p>An observation is an outlier if its standardized value exceeds a threshold (typically <span class="math inline">\(|z| &gt; 3\)</span>):</p>
+<p><span class="math display">\[z_i = \frac{x_i - \bar{x}}{s}\]</span></p>
+<p>This method is sensitive to the outliers themselves (since <span class="math inline">\(\bar{x}\)</span> and <span class="math inline">\(s\)</span> are both affected), making it less reliable than the IQR method for heavily contaminated data. The <strong>modified z-score</strong> using the median and MAD (median absolute deviation) is more robust:</p>
+<p><span class="math display">\[\tilde{z}_i = \frac{0.6745(x_i - \tilde{x})}{\text{MAD}}, \qquad \text{MAD} = \text{median}(|x_i - \tilde{x}|)\]</span></p>
+<p>Observations with <span class="math inline">\(|\tilde{z}_i| &gt; 3.5\)</span> are flagged as outliers.</p>
+</section>
+<section id="multivariate-methods" class="level3" data-number="11.2.2">
+<h3 data-number="11.2.2" class="anchored" data-anchor-id="multivariate-methods"><span class="header-section-number">11.2.2</span> Multivariate Methods</h3>
+<p><strong>Mahalanobis Distance:</strong></p>
+<p>For multivariate data, univariate methods miss outliers that are unusual in the joint distribution but not in any individual variable. The Mahalanobis distance measures how far an observation is from the multivariate centroid, accounting for correlations:</p>
+<p><span class="math display">\[D^2_i = (\mathbf{x}_i - \bar{\mathbf{x}})^T \mathbf{S}^{-1} (\mathbf{x}_i - \bar{\mathbf{x}})\]</span></p>
+<p>Under multivariate normality, <span class="math inline">\(D^2_i \sim \chi^2(p)\)</span> where <span class="math inline">\(p\)</span> is the number of variables. Observations with <span class="math inline">\(D^2_i &gt; \chi^2_{p, 0.975}\)</span> are flagged.</p>
+</section>
+<section id="treatment-options" class="level3" data-number="11.2.3">
+<h3 data-number="11.2.3" class="anchored" data-anchor-id="treatment-options"><span class="header-section-number">11.2.3</span> Treatment Options</h3>
+<table class="table-striped caption-top table">
+<caption>Outlier treatment options</caption>
+<colgroup>
+<col style="width: 47%">
+<col style="width: 52%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Treatment</th>
+<th>When to Use</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><strong>Remove</strong></td>
+<td>Confirmed data entry errors or measurement failures</td>
+</tr>
+<tr class="even">
+<td><strong>Cap (Winsorize)</strong></td>
+<td>Genuine extreme values; replace with fence values</td>
+</tr>
+<tr class="odd">
+<td><strong>Transform</strong></td>
+<td>Log or sqrt reduces the influence of large values</td>
+</tr>
+<tr class="even">
+<td><strong>Keep</strong></td>
+<td>Genuine extreme values that are part of the population</td>
+</tr>
+<tr class="odd">
+<td><strong>Robust methods</strong></td>
+<td>Use median-based estimators instead of mean-based</td>
+</tr>
+</tbody>
+</table>
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Warning</span>Never Remove Outliers Automatically
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Always investigate before removing. An outlier might be the most scientifically interesting observation. Document every removal decision with a justification.</p>
+</div>
+</div>
+</section>
+</section>
+<section id="example-outlier-detection" class="level2" data-number="11.3">
+<h2 data-number="11.3" class="anchored" data-anchor-id="example-outlier-detection"><span class="header-section-number">11.3</span> Example: Outlier Detection</h2>
+<p><strong>Example 6.3.</strong> In a dataset of 100 monthly salaries (THB), the IQR method flags a salary of 850,000 THB as an outlier (all others are below 120,000). Investigation reveals this is the CEO — a genuine extreme value, not an error. The appropriate treatment is to <strong>retain</strong> it for descriptive analysis but <strong>report separately</strong> when computing “typical” employee salary, or to use the <strong>median</strong> as the summary statistic.</p>
+</section>
+<section id="r-example-outlier-detection-and-treatment" class="level2" data-number="11.4">
+<h2 data-number="11.4" class="anchored" data-anchor-id="r-example-outlier-detection-and-treatment"><span class="header-section-number">11.4</span> R Example: Outlier Detection and Treatment</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Outlier Detection: Ozone Variable</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Method</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">N Flagged</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Values</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">IQR (1.5×IQR)</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: left;">135, 168</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">IQR (3.0×IQR — extreme)</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Z-score (&amp;#124;z&amp;#124;&gt;3)</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">168</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Modified Z-score (&amp;#124;z̃&amp;#124;&gt;3.5)</td>
+<td style="text-align: right;">|</td>
+<td style="text-align: left;">|168</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Mahalanobis Distance Outliers (χ²₄, p=0.975 threshold = 11.14 ):</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>              mpg  hp   wt disp
+Maserati Bora  15 335 3.57  301</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Ozone before Winsorization: mean = 42.13  sd = 32.99 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Ozone after Winsorization:  mean = 41.25  sd = 30.06 </code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter06_data_preprocessing_files/figure-html/outlier-plot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>mahalanobis(x, center, cov)</code> computes squared Mahalanobis distances; <code>qchisq(0.975, df=p)</code> gives the critical value.</li>
+<li>The <code>winsorize()</code> function clamps extreme values at specified percentiles — a common and principled alternative to deletion.</li>
+<li>The bar chart of Mahalanobis distances (Panel B) makes it easy to rank observations by multivariate extremity and identify which cars are unusual across all dimensions simultaneously.</li>
+</ul>
+</section>
+<section id="exercises-2" class="level2" data-number="11.5">
+<h2 data-number="11.5" class="anchored" data-anchor-id="exercises-2"><span class="header-section-number">11.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 6.4
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>mtcars</code> dataset:</p>
+<ol type="a">
+<li>Apply IQR and modified z-score outlier detection to <code>hp</code>. Do both methods agree?</li>
+<li>Compute Mahalanobis distances using <code>mpg</code>, <code>hp</code>, <code>wt</code>, and <code>qsec</code>. Which cars are multivariate outliers?</li>
+<li>Compare the regression of <code>mpg ~ hp + wt</code> with and without the identified outliers. How much do the coefficients change?</li>
+</ol>
+</div>
+</div>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 6.5
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>For the <code>airquality</code> Ozone variable:</p>
+<ol type="a">
+<li>Winsorize at the 5th and 95th percentiles. Plot original vs.&nbsp;winsorized distributions.</li>
+<li>Compare the mean and SD before and after winsorization.</li>
+<li>Would you recommend winsorization or log transformation for this variable? Justify using skewness and normality tests.</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="data-transformation" class="level1" data-number="12">
+<h1 data-number="12"><span class="header-section-number">12</span> Data Transformation</h1>
+<section id="introduction-4" class="level2" data-number="12.1">
+<h2 data-number="12.1" class="anchored" data-anchor-id="introduction-4"><span class="header-section-number">12.1</span> Introduction</h2>
+<p>Many statistical methods assume that variables are approximately normally distributed, have constant variance, or are measured on a linear scale. When these assumptions are violated — as they often are with real data — <strong>transformations</strong> can correct the distributional shape, stabilize variance, and linearize relationships. Transformations are applied to the variable itself, not to the model; after transformation, the standard methods can proceed validly.</p>
+</section>
+<section id="theory-3" class="level2" data-number="12.2">
+<h2 data-number="12.2" class="anchored" data-anchor-id="theory-3"><span class="header-section-number">12.2</span> Theory</h2>
+<section id="log-transformation" class="level3" data-number="12.2.1">
+<h3 data-number="12.2.1" class="anchored" data-anchor-id="log-transformation"><span class="header-section-number">12.2.1</span> Log Transformation</h3>
+<p>The most common transformation for right-skewed, positive data:</p>
+<p><span class="math display">\[x' = \log(x) \quad \text{(natural log)} \qquad \text{or} \qquad x' = \log_{10}(x)\]</span></p>
+<p><strong>When to use:</strong> Right-skewed distributions (income, reaction times, biological measurements, counts). Requires <span class="math inline">\(x &gt; 0\)</span>; use <span class="math inline">\(\log(x + c)\)</span> for data containing zeros, where <span class="math inline">\(c\)</span> is a small constant.</p>
+<p><strong>Effect:</strong> Compresses large values more than small ones, pulling the right tail toward the center.</p>
+</section>
+<section id="square-root-transformation" class="level3" data-number="12.2.2">
+<h3 data-number="12.2.2" class="anchored" data-anchor-id="square-root-transformation"><span class="header-section-number">12.2.2</span> Square Root Transformation</h3>
+<p><span class="math display">\[x' = \sqrt{x}\]</span></p>
+<p><strong>When to use:</strong> Count data (Poisson-distributed), moderate right skew. Less aggressive than log; applicable when <span class="math inline">\(x \geq 0\)</span>.</p>
+</section>
+<section id="box-cox-transformation" class="level3" data-number="12.2.3">
+<h3 data-number="12.2.3" class="anchored" data-anchor-id="box-cox-transformation"><span class="header-section-number">12.2.3</span> Box-Cox Transformation</h3>
+<p>A flexible family of power transformations that includes log and square root as special cases:</p>
+<p><span class="math display">\[x'(\lambda) = \begin{cases} \frac{x^\lambda - 1}{\lambda} &amp; \lambda \neq 0 \\ \log(x) &amp; \lambda = 0 \end{cases}\]</span></p>
+<p>The optimal <span class="math inline">\(\lambda\)</span> is estimated by maximum likelihood to maximize normality. Common values: <span class="math inline">\(\lambda = 1\)</span> (no transformation), <span class="math inline">\(\lambda = 0.5\)</span> (square root), <span class="math inline">\(\lambda = 0\)</span> (log), <span class="math inline">\(\lambda = -1\)</span> (reciprocal).</p>
+</section>
+<section id="yeo-johnson-transformation" class="level3" data-number="12.2.4">
+<h3 data-number="12.2.4" class="anchored" data-anchor-id="yeo-johnson-transformation"><span class="header-section-number">12.2.4</span> Yeo-Johnson Transformation</h3>
+<p>An extension of Box-Cox that handles <strong>zero and negative values</strong>:</p>
+<p><span class="math display">\[\psi(x, \lambda) = \begin{cases} [(x+1)^\lambda - 1]/\lambda &amp; x \geq 0, \lambda \neq 0 \\ \log(x+1) &amp; x \geq 0, \lambda = 0 \\ -[(-x+1)^{2-\lambda} - 1]/(2-\lambda) &amp; x &lt; 0, \lambda \neq 2 \\ -\log(-x+1) &amp; x &lt; 0, \lambda = 2 \end{cases}\]</span></p>
+</section>
+<section id="normalization-vs.-standardization" class="level3" data-number="12.2.5">
+<h3 data-number="12.2.5" class="anchored" data-anchor-id="normalization-vs.-standardization"><span class="header-section-number">12.2.5</span> Normalization vs.&nbsp;Standardization</h3>
+<p>These are <strong>scaling</strong> operations, covered in detail in Section 6, but distinguished here from transformation:</p>
+<ul>
+<li><strong>Transformation</strong> changes the distributional <strong>shape</strong> (skewness, tail behavior).</li>
+<li><strong>Scaling/Normalization</strong> changes the <strong>location and spread</strong> without changing the shape.</li>
+</ul>
+</section>
+</section>
+<section id="example-choosing-a-transformation" class="level2" data-number="12.3">
+<h2 data-number="12.3" class="anchored" data-anchor-id="example-choosing-a-transformation"><span class="header-section-number">12.3</span> Example: Choosing a Transformation</h2>
+<p><strong>Example 6.4.</strong> Household income data has skewness = 3.8, indicating severe right skew. Three transformations are compared:</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Transformation</th>
+<th>Skewness After</th>
+<th>Shapiro-Wilk p</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>None</td>
+<td>3.8</td>
+<td>&lt; 0.001</td>
+</tr>
+<tr class="even">
+<td>Square root</td>
+<td>1.9</td>
+<td>0.008</td>
+</tr>
+<tr class="odd">
+<td>Log</td>
+<td>0.4</td>
+<td>0.21</td>
+</tr>
+<tr class="even">
+<td>Box-Cox (<span class="math inline">\(\lambda = 0.12\)</span>)</td>
+<td>0.1</td>
+<td>0.38</td>
+</tr>
+</tbody>
+</table>
+<p>Box-Cox achieves the best normalization, followed closely by log transformation. For most practical purposes, log transformation is preferred for its interpretability (log-income differences correspond to percentage differences).</p>
+</section>
+<section id="r-example-data-transformations" class="level2" data-number="12.4">
+<h2 data-number="12.4" class="anchored" data-anchor-id="r-example-data-transformations"><span class="header-section-number">12.4</span> R Example: Data Transformations</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Optimal Box-Cox lambda: 0.2 </code></pre>
+</div>
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Transformation Comparison: Ozone Variable</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Transformation</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Mean</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">SD</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Skewness</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Shapiro-Wilk p</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">None</td>
+<td style="text-align: right;">42.129</td>
+<td style="text-align: right;">32.988</td>
+<td style="text-align: right; font-weight: bold; color: tomato !important;">1.226</td>
+<td style="text-align: right;">0.0000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Square Root</td>
+<td style="text-align: right;">6.023</td>
+<td style="text-align: right;">2.430</td>
+<td style="text-align: right; font-weight: bold; color: tomato !important;">0.514</td>
+<td style="text-align: right;">0.0044</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Log</td>
+<td style="text-align: right;">3.419</td>
+<td style="text-align: right;">0.865</td>
+<td style="text-align: right; font-weight: bold; color: tomato !important;">-0.555</td>
+<td style="text-align: right;">0.0147</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Box-Cox (λ=0.2)</td>
+<td style="text-align: right;">5.050</td>
+<td style="text-align: right;">1.676</td>
+<td style="text-align: right; font-weight: bold; color: darkgreen !important;">-0.024</td>
+<td style="text-align: right;">0.3399</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter06_data_preprocessing_files/figure-html/transformation-plot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>MASS::boxcox(y ~ 1, lambda)</code> estimates the optimal <span class="math inline">\(\lambda\)</span> by maximum likelihood. The <code>plotit = FALSE</code> option suppresses the automatic plot so we can create our own.</li>
+<li><code>pivot_longer()</code> reshapes the wide data frame of transformed values into a long format suitable for <code>facet_wrap()</code>.</li>
+<li><code>facet_wrap(scales = "free")</code> allows each panel to have its own axis range — essential when the transformed scales differ dramatically.</li>
+</ul>
+</section>
+<section id="exercises-3" class="level2" data-number="12.5">
+<h2 data-number="12.5" class="anchored" data-anchor-id="exercises-3"><span class="header-section-number">12.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 6.6
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>mtcars</code> dataset:</p>
+<ol type="a">
+<li>Apply log, square root, and Box-Cox transformations to <code>hp</code>. Compare skewness and Shapiro-Wilk p-values.</li>
+<li>Apply the Yeo-Johnson transformation using <code>bestNormalize::yeojohnson()</code>. Does it outperform Box-Cox?</li>
+<li>For <code>mpg</code>, determine the optimal Box-Cox <span class="math inline">\(\lambda\)</span>. Is a transformation needed?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="encoding-categorical-variables" class="level1" data-number="13">
+<h1 data-number="13"><span class="header-section-number">13</span> Encoding Categorical Variables</h1>
+<section id="introduction-5" class="level2" data-number="13.1">
+<h2 data-number="13.1" class="anchored" data-anchor-id="introduction-5"><span class="header-section-number">13.1</span> Introduction</h2>
+<p>Most statistical models and machine learning algorithms operate on numeric data. <strong>Encoding</strong> converts categorical variables into numeric representations that preserve the relevant information while meeting the mathematical requirements of the algorithm. Choosing the wrong encoding can introduce artificial ordering, create near-singular matrices, or lose important information about category relationships.</p>
+</section>
+<section id="theory-4" class="level2" data-number="13.2">
+<h2 data-number="13.2" class="anchored" data-anchor-id="theory-4"><span class="header-section-number">13.2</span> Theory</h2>
+<section id="dummy-coding-treatment-coding" class="level3" data-number="13.2.1">
+<h3 data-number="13.2.1" class="anchored" data-anchor-id="dummy-coding-treatment-coding"><span class="header-section-number">13.2.1</span> Dummy Coding (Treatment Coding)</h3>
+<p>For a categorical variable with <span class="math inline">\(k\)</span> levels, create <span class="math inline">\(k-1\)</span> binary (0/1) dummy variables, leaving one category as the <strong>reference</strong> (baseline):</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Category</th>
+<th>D1 (Arts)</th>
+<th>D2 (Business)</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Science (reference)</td>
+<td>0</td>
+<td>0</td>
+</tr>
+<tr class="even">
+<td>Arts</td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr class="odd">
+<td>Business</td>
+<td>0</td>
+<td>1</td>
+</tr>
+</tbody>
+</table>
+<p>The coefficient for each dummy variable represents the difference from the reference category. This is the standard encoding for <strong>linear regression and ANOVA</strong> — using <span class="math inline">\(k\)</span> dummies causes perfect multicollinearity (dummy variable trap).</p>
+</section>
+<section id="one-hot-encoding" class="level3" data-number="13.2.2">
+<h3 data-number="13.2.2" class="anchored" data-anchor-id="one-hot-encoding"><span class="header-section-number">13.2.2</span> One-Hot Encoding</h3>
+<p>Create <span class="math inline">\(k\)</span> binary variables, one per category — each is 1 if the observation belongs to that category, 0 otherwise. Unlike dummy coding, <strong>no reference category</strong> is dropped.</p>
+<p>Used in <strong>machine learning</strong> algorithms (tree-based models, neural networks) that do not suffer from multicollinearity. Problematic for linear regression without regularization.</p>
+</section>
+<section id="ordinal-encoding" class="level3" data-number="13.2.3">
+<h3 data-number="13.2.3" class="anchored" data-anchor-id="ordinal-encoding"><span class="header-section-number">13.2.3</span> Ordinal Encoding</h3>
+<p>Assign consecutive integers to ordered categories:</p>
+<p><span class="math display">\[\text{Low} \to 1, \quad \text{Medium} \to 2, \quad \text{High} \to 3\]</span></p>
+<p>Valid for <strong>ordinal variables</strong> where the ordering is meaningful and the assumption of equal spacing is reasonable. <strong>Never</strong> apply ordinal encoding to nominal variables — it imposes a spurious ordering.</p>
+</section>
+<section id="target-encoding-mean-encoding" class="level3" data-number="13.2.4">
+<h3 data-number="13.2.4" class="anchored" data-anchor-id="target-encoding-mean-encoding"><span class="header-section-number">13.2.4</span> Target Encoding (Mean Encoding)</h3>
+<p>Replace each category with the <strong>mean of the target variable</strong> for that category:</p>
+<p><span class="math display">\[\text{Encoded value for category } c = \frac{1}{n_c}\sum_{i: x_i = c} y_i\]</span></p>
+<p>Powerful for high-cardinality categorical variables (many categories), but prone to <strong>overfitting</strong> — requires smoothing or cross-validation. Should never be applied using the full dataset; use out-of-fold means in a cross-validation framework.</p>
+</section>
+<section id="binary-encoding" class="level3" data-number="13.2.5">
+<h3 data-number="13.2.5" class="anchored" data-anchor-id="binary-encoding"><span class="header-section-number">13.2.5</span> Binary Encoding</h3>
+<p>Convert the integer-encoded category to <strong>binary representation</strong> using log₂(k) bits. More compact than one-hot for high-cardinality variables.</p>
+</section>
+<section id="encoding-selection-guide" class="level3" data-number="13.2.6">
+<h3 data-number="13.2.6" class="anchored" data-anchor-id="encoding-selection-guide"><span class="header-section-number">13.2.6</span> Encoding Selection Guide</h3>
+<table class="table-striped caption-top table">
+<caption>Categorical encoding selection guide</caption>
+<colgroup>
+<col style="width: 33%">
+<col style="width: 50%">
+<col style="width: 16%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Variable Type</th>
+<th>Recommended Encoding</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Nominal, few levels (<span class="math inline">\(k \leq 10\)</span>)</td>
+<td>Dummy (regression) or One-hot (ML)</td>
+<td>Drop reference for regression</td>
+</tr>
+<tr class="even">
+<td>Nominal, many levels (<span class="math inline">\(k &gt; 10\)</span>)</td>
+<td>Target or Binary encoding</td>
+<td>Avoid one-hot explosion</td>
+</tr>
+<tr class="odd">
+<td>Ordinal, equal spacing</td>
+<td>Ordinal integer</td>
+<td>Verify spacing assumption</td>
+</tr>
+<tr class="even">
+<td>Ordinal, unequal spacing</td>
+<td>Dummy or contrast coding</td>
+<td>Preserves non-linearity</td>
+</tr>
+<tr class="odd">
+<td>Binary</td>
+<td>Keep as 0/1</td>
+<td>No encoding needed</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="example-encoding-faculty-variable" class="level2" data-number="13.3">
+<h2 data-number="13.3" class="anchored" data-anchor-id="example-encoding-faculty-variable"><span class="header-section-number">13.3</span> Example: Encoding Faculty Variable</h2>
+<p><strong>Example 6.5.</strong> A dataset contains <code>faculty</code> (Science, Arts, Business) and outcome <code>satisfaction</code>. For a linear regression:</p>
+<ul>
+<li><strong>Dummy coding</strong> (reference = Science): Creates <code>Arts</code> (1/0) and <code>Business</code> (1/0). Coefficients represent mean satisfaction difference from Science.</li>
+<li><strong>One-hot</strong> (for a random forest): Creates <code>Science</code>, <code>Arts</code>, <code>Business</code> — all three binary columns.</li>
+<li><strong>Ordinal</strong> (inappropriate here): Would assign 1, 2, 3 — implying Arts is “twice” Science, which is meaningless.</li>
+</ul>
+</section>
+<section id="r-example-categorical-encoding" class="level2" data-number="13.4">
+<h2 data-number="13.4" class="anchored" data-anchor-id="r-example-categorical-encoding"><span class="header-section-number">13.4</span> R Example: Categorical Encoding</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Original data (first 6 rows):</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>   faculty   year satisfaction
+1 Business Fourth     51.99257
+2 Business Second     65.67022
+3  Science  First     79.37060
+4 Business Fourth     84.47631
+5     Arts  Third     60.98511
+6     Arts  First     57.79316</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Dummy coding (first 6 rows):</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  (Intercept) facultyScience facultyArts
+1           1              0           0
+2           1              0           0
+3           1              1           0
+4           1              0           0
+5           1              0           1
+6           1              0           1</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>One-hot encoding (first 6 rows):</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  facultyBusiness facultyScience facultyArts
+1               1              0           0
+2               1              0           0
+3               0              1           0
+4               1              0           0
+5               0              0           1
+6               0              0           1</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Ordinal encoding (year):</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>    year year_ordinal
+1 Fourth            4
+2 Second            2
+3  First            1
+4 Fourth            4
+5  Third            3
+6  First            1</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Target encoding (faculty → mean satisfaction):</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 3 × 2
+  faculty  target_enc
+  &lt;fct&gt;         &lt;dbl&gt;
+1 Business       65.1
+2 Science        73.9
+3 Arts           69.5</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Dummy model R²:   0.1669 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Target enc. R²:  0.1669 </code></pre>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>model.matrix(~ factor)</code> creates dummy-coded columns automatically, dropping the reference level. <code>model.matrix(~ factor - 1)</code> creates one-hot encoding (no reference dropped).</li>
+<li><code>factor(..., ordered = TRUE)</code> followed by <code>as.integer()</code> implements ordinal encoding, preserving the category order.</li>
+<li>Target encoding is implemented via <code>group_by() |&gt; summarise()</code> + <code>left_join()</code>. In production, this should be done within cross-validation folds to prevent data leakage.</li>
+</ul>
+</section>
+<section id="exercises-4" class="level2" data-number="13.5">
+<h2 data-number="13.5" class="anchored" data-anchor-id="exercises-4"><span class="header-section-number">13.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 6.7
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>iris</code> dataset:</p>
+<ol type="a">
+<li>Apply dummy coding to <code>Species</code> (reference = setosa). Verify with <code>model.matrix()</code>.</li>
+<li>Apply one-hot encoding. Confirm you have 3 columns instead of 2.</li>
+<li>Fit a linear regression of <code>Petal.Length ~ Species</code> using dummy encoding. Interpret each coefficient.</li>
+<li>When would you prefer target encoding over one-hot for the <code>Species</code> variable?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="feature-scaling" class="level1" data-number="14">
+<h1 data-number="14"><span class="header-section-number">14</span> Feature Scaling</h1>
+<section id="introduction-6" class="level2" data-number="14.1">
+<h2 data-number="14.1" class="anchored" data-anchor-id="introduction-6"><span class="header-section-number">14.1</span> Introduction</h2>
+<p>Many statistical and machine learning algorithms are sensitive to the <strong>scale</strong> of input features. K-nearest neighbors computes Euclidean distances — a variable measured in thousands will dominate one measured in single digits. Gradient descent converges faster when features are on similar scales. Principal Component Analysis (Chapter 7) is entirely scale-dependent. <strong>Feature scaling</strong> brings all features to a comparable range without changing their distributional shape.</p>
+</section>
+<section id="theory-5" class="level2" data-number="14.2">
+<h2 data-number="14.2" class="anchored" data-anchor-id="theory-5"><span class="header-section-number">14.2</span> Theory</h2>
+<section id="min-max-normalization" class="level3" data-number="14.2.1">
+<h3 data-number="14.2.1" class="anchored" data-anchor-id="min-max-normalization"><span class="header-section-number">14.2.1</span> Min-Max Normalization</h3>
+<p>Scales each feature to the range <span class="math inline">\([0, 1]\)</span>:</p>
+<p><span class="math display">\[x'_i = \frac{x_i - x_{\min}}{x_{\max} - x_{\min}}\]</span></p>
+<p><strong>Properties:</strong> - Preserves the shape of the original distribution - Sensitive to outliers (extreme values compress all others toward 0 or 1) - Appropriate for algorithms requiring bounded input (neural networks with sigmoid activation)</p>
+</section>
+<section id="z-score-standardization" class="level3" data-number="14.2.2">
+<h3 data-number="14.2.2" class="anchored" data-anchor-id="z-score-standardization"><span class="header-section-number">14.2.2</span> Z-Score Standardization</h3>
+<p>Centers the variable at 0 and scales to unit variance:</p>
+<p><span class="math display">\[x'_i = \frac{x_i - \bar{x}}{s}\]</span></p>
+<p><strong>Properties:</strong> - Transformed variable has mean = 0, SD = 1 - Does not bound the range (values can exceed <span class="math inline">\(\pm 3\)</span>) - Robust to different scales; appropriate for most algorithms - Assumes approximately normal distribution for optimal behavior</p>
+</section>
+<section id="robust-scaling" class="level3" data-number="14.2.3">
+<h3 data-number="14.2.3" class="anchored" data-anchor-id="robust-scaling"><span class="header-section-number">14.2.3</span> Robust Scaling</h3>
+<p>Uses the <strong>median</strong> and <strong>IQR</strong> instead of mean and SD:</p>
+<p><span class="math display">\[x'_i = \frac{x_i - \tilde{x}}{\text{IQR}}\]</span></p>
+<p><strong>Properties:</strong> - Robust to outliers (median and IQR are not affected by extremes) - Appropriate when data contains outliers that cannot be removed</p>
+</section>
+<section id="maxabs-scaling" class="level3" data-number="14.2.4">
+<h3 data-number="14.2.4" class="anchored" data-anchor-id="maxabs-scaling"><span class="header-section-number">14.2.4</span> MaxAbs Scaling</h3>
+<p>Divides by the maximum absolute value, scaling to <span class="math inline">\([-1, 1]\)</span>:</p>
+<p><span class="math display">\[x'_i = \frac{x_i}{\max(|x|)}\]</span></p>
+<p>Useful for sparse data (preserves zero entries).</p>
+</section>
+<section id="when-to-scale" class="level3" data-number="14.2.5">
+<h3 data-number="14.2.5" class="anchored" data-anchor-id="when-to-scale"><span class="header-section-number">14.2.5</span> When to Scale</h3>
+<table class="table-striped caption-top table">
+<caption>Feature scaling requirements by algorithm</caption>
+<thead>
+<tr class="header">
+<th>Algorithm</th>
+<th>Scaling Needed?</th>
+<th>Recommended Method</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Linear/logistic regression</td>
+<td>Yes (for comparability)</td>
+<td>Z-score</td>
+</tr>
+<tr class="even">
+<td>K-nearest neighbors</td>
+<td>Yes (essential)</td>
+<td>Z-score or min-max</td>
+</tr>
+<tr class="odd">
+<td>PCA</td>
+<td>Yes (essential)</td>
+<td>Z-score</td>
+</tr>
+<tr class="even">
+<td>Decision trees / Random forests</td>
+<td>No</td>
+<td>None</td>
+</tr>
+<tr class="odd">
+<td>Neural networks</td>
+<td>Yes</td>
+<td>Min-max or Z-score</td>
+</tr>
+<tr class="even">
+<td>SVM</td>
+<td>Yes (essential)</td>
+<td>Z-score or min-max</td>
+</tr>
+<tr class="odd">
+<td>K-means clustering</td>
+<td>Yes (essential)</td>
+<td>Z-score</td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+<section id="example-effect-of-scaling-on-knn" class="level2" data-number="14.3">
+<h2 data-number="14.3" class="anchored" data-anchor-id="example-effect-of-scaling-on-knn"><span class="header-section-number">14.3</span> Example: Effect of Scaling on KNN</h2>
+<p><strong>Example 6.6.</strong> A dataset contains age (range: 20–70 years) and income (range: 20,000–500,000 THB). Without scaling, the Euclidean distance between two observations is dominated entirely by income differences — a 1-year age difference (Δ = 1) is dwarfed by a 1,000 THB income difference. After Z-score standardization, both variables contribute equally to the distance metric.</p>
+</section>
+<section id="r-example-feature-scaling" class="level2" data-number="14.4">
+<h2 data-number="14.4" class="anchored" data-anchor-id="r-example-feature-scaling"><span class="header-section-number">14.4</span> R Example: Feature Scaling</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Scaling Methods Comparison: hp variable</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Method</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Variable</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Mean</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">SD</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Min</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Max</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">hp...1</td>
+<td style="text-align: left;">Original</td>
+<td style="text-align: left;">hp</td>
+<td style="text-align: right;">146.6875</td>
+<td style="text-align: right;">68.5629</td>
+<td style="text-align: right;">52.0000</td>
+<td style="text-align: right;">335.0000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">hp...2</td>
+<td style="text-align: left;">Z-Score</td>
+<td style="text-align: left;">hp</td>
+<td style="text-align: right;">0.0000</td>
+<td style="text-align: right;">1.0000</td>
+<td style="text-align: right;">-1.3810</td>
+<td style="text-align: right;">2.7466</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">hp...3</td>
+<td style="text-align: left;">Min-Max</td>
+<td style="text-align: left;">hp</td>
+<td style="text-align: right;">0.3346</td>
+<td style="text-align: right;">0.2423</td>
+<td style="text-align: right;">0.0000</td>
+<td style="text-align: right;">1.0000</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">hp...4</td>
+<td style="text-align: left;">Robust</td>
+<td style="text-align: left;">hp</td>
+<td style="text-align: right;">0.2837</td>
+<td style="text-align: right;">0.8211</td>
+<td style="text-align: right;">-0.8503</td>
+<td style="text-align: right;">2.5389</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter06_data_preprocessing_files/figure-html/scaling-plot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>scale(data)</code> performs Z-score standardization for all columns simultaneously — the most concise method in R.</li>
+<li><code>apply(mat, 2, fun)</code> applies a function column-wise (<code>2</code> = columns, <code>1</code> = rows) — used to apply custom min-max and robust scaling functions.</li>
+<li>The three-panel boxplot immediately shows why scaling is necessary: in the “Original” panel, <code>disp</code> and <code>hp</code> dwarf <code>mpg</code> and <code>wt</code> — after scaling, all variables are comparable.</li>
+</ul>
+</section>
+<section id="exercises-5" class="level2" data-number="14.5">
+<h2 data-number="14.5" class="anchored" data-anchor-id="exercises-5"><span class="header-section-number">14.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 6.8
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Using the <code>iris</code> dataset (numeric variables only):</p>
+<ol type="a">
+<li>Apply Z-score, min-max, and robust scaling to all four variables.</li>
+<li>For each scaling method, verify: (i) mean after Z-score ≈ 0, (ii) range after min-max ∈ [0,1].</li>
+<li>Perform K-means clustering (<span class="math inline">\(k = 3\)</span>) on unscaled vs.&nbsp;Z-scored data. Do the cluster assignments differ? Which matches the true species grouping better?</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="data-integration-and-reshaping" class="level1" data-number="15">
+<h1 data-number="15"><span class="header-section-number">15</span> Data Integration and Reshaping</h1>
+<section id="introduction-7" class="level2" data-number="15.1">
+<h2 data-number="15.1" class="anchored" data-anchor-id="introduction-7"><span class="header-section-number">15.1</span> Introduction</h2>
+<p>Real-world data rarely arrives in a single, perfectly structured table. Data scientists routinely work with multiple source tables that must be merged, and with data that is organized in ways that do not match the format required for analysis. <strong>Tidy data</strong> principles define the target structure, and <strong>reshaping</strong> operations transform data between wide and long formats. Mastering these skills is essential for the practical data pipeline.</p>
+</section>
+<section id="theory-6" class="level2" data-number="15.2">
+<h2 data-number="15.2" class="anchored" data-anchor-id="theory-6"><span class="header-section-number">15.2</span> Theory</h2>
+<section id="tidy-data-principles" class="level3" data-number="15.2.1">
+<h3 data-number="15.2.1" class="anchored" data-anchor-id="tidy-data-principles"><span class="header-section-number">15.2.1</span> Tidy Data Principles</h3>
+<p><strong>Tidy data</strong> (Wickham, 2014) follows three rules:</p>
+<ol type="1">
+<li>Each <strong>variable</strong> forms a column.</li>
+<li>Each <strong>observation</strong> forms a row.</li>
+<li>Each <strong>observational unit</strong> forms a table.</li>
+</ol>
+<p>Most raw data violates at least one of these rules — column headers are values (not variable names), multiple variables are stored in one column, or variables are stored in both rows and columns.</p>
+</section>
+<section id="pivoting-wide-long" class="level3" data-number="15.2.2">
+<h3 data-number="15.2.2" class="anchored" data-anchor-id="pivoting-wide-long"><span class="header-section-number">15.2.2</span> Pivoting: Wide ↔︎ Long</h3>
+<p><strong>Wide format:</strong> Each time point or category is a separate column. Common in spreadsheets and data entry.</p>
+<p><strong>Long format:</strong> Each observation has its own row, with a column for the category identifier. Required by most R visualization and modeling functions.</p>
+<pre><code>Wide:                    Long:
+id | week1 | week2       id | week | score
+1  | 80    | 85          1  | 1    | 80
+2  | 72    | 78          1  | 2    | 85
+                         2  | 1    | 72
+                         2  | 2    | 78</code></pre>
+</section>
+<section id="joining-tables" class="level3" data-number="15.2.3">
+<h3 data-number="15.2.3" class="anchored" data-anchor-id="joining-tables"><span class="header-section-number">15.2.3</span> Joining Tables</h3>
+<table class="table-striped caption-top table">
+<caption>dplyr join types</caption>
+<colgroup>
+<col style="width: 57%">
+<col style="width: 42%">
+</colgroup>
+<thead>
+<tr class="header">
+<th>Join Type</th>
+<th>Result</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>inner_join</code></td>
+<td>Only rows with matches in both tables</td>
+</tr>
+<tr class="even">
+<td><code>left_join</code></td>
+<td>All rows from left table; NAs for non-matches from right</td>
+</tr>
+<tr class="odd">
+<td><code>right_join</code></td>
+<td>All rows from right table; NAs for non-matches from left</td>
+</tr>
+<tr class="even">
+<td><code>full_join</code></td>
+<td>All rows from both; NAs where no match</td>
+</tr>
+<tr class="odd">
+<td><code>anti_join</code></td>
+<td>Rows in left with NO match in right</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="string-and-date-handling" class="level3" data-number="15.2.4">
+<h3 data-number="15.2.4" class="anchored" data-anchor-id="string-and-date-handling"><span class="header-section-number">15.2.4</span> String and Date Handling</h3>
+<p>Common integration tasks include:</p>
+<ul>
+<li>Parsing dates with <code>lubridate::ymd()</code>, <code>dmy()</code>, <code>mdy()</code></li>
+<li>Cleaning strings with <code>stringr::str_trim()</code>, <code>str_to_lower()</code>, <code>str_replace()</code></li>
+<li>Splitting compound columns with <code>tidyr::separate()</code></li>
+<li>Uniting columns with <code>tidyr::unite()</code></li>
+</ul>
+</section>
+</section>
+<section id="example-reshaping-for-analysis" class="level2" data-number="15.3">
+<h2 data-number="15.3" class="anchored" data-anchor-id="example-reshaping-for-analysis"><span class="header-section-number">15.3</span> Example: Reshaping for Analysis</h2>
+<p><strong>Example 6.7.</strong> A student performance dataset is stored in wide format with columns <code>score_Q1</code>, <code>score_Q2</code>, <code>score_Q3</code>, <code>score_Q4</code>. For a repeated-measures analysis (Chapter 3) or a time series plot, we need long format with columns <code>quarter</code> and <code>score</code>. <code>pivot_longer()</code> achieves this in one step.</p>
+</section>
+<section id="r-example-data-integration-and-reshaping" class="level2" data-number="15.4">
+<h2 data-number="15.4" class="anchored" data-anchor-id="r-example-data-integration-and-reshaping"><span class="header-section-number">15.4</span> R Example: Data Integration and Reshaping</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Wide format (first 4 rows):</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  student_id faculty score_Q1 score_Q2 score_Q3 score_Q4
+1          1 Science       70       64       89       84
+2          2 Science       83       81       80       89
+3          3 Science       80       66       52       71
+4          4 Science       79       62       83       75</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Long format (first 8 rows):</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 8 × 4
+  student_id faculty quarter score
+       &lt;int&gt; &lt;chr&gt;   &lt;chr&gt;   &lt;dbl&gt;
+1          1 Science Q1         70
+2          1 Science Q2         64
+3          1 Science Q3         89
+4          1 Science Q4         84
+5          2 Science Q1         83
+6          2 Science Q2         81
+7          2 Science Q3         80
+8          2 Science Q4         89</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+Returned to wide (first 4 rows):</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 4 × 6
+  student_id faculty score_Q1 score_Q2 score_Q3 score_Q4
+       &lt;int&gt; &lt;chr&gt;      &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;
+1          1 Science       70       64       89       84
+2          2 Science       83       81       80       89
+3          3 Science       80       66       52       71
+4          4 Science       79       62       83       75</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>
+After left join (first 4 rows):</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>  student_id faculty      dean score_Q1
+1          1 Science Dr. Smith       70
+2          2 Science Dr. Smith       83
+3          3 Science Dr. Smith       80
+4          4 Science Dr. Smith       79</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter06_data_preprocessing_files/figure-html/reshaping-plot-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+<p><strong>Code explanation:</strong></p>
+<ul>
+<li><code>pivot_longer(cols, names_to, values_to)</code> converts wide to long format. <code>starts_with("score_")</code> selects all score columns by prefix.</li>
+<li><code>str_remove(quarter, "score_")</code> cleans the quarter labels from “score_Q1” to “Q1” — a common post-pivot cleanup step.</li>
+<li><code>pivot_wider(names_from, values_from)</code> reverses the operation — useful for creating summary tables after analysis.</li>
+<li><code>left_join(y, by)</code> merges two tables on a key variable, preserving all rows from the left table.</li>
+</ul>
+</section>
+<section id="exercises-6" class="level2" data-number="15.5">
+<h2 data-number="15.5" class="anchored" data-anchor-id="exercises-6"><span class="header-section-number">15.5</span> Exercises</h2>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 6.9
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The built-in <code>tidyr::who</code> dataset contains tuberculosis (TB) counts in wide format with many messy column names encoding country, year, age group, sex, and diagnosis method.</p>
+<ol type="a">
+<li>Use <code>pivot_longer()</code> to convert to long format.</li>
+<li>Use <code>separate()</code> to split the messy column names into meaningful variables.</li>
+<li>Filter to Thailand (<code>country == "Thailand"</code>) and plot TB counts over time by sex and age group.</li>
+</ol>
+</div>
+</div>
+<div class="callout callout-style-default callout-tip callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Tip</span>Exercise 6.10
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Create two data frames: one with student demographics (id, name, program) and one with exam scores (id, exam, score). Simulate 5 students and 3 exams each.</p>
+<ol type="a">
+<li>Inner join the two tables and explain what happens if a student has no exam record.</li>
+<li>Left join and full join — how do the results differ?</li>
+<li>Pivot the joined data so each exam is a column. Compute the average score per student.</li>
+</ol>
+</div>
+</div>
+<hr>
+</section>
+</section>
+<section id="chapter-lab-activity-full-preprocessing-pipeline-with-msleep" class="level1" data-number="16">
+<h1 data-number="16"><span class="header-section-number">16</span> Chapter Lab Activity: Full Preprocessing Pipeline with <code>msleep</code></h1>
+<section id="objectives" class="level2" data-number="16.1">
+<h2 data-number="16.1" class="anchored" data-anchor-id="objectives"><span class="header-section-number">16.1</span> Objectives</h2>
+<p>In this lab you will apply the complete preprocessing pipeline — from initial inspection through missing data handling, outlier treatment, transformation, encoding, scaling, and reshaping — to the <code>msleep</code> dataset (mammal sleep data from <code>ggplot2</code>). This mirrors a real data science workflow where raw data must be made analysis-ready before modeling.</p>
+</section>
+<section id="the-dataset" class="level2" data-number="16.2">
+<h2 data-number="16.2" class="anchored" data-anchor-id="the-dataset"><span class="header-section-number">16.2</span> The Dataset</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Dimensions: 83 rows × 11 columns</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>Rows: 83
+Columns: 11
+$ name         &lt;chr&gt; "Cheetah", "Owl monkey", "Mountain beaver", "Greater shor…
+$ genus        &lt;chr&gt; "Acinonyx", "Aotus", "Aplodontia", "Blarina", "Bos", "Bra…
+$ vore         &lt;chr&gt; "carni", "omni", "herbi", "omni", "herbi", "herbi", "carn…
+$ order        &lt;chr&gt; "Carnivora", "Primates", "Rodentia", "Soricomorpha", "Art…
+$ conservation &lt;chr&gt; "lc", NA, "nt", "lc", "domesticated", NA, "vu", NA, "dome…
+$ sleep_total  &lt;dbl&gt; 12.1, 17.0, 14.4, 14.9, 4.0, 14.4, 8.7, 7.0, 10.1, 3.0, 5…
+$ sleep_rem    &lt;dbl&gt; NA, 1.8, 2.4, 2.3, 0.7, 2.2, 1.4, NA, 2.9, NA, 0.6, 0.8, …
+$ sleep_cycle  &lt;dbl&gt; NA, NA, NA, 0.1333333, 0.6666667, 0.7666667, 0.3833333, N…
+$ awake        &lt;dbl&gt; 11.9, 7.0, 9.6, 9.1, 20.0, 9.6, 15.3, 17.0, 13.9, 21.0, 1…
+$ brainwt      &lt;dbl&gt; NA, 0.01550, NA, 0.00029, 0.42300, NA, NA, NA, 0.07000, 0…
+$ bodywt       &lt;dbl&gt; 50.000, 0.480, 1.350, 0.019, 600.000, 3.850, 20.490, 0.04…</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Variables with Missing Data — msleep</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Variable</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Type</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">N Missing</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">% Missing</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">vore</td>
+<td style="text-align: left;">character</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: right; font-weight: bold; color: tomato !important;">8.4</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">conservation</td>
+<td style="text-align: left;">character</td>
+<td style="text-align: right;">29</td>
+<td style="text-align: right; font-weight: bold; color: tomato !important;">34.9</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">sleep_rem</td>
+<td style="text-align: left;">numeric</td>
+<td style="text-align: right;">22</td>
+<td style="text-align: right; font-weight: bold; color: tomato !important;">26.5</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sleep_cycle</td>
+<td style="text-align: left;">numeric</td>
+<td style="text-align: right;">51</td>
+<td style="text-align: right; font-weight: bold; color: tomato !important;">61.4</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">brainwt</td>
+<td style="text-align: left;">numeric</td>
+<td style="text-align: right;">27</td>
+<td style="text-align: right; font-weight: bold; color: tomato !important;">32.5</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="lab-task-1-missing-data-handling" class="level2" data-number="16.3">
+<h2 data-number="16.3" class="anchored" data-anchor-id="lab-task-1-missing-data-handling"><span class="header-section-number">16.3</span> Lab Task 1: Missing Data Handling</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Missing values after imputation:</code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>        name        genus         vore        order conservation  sleep_total 
+           0            0            7            0           29            0 
+   sleep_rem  sleep_cycle        awake      brainwt       bodywt 
+           0            0            0            0            0 </code></pre>
+</div>
+</div>
+</section>
+<section id="lab-task-2-outlier-detection" class="level2" data-number="16.4">
+<h2 data-number="16.4" class="anchored" data-anchor-id="lab-task-2-outlier-detection"><span class="header-section-number">16.4</span> Lab Task 2: Outlier Detection</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>IQR Outlier Detection — msleep</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Variable</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">N_Outliers</th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Outlier_Values</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">bodywt</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">161.5, 162.6, 173.3, 187, 207.5, 521, 600, 800, 900, 2547, 6654</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">brainwt</td>
+<td style="text-align: right;">11</td>
+<td style="text-align: left;">0.3, 0.3, 0.4, 0.4, 0.4, 0.4, 0.4, 0.7, 1.3, 4.6, 5.7</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">sleep_total</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: left;"></td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="lab-task-3-transformation" class="level2" data-number="16.5">
+<h2 data-number="16.5" class="anchored" data-anchor-id="lab-task-3-transformation"><span class="header-section-number">16.5</span> Lab Task 3: Transformation</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Skewness Before and After Log Transformation</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th">Variable</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Skewness</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">bodywt</td>
+<td style="text-align: right; font-weight: bold; color: tomato !important;">7.230</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">log(bodywt+1)</td>
+<td style="text-align: right; font-weight: bold; color: tomato !important;">1.144</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">brainwt</td>
+<td style="text-align: right; font-weight: bold; color: tomato !important;">5.836</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">log(brainwt+1)</td>
+<td style="text-align: right; font-weight: bold; color: tomato !important;">4.575</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="lab-task-4-encoding-and-scaling" class="level2" data-number="16.6">
+<h2 data-number="16.6" class="anchored" data-anchor-id="lab-task-4-encoding-and-scaling"><span class="header-section-number">16.6</span> Lab Task 4: Encoding and Scaling</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="table table-striped table-hover caption-top table-sm small">
+<caption>Z-Score Scaling Verification</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;" data-quarto-table-cell-role="th"></th>
+<th style="text-align: left;" data-quarto-table-cell-role="th">Variable</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Mean Before</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">SD Before</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">Mean After</th>
+<th style="text-align: right;" data-quarto-table-cell-role="th">SD After</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">sleep_total</td>
+<td style="text-align: left;">sleep_total</td>
+<td style="text-align: right;">10.434</td>
+<td style="text-align: right;">4.450</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">sleep_rem</td>
+<td style="text-align: left;">sleep_rem</td>
+<td style="text-align: right;">1.913</td>
+<td style="text-align: right;">1.184</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">awake</td>
+<td style="text-align: left;">awake</td>
+<td style="text-align: right;">13.567</td>
+<td style="text-align: right;">4.452</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">log_bodywt</td>
+<td style="text-align: left;">log_bodywt</td>
+<td style="text-align: right;">1.951</td>
+<td style="text-align: right;">2.208</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">log_brainwt</td>
+<td style="text-align: left;">log_brainwt</td>
+<td style="text-align: right;">0.119</td>
+<td style="text-align: right;">0.302</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="lab-task-5-final-clean-dataset-and-visualization" class="level2" data-number="16.7">
+<h2 data-number="16.7" class="anchored" data-anchor-id="lab-task-5-final-clean-dataset-and-visualization"><span class="header-section-number">16.7</span> Lab Task 5: Final Clean Dataset and Visualization</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Final preprocessed dataset dimensions: 83 × 8 </code></pre>
+</div>
+<div class="cell-output cell-output-stdout">
+<pre><code>No missing values: TRUE </code></pre>
+</div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="chapter06_data_preprocessing_files/figure-html/lab-task5-1.png" class="img-fluid figure-img" width="768"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="lab-discussion-questions" class="level2" data-number="16.8">
+<h2 data-number="16.8" class="anchored" data-anchor-id="lab-discussion-questions"><span class="header-section-number">16.8</span> Lab Discussion Questions</h2>
+<p>Answer the following in writing:</p>
+<ol type="1">
+<li><p><strong>Missing Data Strategy:</strong> <code>brainwt</code> has 27% missing values. Is multiple imputation appropriate here, or would you recommend a different strategy? What type of missingness (MCAR/MAR/MNAR) do you suspect for brain weight in mammals?</p></li>
+<li><p><strong>Outlier Decision:</strong> The elephant has extreme <code>bodywt</code> and <code>brainwt</code> values flagged as outliers. Should it be removed? What are the consequences of removal for a study of mammal sleep patterns?</p></li>
+<li><p><strong>Transformation Justification:</strong> Why is log transformation more appropriate than square root for <code>bodywt</code>? Use the skewness values from Lab Task 3 to support your answer.</p></li>
+<li><p><strong>Encoding Choice:</strong> <code>vore</code> has 4 levels including some NAs. Justify your reference category choice for dummy encoding. How would target encoding differ, and what leakage risk would it introduce?</p></li>
+<li><p><strong>Scaling and Algorithms:</strong> If you were to cluster mammals by sleep patterns using K-means (Chapter 8), which preprocessing steps from this lab are essential, and which are optional? Justify each decision.</p></li>
+</ol>
+<hr>
+</section>
+</section>
+<section id="chapter-summary" class="level1" data-number="17">
+<h1 data-number="17"><span class="header-section-number">17</span> Chapter Summary</h1>
+<section id="summary" class="level2" data-number="17.1">
+<h2 data-number="17.1" class="anchored" data-anchor-id="summary"><span class="header-section-number">17.1</span> Summary</h2>
+<p>This chapter built a complete data preprocessing toolkit essential for any data science project:</p>
+<ul>
+<li><strong>Why preprocessing matters</strong> — the GIGO principle; each step in the pipeline has a distinct purpose and must be applied in the correct order; the leakage problem requires all fitting to occur on training data only.</li>
+<li><strong>Missing data</strong> — MCAR, MAR, and MNAR require different strategies; multiple imputation is the gold standard under MAR; no method fully corrects MNAR.</li>
+<li><strong>Outlier detection</strong> — IQR and modified z-score for univariate detection; Mahalanobis distance for multivariate; treatment depends on whether outliers are errors or genuine extreme values.</li>
+<li><strong>Transformation</strong> — log and Box-Cox correct right skew and stabilize variance; Yeo-Johnson handles negative values; transformation changes shape, not location or spread.</li>
+<li><strong>Encoding</strong> — dummy coding for regression (drop reference); one-hot for ML (no reference dropped); ordinal for ordered categories; target encoding for high cardinality with cross-validation.</li>
+<li><strong>Feature scaling</strong> — Z-score for most algorithms; min-max for bounded ranges; robust scaling when outliers are present; tree-based models do not require scaling.</li>
+<li><strong>Data integration and reshaping</strong> — tidy data principles; <code>pivot_longer/wider</code> for format conversion; <code>left/inner/full_join</code> for table merging.</li>
+</ul>
+<div class="callout callout-style-default callout-important callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Important</span>Key Formulas to Know
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p><strong>IQR Outlier Fences:</strong> <span class="math display">\[\text{Lower} = Q_1 - 1.5 \times \text{IQR}, \quad \text{Upper} = Q_3 + 1.5 \times \text{IQR}\]</span></p>
+<p><strong>Mahalanobis Distance:</strong> <span class="math display">\[D^2_i = (\mathbf{x}_i - \bar{\mathbf{x}})^T \mathbf{S}^{-1} (\mathbf{x}_i - \bar{\mathbf{x}}) \sim \chi^2(p)\]</span></p>
+<p><strong>Box-Cox Transformation:</strong> <span class="math display">\[x'(\lambda) = \begin{cases} (x^\lambda - 1)/\lambda &amp; \lambda \neq 0 \\ \log(x) &amp; \lambda = 0 \end{cases}\]</span></p>
+<p><strong>Z-Score Standardization:</strong> <span class="math display">\[x'_i = \frac{x_i - \bar{x}}{s}\]</span></p>
+<p><strong>Min-Max Normalization:</strong> <span class="math display">\[x'_i = \frac{x_i - x_{\min}}{x_{\max} - x_{\min}}\]</span></p>
+<p><strong>Post-Stratification Weight:</strong> <span class="math display">\[w_i = \frac{p_i^{\text{pop}}}{p_i^{\text{sample}}}\]</span></p>
+</div>
+</div>
+</section>
+<section id="references" class="level2" data-number="17.2">
+<h2 data-number="17.2" class="anchored" data-anchor-id="references"><span class="header-section-number">17.2</span> References</h2>
+<p>Box, G. E. P., &amp; Cox, D. R. (1964). An analysis of transformations. <em>Journal of the Royal Statistical Society: Series B</em>, <em>26</em>(2), 211–243.</p>
+<p>Henderson, H. V., &amp; Velleman, P. F. (1981). Building multiple regression models interactively. <em>Biometrics</em>, <em>37</em>(2), 391–411.</p>
+<p>Little, R. J. A., &amp; Rubin, D. B. (2002). <em>Statistical analysis with missing data</em> (2nd ed.). Wiley.</p>
+<p>New York State Department of Conservation. (1973). <em>Daily air quality measurements in New York, May–September 1973</em>.</p>
+<p>Pedersen, T. L. (2022). <em>patchwork: The composer of plots</em> (R package version 1.1.2). https://CRAN.R-project.org/package=patchwork</p>
+<p>R Core Team. (2024). <em>R: A language and environment for statistical computing</em>. R Foundation for Statistical Computing. https://www.R-project.org/</p>
+<p>Shapiro, S. S., &amp; Wilk, M. B. (1965). An analysis of variance test for normality. <em>Biometrika</em>, <em>52</em>(3/4), 591–611.</p>
+<p>Templ, M., Alfons, A., Kowarik, A., &amp; Prantner, B. (2023). <em>VIM: Visualization and imputation of missing values</em> (R package version 6.2.2). https://CRAN.R-project.org/package=VIM</p>
+<p>Tierney, N., &amp; Cook, D. (2023). <em>naniar: Data structures, summaries, and visualisations for missing data</em> (R package version 1.0.0). https://CRAN.R-project.org/package=naniar</p>
+<p>Tukey, J. W. (1977). <em>Exploratory data analysis</em>. Addison-Wesley.</p>
+<p>van Buuren, S., &amp; Groothuis-Oudshoorn, K. (2011). mice: Multivariate imputation by chained equations in R. <em>Journal of Statistical Software</em>, <em>45</em>(3), 1–67.</p>
+<p>Wickham, H. (2014). Tidy data. <em>Journal of Statistical Software</em>, <em>59</em>(10), 1–23.</p>
+<p>Wickham, H. (2016). <em>ggplot2: Elegant graphics for data analysis</em>. Springer.</p>
+<p>Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. <em>Journal of Open Source Software</em>, <em>4</em>(43), 1686.</p>
+<p>Xie, Y. (2015). <em>Dynamic documents with R and knitr</em> (2nd ed.). CRC Press.</p>
+<p>Yeo, I. K., &amp; Johnson, R. A. (2000). A new family of power transformations to improve normality or symmetry. <em>Biometrika</em>, <em>87</em>(4), 954–959.</p>
+<hr>
+<p><em>End of Chapter 6. Proceed to Chapter 7: Data Dimension Reduction.</em></p>
+
+
+</section>
+</section>
+
+</main> <!-- /main -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+<nav class="page-navigation">
+  <div class="nav-page nav-page-previous">
+      <a href="./chapter05_data_sampling.html" class="pagination-link" aria-label="Chapter 5: Data Sampling Techniques">
+        <i class="bi bi-arrow-left-short"></i> <span class="nav-page-text"><span class="chapter-number">6</span>&nbsp; <span class="chapter-title">Chapter 5: Data Sampling Techniques</span></span>
+      </a>          
+  </div>
+  <div class="nav-page nav-page-next">
+      <a href="./chapter07_dimension_reduction.html" class="pagination-link" aria-label="Chapter 7: Data Dimension Reduction">
+        <span class="nav-page-text"><span class="chapter-number">8</span>&nbsp; <span class="chapter-title">Chapter 7: Data Dimension Reduction</span></span> <i class="bi bi-arrow-right-short"></i>
+      </a>
+  </div>
+</nav>
+</div> <!-- /content -->
+
+
+
+
+</body></html>
