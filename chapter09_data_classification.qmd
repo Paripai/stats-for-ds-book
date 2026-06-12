@@ -1,0 +1,1533 @@
+# Chapter 9: Data Classification
+
+```{r setup}
+# Load all libraries needed for this chapter
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(patchwork)
+library(caret)         # unified ML framework
+library(rpart)         # decision trees
+library(rpart.plot)    # tree visualization
+library(randomForest)  # random forest
+library(pROC)          # ROC curves
+library(class)         # KNN
+library(e1071)         # SVM (optional comparison)
+library(MASS)          # datasets
+library(MLmetrics)     # additional metrics
+```
+
+---
+
+# Chapter Overview
+
+## Introduction
+
+**Classification** is the task of predicting which category — class, label, group — a new observation belongs to, based on its features. It is the most widely applied form of supervised machine learning: spam vs. legitimate email, disease vs. healthy, fraud vs. genuine transaction, high-risk vs. low-risk loan applicant. Every classification problem shares a common structure: a labeled training set, a set of features, a learning algorithm, and a performance evaluation framework.
+
+This chapter covers:
+
+- **Introduction to Classification** — supervised learning, decision boundaries, problem types
+- **Logistic Regression** — the statistical foundation of binary classification
+- **K-Nearest Neighbors** — the simplest non-parametric classifier
+- **Decision Trees** — interpretable rule-based classification
+- **Random Forest and Ensemble Methods** — combining classifiers for superior performance
+- **Model Evaluation** — confusion matrix, precision, recall, F1, AUC-ROC
+- **Model Comparison and Selection** — cross-validation, bias-variance, choosing the best model
+
+::: {.callout-note}
+## Learning Objectives
+By the end of this chapter, you will be able to:
+
+1. Distinguish classification from clustering and regression; frame a problem correctly.
+2. Fit and interpret logistic regression including odds ratios and ROC curves.
+3. Implement KNN classification and choose the optimal K.
+4. Build, prune, and interpret decision trees.
+5. Train random forests and extract variable importance measures.
+6. Evaluate classifiers using appropriate metrics beyond accuracy.
+7. Compare multiple classifiers using cross-validation and select the best model.
+:::
+
+---
+
+# Introduction to Classification
+
+## Introduction
+
+In **supervised learning**, we have a labeled dataset: $n$ observations $(x_i, y_i)$ where $x_i \in \mathbb{R}^p$ is a feature vector and $y_i \in \{1, 2, \ldots, K\}$ is a class label. The goal is to learn a function $f: \mathbb{R}^p \to \{1, \ldots, K\}$ that predicts the class of new, unseen observations.
+
+Classification is fundamentally different from clustering (Chapter 8) — we have labels and we use them. It is also different from regression (Chapter 10) — the outcome is categorical, not continuous.
+
+## Theory
+
+### Types of Classification Problems
+
+| Type | Output | Examples |
+|------|--------|---------|
+| **Binary** | 2 classes | Spam/not spam, disease/healthy |
+| **Multiclass** | $K > 2$ classes | Digit recognition, species ID |
+| **Multilabel** | Multiple labels per observation | Image tagging, document categorization |
+| **Imbalanced** | Very unequal class frequencies | Fraud detection, rare disease |
+
+: Types of classification problems {.striped}
+
+### The Decision Boundary
+
+A classifier partitions the feature space into regions, one per class. The **decision boundary** is the surface separating these regions. Its shape depends on the algorithm:
+
+- **Linear classifiers** (logistic regression, LDA): flat hyperplane boundary
+- **KNN:** locally adaptive, potentially complex boundary
+- **Decision trees:** axis-aligned rectangular regions
+- **Random forests:** complex non-linear boundaries
+- **SVM:** maximum-margin hyperplane (possibly non-linear via kernel)
+
+### The Training-Test Split
+
+A fundamental principle: **never evaluate a model on the data used to train it**. The training set is used to fit the model; the **test set** (held out before training) provides an unbiased estimate of generalization performance.
+
+$$\text{Dataset} \xrightarrow{\text{split}} \begin{cases} \text{Training set (70-80\%)} & \text{fit model} \\ \text{Test set (20-30\%)} & \text{evaluate model} \end{cases}$$
+
+In practice, a **validation set** or **cross-validation** is used for hyperparameter tuning, with the test set reserved for final evaluation only.
+
+### The Bayes Error Rate
+
+The **Bayes error rate** is the lowest achievable error rate for any classifier:
+
+$$\text{Bayes error} = 1 - E\left[\max_k P(Y = k \mid X)\right]$$
+
+It represents irreducible error — the overlap between class distributions in feature space. No model can achieve error below the Bayes rate. Real classifiers aim to approach, but not exceed, this bound.
+
+## Example: Classification Problem Setup
+
+**Example 9.1.** A bank wants to predict whether a loan applicant will default (1) or not (0) based on income, credit score, loan amount, and employment length.
+
+- **Problem type:** Binary classification
+- **Features:** $p = 4$ (income, credit score, loan amount, employment)
+- **Training set:** Historical loans with known outcomes
+- **Evaluation metric:** Not accuracy alone — the cost of a false negative (predicting no default when the applicant will default) is much higher than a false positive.
+
+This asymmetric cost structure requires careful metric choice — a recurring theme throughout this chapter.
+
+## R Example: Setting Up a Classification Problem
+
+```{r classification-setup}
+# --- Use the Pima Indians diabetes dataset ---
+# Available in MASS package
+data(Pima.tr, package = "MASS")
+data(Pima.te, package = "MASS")
+
+# Combine and inspect
+pima <- bind_rows(
+  Pima.tr |> mutate(set = "train"),
+  Pima.te |> mutate(set = "test")
+)
+
+cat("Dataset dimensions:", nrow(pima), "×",
+    ncol(pima) - 1, "\n")
+cat("Class distribution:\n")
+print(table(pima$type))
+cat("Class balance:",
+    round(mean(pima$type == "Yes") * 100, 1),
+    "% positive (diabetic)\n\n")
+
+# Inspect features
+glimpse(pima)
+```
+
+```{r classification-eda}
+# --- Visualize class separation ---
+pima_long <- pima |>
+  dplyr::select(-set) |>
+  pivot_longer(-type,
+               names_to  = "Feature",
+               values_to = "Value")
+
+ggplot(pima_long, aes(x = Value, fill = type)) +
+  geom_density(alpha = 0.5) +
+  scale_fill_manual(values = c("No"  = "steelblue",
+                                "Yes" = "tomato")) +
+  facet_wrap(~Feature, scales = "free", ncol = 4) +
+  labs(title    = "Feature Distributions by Class",
+       subtitle = "Pima Indians Diabetes Dataset",
+       fill     = "Diabetic") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top")
+```
+
+**Code explanation:**
+
+- `bind_rows()` with a `set` identifier preserves train/test membership while enabling combined visualization — always maintain this split discipline.
+- `pivot_longer()` reshapes to long format for `facet_wrap()` — the cleanest way to compare feature distributions across all variables simultaneously.
+- Visual separation (density overlap) gives a first impression of which features will be most useful for classification.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 9.1
+Using the `iris` dataset reformulated as a binary classification problem (setosa vs. non-setosa):
+
+(a) Create a binary outcome variable `is_setosa`.
+(b) Split into 75% training and 25% test sets using `caret::createDataPartition()`.
+(c) Visualize feature distributions by class. Which two features appear most discriminating?
+(d) What is the class balance? If you built a "majority class" classifier, what accuracy would it achieve?
+:::
+
+---
+
+# Logistic Regression
+
+## Introduction
+
+**Logistic regression** is the natural extension of linear regression to binary classification. Rather than predicting a continuous outcome, it models the **probability** that an observation belongs to the positive class. Despite its name, logistic regression is a classification algorithm — it outputs probabilities that are converted to class predictions by applying a threshold (typically 0.5). It remains one of the most widely used and interpretable classifiers in statistics and data science.
+
+## Theory
+
+### The Logistic Model
+
+For a binary outcome $Y \in \{0, 1\}$, logistic regression models:
+
+$$P(Y = 1 \mid \mathbf{x}) = \sigma(\beta_0 + \beta_1 x_1 + \cdots + \beta_p x_p) = \frac{1}{1 + e^{-(\beta_0 + \boldsymbol{\beta}^T\mathbf{x})}}$$
+
+where $\sigma(z) = 1/(1 + e^{-z})$ is the **sigmoid (logistic) function**, which maps any real number to $(0, 1)$.
+
+### The Log-Odds (Logit) Interpretation
+
+Taking the log of the odds ratio:
+
+$$\log\frac{P(Y=1)}{P(Y=0)} = \beta_0 + \beta_1 x_1 + \cdots + \beta_p x_p$$
+
+The **log-odds** (logit) is linear in the features. This gives a clear interpretation:
+
+- $e^{\beta_j}$ is the **odds ratio** for a one-unit increase in $x_j$, holding all other variables constant.
+- $e^{\beta_j} > 1$: increasing $x_j$ increases the odds of $Y = 1$.
+- $e^{\beta_j} < 1$: increasing $x_j$ decreases the odds of $Y = 1$.
+- $e^{\beta_j} = 1$ (i.e., $\beta_j = 0$): $x_j$ has no effect.
+
+### Parameter Estimation: Maximum Likelihood
+
+Coefficients are estimated by **maximum likelihood** — finding $\boldsymbol{\beta}$ that maximizes the probability of observing the training labels:
+
+$$\ell(\boldsymbol{\beta}) = \sum_{i=1}^{n} \left[ y_i \log\hat{p}_i + (1-y_i)\log(1-\hat{p}_i) \right]$$
+
+This is the **binary cross-entropy loss** (negative log-likelihood). It is convex — gradient descent finds the global optimum.
+
+### Hypothesis Testing for Coefficients
+
+Each coefficient $\beta_j$ is tested with:
+
+$$z = \frac{\hat{\beta}_j}{\text{SE}(\hat{\beta}_j)} \sim N(0,1) \text{ under } H_0: \beta_j = 0$$
+
+The **likelihood ratio test** compares the full model to a reduced model and follows a $\chi^2$ distribution.
+
+### Multinomial Logistic Regression
+
+For $K > 2$ classes, the model extends to **multinomial (softmax) regression**:
+
+$$P(Y = k \mid \mathbf{x}) = \frac{e^{\boldsymbol{\beta}_k^T\mathbf{x}}}{\sum_{j=1}^{K} e^{\boldsymbol{\beta}_j^T\mathbf{x}}}$$
+
+One class is set as reference; $K-1$ sets of coefficients are estimated.
+
+## Example: Logistic Regression for Diabetes Prediction
+
+**Example 9.2.** Using the Pima dataset, a logistic regression predicts diabetes from glucose level, BMI, and age. Coefficient for glucose: $\hat{\beta} = 0.038$, $e^{\hat{\beta}} = 1.039$. 
+
+**Interpretation:** For each 1 mg/dL increase in glucose concentration, the odds of diabetes increase by 3.9%, holding BMI and age constant. This is statistically significant ($z = 8.2$, $p < 0.001$).
+
+## R Example: Logistic Regression
+
+```{r logistic-reg}
+# --- Logistic regression on Pima dataset ---
+data(Pima.tr, package = "MASS")
+data(Pima.te, package = "MASS")
+
+# Convert outcome to binary
+Pima.tr$diabetes <- ifelse(Pima.tr$type == "Yes", 1, 0)
+Pima.te$diabetes <- ifelse(Pima.te$type == "Yes", 1, 0)
+
+# Fit logistic regression
+lr_model <- glm(diabetes ~ glu + bmi + age + ped,
+                 data   = Pima.tr,
+                 family = binomial(link = "logit"))
+
+summary(lr_model)
+```
+
+```{r logistic-odds}
+# --- Odds ratios with confidence intervals ---
+or_df <- data.frame(
+  Variable = names(coef(lr_model))[-1],
+  OR       = round(exp(coef(lr_model))[-1], 4),
+  CI_lower = round(exp(confint(lr_model))[-1, 1], 4),
+  CI_upper = round(exp(confint(lr_model))[-1, 2], 4),
+  p_value  = round(summary(lr_model)$coefficients[-1, 4], 4)
+)
+
+kable(or_df,
+      caption   = "Odds Ratios: Logistic Regression",
+      col.names = c("Variable","OR","95% CI Lower",
+                    "95% CI Upper","p-value")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(2, bold = TRUE,
+              color = ifelse(or_df$OR > 1,
+                             "tomato","steelblue"))
+```
+
+```{r logistic-predict}
+# --- Predictions and classification ---
+lr_probs <- predict(lr_model, Pima.te,
+                     type = "response")
+lr_class <- ifelse(lr_probs >= 0.5, 1, 0)
+
+# Confusion matrix
+conf_lr  <- table(Predicted = lr_class,
+                   Actual    = Pima.te$diabetes)
+acc_lr   <- mean(lr_class == Pima.te$diabetes)
+
+cat("Accuracy:", round(acc_lr * 100, 1), "%\n\n")
+kable(conf_lr,
+      caption = "Confusion Matrix: Logistic Regression") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+```{r logistic-roc}
+# --- ROC curve ---
+roc_lr <- pROC::roc(Pima.te$diabetes, lr_probs,
+                     quiet = TRUE)
+
+roc_df <- data.frame(
+  FPR = 1 - roc_lr$specificities,
+  TPR = roc_lr$sensitivities
+)
+
+ggplot(roc_df, aes(x = FPR, y = TPR)) +
+  geom_line(color = "steelblue", linewidth = 1.3) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", color = "gray50") +
+  geom_area(fill = "steelblue", alpha = 0.15) +
+  annotate("text", x = 0.65, y = 0.25,
+           label = paste0("AUC = ",
+                           round(pROC::auc(roc_lr), 3)),
+           size = 5, fontface = "bold",
+           color = "steelblue") +
+  labs(title    = "ROC Curve: Logistic Regression",
+       subtitle = "Pima Diabetes Dataset — Test Set",
+       x        = "False Positive Rate (1 − Specificity)",
+       y        = "True Positive Rate (Sensitivity)") +
+  theme_minimal(base_size = 13)
+```
+
+**Code explanation:**
+
+- `glm(formula, family = binomial)` fits logistic regression. `family = binomial(link = "logit")` specifies the logit link function.
+- `exp(coef(lr_model))` converts log-odds coefficients to odds ratios; `exp(confint())` gives the CIs on the OR scale.
+- `pROC::roc()` computes the ROC curve from predicted probabilities and true labels. `pROC::auc()` extracts the area under the curve.
+- The shaded area under the ROC curve visually represents the AUC — the probability that the model ranks a random positive higher than a random negative.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 9.2
+Using the full Pima dataset:
+
+(a) Fit logistic regression with all 7 predictors. Which are significant at $\alpha = 0.05$?
+(b) Interpret the odds ratio for `glu`. How does it change when you control for all other variables?
+(c) Try different classification thresholds (0.3, 0.4, 0.5, 0.6). How do precision and recall change?
+(d) Fit a multinomial logistic regression on the `iris` dataset using `nnet::multinom()`. Report the AIC.
+:::
+
+---
+
+# K-Nearest Neighbors
+
+## Introduction
+
+**K-Nearest Neighbors (KNN)** is the simplest non-parametric classifier. It makes no assumptions about the form of the decision boundary — instead, it classifies each new observation based on the majority class among its $K$ nearest neighbors in the training set. KNN is intuitive, easy to implement, and can capture complex non-linear boundaries. Its main limitations are computational cost at prediction time (must compute distances to all training points) and sensitivity to irrelevant features and scale.
+
+## Theory
+
+### The KNN Algorithm
+
+**Training:** Simply store all training observations. There is no explicit model fitting.
+
+**Prediction for a new point $x_0$:**
+1. Compute the distance from $x_0$ to every training point.
+2. Identify the $K$ nearest neighbors $\mathcal{N}(x_0)$.
+3. Predict the most common class among the $K$ neighbors:
+$$\hat{y} = \arg\max_k \sum_{i \in \mathcal{N}(x_0)} \mathbf{1}(y_i = k)$$
+
+For probability estimates, use the proportion of class $k$ among the $K$ neighbors.
+
+### Choosing $K$
+
+- **Small $K$ (e.g., $K = 1$):** Very flexible decision boundary; low bias, high variance; overfits to noise.
+- **Large $K$ (e.g., $K = n$):** Smooth boundary; high bias, low variance; predicts majority class always.
+- **Optimal $K$:** Found by cross-validation — minimizes validation error.
+
+### The Bias-Variance Tradeoff in KNN
+
+As $K$ increases from 1 to $n$:
+
+$$\text{Bias} \uparrow, \quad \text{Variance} \downarrow$$
+
+The optimal $K$ minimizes the total error $= \text{Bias}^2 + \text{Variance}$.
+
+### KNN Requirements
+
+1. **Scale:** All features must be standardized — a feature with large range dominates Euclidean distances.
+2. **Dimensionality:** KNN degrades in high dimensions (curse of dimensionality, Chapter 7) — consider PCA preprocessing.
+3. **Computational cost:** Prediction is $O(np)$ per query — slow for large training sets. Use k-d trees or ball trees for speed.
+
+### Weighted KNN
+
+Give closer neighbors more influence by weighting votes by inverse distance:
+
+$$w_i = \frac{1}{d(x_0, x_i)^2}$$
+
+This reduces the influence of distant neighbors and often improves performance near decision boundaries.
+
+## Example: KNN Decision Boundary
+
+**Example 9.3.** For the Pima dataset with $K = 1$: perfect training accuracy (each point is its own nearest neighbor), but poor test accuracy (overfitting). With $K = 21$: smoother boundary, better generalization. Cross-validation identifies $K = 15$ as optimal, achieving 76% test accuracy.
+
+## R Example: KNN Classification
+
+```{r knn}
+# --- KNN on Pima dataset ---
+# Standardize features
+train_x <- scale(Pima.tr[, c("glu","bmi","age","ped")])
+test_x  <- scale(Pima.te[, c("glu","bmi","age","ped")],
+                  center = attr(train_x,"scaled:center"),
+                  scale  = attr(train_x,"scaled:scale"))
+train_y <- Pima.tr$type
+test_y  <- Pima.te$type
+
+# Tune K via cross-validation
+set.seed(42)
+k_vals     <- seq(1, 31, by = 2)
+cv_acc     <- sapply(k_vals, function(k) {
+  folds <- createFolds(train_y, k = 5)
+  fold_acc <- sapply(folds, function(idx) {
+    knn_pred <- class::knn(train = train_x[-idx, ],
+                            test  = train_x[idx, ],
+                            cl    = train_y[-idx],
+                            k     = k)
+    mean(knn_pred == train_y[idx])
+  })
+  mean(fold_acc)
+})
+
+optimal_k_knn <- k_vals[which.max(cv_acc)]
+cat("Optimal K:", optimal_k_knn, "\n")
+```
+
+```{r knn-final}
+# --- Final KNN model ---
+knn_pred <- class::knn(train = train_x,
+                        test  = test_x,
+                        cl    = train_y,
+                        k     = optimal_k_knn,
+                        prob  = TRUE)
+
+knn_acc <- mean(knn_pred == test_y)
+cat("KNN Test Accuracy (K=",
+    optimal_k_knn, "):",
+    round(knn_acc * 100, 1), "%\n")
+
+table(Predicted = knn_pred, Actual = test_y)
+```
+
+```{r knn-plot}
+# --- K vs. accuracy plot ---
+knn_df <- data.frame(K = k_vals, Accuracy = cv_acc)
+
+ggplot(knn_df, aes(x = K, y = Accuracy)) +
+  geom_line(color = "steelblue", linewidth = 1.2) +
+  geom_point(size = 3, color = "steelblue") +
+  geom_vline(xintercept = optimal_k_knn,
+             color = "tomato", linetype = "dashed",
+             linewidth = 1) +
+  annotate("text",
+           x = optimal_k_knn + 1.5,
+           y = min(cv_acc) + 0.005,
+           label = paste0("Optimal K = ",
+                           optimal_k_knn),
+           color = "tomato", hjust = 0, size = 4) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title    = "KNN: Cross-Validated Accuracy vs. K",
+       subtitle = "5-fold CV on training set",
+       x        = "K (Number of Neighbors)",
+       y        = "CV Accuracy") +
+  theme_minimal(base_size = 13)
+```
+
+**Code explanation:**
+
+- `scale(test_x, center = ..., scale = ...)` applies training set scaling to test data — critical to prevent data leakage; always scale test using training set parameters.
+- `createFolds(y, k = 5)` creates stratified cross-validation folds, preserving class proportions in each fold.
+- `class::knn(..., prob = TRUE)` returns class probabilities via `attr(pred, "prob")` for ROC analysis.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 9.3
+Using the `iris` dataset:
+
+(a) Split into 70% train / 30% test. Standardize features.
+(b) Tune $K$ from 1 to 20 using 10-fold cross-validation. Plot CV accuracy vs. $K$.
+(c) Fit the final KNN model. What is the test accuracy?
+(d) Compare KNN to logistic regression on the same split. Which performs better for multiclass iris?
+:::
+
+---
+
+# Decision Trees
+
+## Introduction
+
+**Decision trees** classify observations by recursively partitioning the feature space using a series of simple binary rules — "if $x_j \leq t$ then go left, else go right." Each leaf node represents a class prediction. Decision trees are uniquely valuable for their **interpretability** — the learned rules can be visualized and explained to non-technical stakeholders. They are also the building blocks of the most powerful ensemble methods.
+
+## Theory
+
+### Tree Construction: Recursive Binary Splitting
+
+Starting from the root node containing all training data, at each node:
+
+1. For each feature $x_j$ and each possible split point $t$, compute the **impurity reduction** from splitting.
+2. Choose the split $(x_j^*, t^*)$ that maximally reduces impurity.
+3. Recursively apply to each child node.
+4. Stop when a stopping criterion is met (minimum node size, maximum depth, or minimum impurity reduction).
+
+### Impurity Measures
+
+**Gini impurity** (used in CART):
+$$G(t) = \sum_{k=1}^{K} p_k(t)(1 - p_k(t)) = 1 - \sum_{k=1}^{K} p_k(t)^2$$
+
+**Entropy** (used in C4.5/C5.0):
+$$H(t) = -\sum_{k=1}^{K} p_k(t)\log_2 p_k(t)$$
+
+**Misclassification rate:**
+$$E(t) = 1 - \max_k p_k(t)$$
+
+where $p_k(t)$ is the proportion of class $k$ observations at node $t$. All three are minimized when a node is pure (one class only). Gini and entropy are preferred for growing trees because they are more sensitive to impurity changes than misclassification rate.
+
+### The Information Gain
+
+The quality of a split is measured by the **information gain** (reduction in entropy):
+
+$$\text{IG}(t, x_j, s) = H(t) - \frac{n_L}{n}H(t_L) - \frac{n_R}{n}H(t_R)$$
+
+where $t_L$ and $t_R$ are the left and right child nodes.
+
+### Pruning
+
+A fully grown tree overfits. **Post-pruning** (cost-complexity pruning, also called weakest-link pruning) removes branches that do not improve generalization:
+
+$$\text{Minimize: } R_\alpha(T) = R(T) + \alpha |T|$$
+
+where $R(T)$ is the training error, $|T|$ is the number of leaves, and $\alpha \geq 0$ is the complexity parameter. Cross-validation selects the optimal $\alpha$.
+
+### Advantages and Limitations
+
+**Advantages:**
+- Highly interpretable ("white box" model)
+- Handles mixed data types natively
+- No scaling required
+- Captures non-linear relationships and interactions
+
+**Limitations:**
+- High variance — small changes in data produce different trees
+- Biased toward features with many levels
+- Poor extrapolation beyond training data range
+- Suboptimal compared to ensemble methods
+
+## Example: Decision Tree for Diabetes Classification
+
+**Example 9.4.** A decision tree for the Pima dataset with maximum depth 3 produces rules like:
+
+```
+If glu <= 127.5:
+  If bmi <= 26.35: → No (82% accuracy in leaf)
+  If bmi >  26.35: → No (63% accuracy in leaf)
+If glu > 127.5:
+  If age <= 28.5:  → No (56% accuracy in leaf)
+  If age >  28.5:  → Yes (72% accuracy in leaf)
+```
+
+The tree reveals that glucose level is the primary predictor, followed by BMI — consistent with medical knowledge. The leaf purity statistics show where the model is most and least confident.
+
+## R Example: Decision Trees
+
+```{r decision-tree}
+# --- Decision tree on Pima dataset ---
+set.seed(42)
+tree_model <- rpart(type ~ glu + bmi + age + ped + npreg,
+                     data   = Pima.tr,
+                     method = "class",
+                     control = rpart.control(
+                       minsplit = 10,
+                       cp       = 0.001,
+                       maxdepth = 10
+                     ))
+
+# Visualize the tree
+rpart.plot(tree_model,
+           type  = 4,
+           extra = 104,
+           box.palette = c("steelblue","tomato"),
+           main  = "Decision Tree: Pima Diabetes",
+           cex   = 0.75)
+```
+
+```{r tree-pruning}
+# --- Cost-complexity pruning ---
+# Print CP table
+printcp(tree_model)
+
+# Plot CV error vs. complexity
+plotcp(tree_model,
+       main = "Cross-Validated Error vs. Complexity Parameter")
+
+# Prune to optimal cp
+opt_cp    <- tree_model$cptable[
+  which.min(tree_model$cptable[,"xerror"]),
+  "CP"]
+tree_pruned <- prune(tree_model, cp = opt_cp)
+
+cat("\nOptimal CP:", round(opt_cp, 5), "\n")
+cat("Tree size before pruning:",
+    nrow(tree_model$frame), "nodes\n")
+cat("Tree size after pruning: ",
+    nrow(tree_pruned$frame), "nodes\n")
+```
+
+```{r tree-predict}
+# --- Predictions ---
+tree_pred  <- predict(tree_pruned, Pima.te,
+                       type = "class")
+tree_probs <- predict(tree_pruned, Pima.te,
+                       type = "prob")[, "Yes"]
+tree_acc   <- mean(tree_pred == Pima.te$type)
+
+cat("\nPruned Tree Test Accuracy:",
+    round(tree_acc * 100, 1), "%\n")
+
+# Variable importance
+imp_df <- data.frame(
+  Variable   = names(tree_pruned$variable.importance),
+  Importance = round(tree_pruned$variable.importance, 2)
+) |> arrange(desc(Importance))
+
+kable(imp_df,
+      caption = "Variable Importance: Decision Tree") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+**Code explanation:**
+
+- `rpart(formula, method = "class")` fits a classification tree. `method = "anova"` is used for regression.
+- `printcp()` displays the cross-validated error for each tree size — the row with minimum `xerror` gives the optimal pruning level.
+- `prune(tree, cp)` prunes the tree to the specified complexity. `which.min(cptable[,"xerror"])` automates optimal $\alpha$ selection.
+- `rpart.plot(..., extra = 104)` displays class probabilities and percentages in each leaf — making the tree a complete interpretable model.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 9.4
+Using the `iris` dataset:
+
+(a) Grow a full decision tree (no depth limit). What is the training accuracy?
+(b) Apply cost-complexity pruning. Plot the CV error curve and identify the optimal tree size.
+(c) Visualize the pruned tree using `rpart.plot()`. How many levels deep is it?
+(d) Compare Gini impurity (`parms = list(split = "gini")`) vs. entropy (`"information"`). Do they produce different trees?
+:::
+
+---
+
+# Random Forest and Ensemble Methods
+
+## Introduction
+
+A single decision tree has high variance — small perturbations in the training data produce very different trees. **Ensemble methods** address this by combining many models, each trained on a perturbed version of the data, and aggregating their predictions. The result is dramatically lower variance with minimal increase in bias, producing classifiers that are among the most accurate available for tabular data. **Random Forest** and **Gradient Boosting** are the dominant ensemble methods in modern data science.
+
+## Theory
+
+### Bagging (Bootstrap Aggregating)
+
+**Bagging** trains $B$ decision trees on $B$ bootstrap samples of the training data, then aggregates predictions by majority vote (classification) or mean (regression):
+
+$$\hat{f}_{\text{bag}}(x) = \text{majority vote}\{\hat{f}_b(x)\}_{b=1}^{B}$$
+
+The key insight: averaging reduces variance by a factor of $B$ without increasing bias (for independent predictors). Trees trained on different bootstrap samples are not identical — their disagreement captures variance.
+
+**Out-of-Bag (OOB) Error:** Each bootstrap sample omits approximately 37% of training observations. These out-of-bag observations can be used to estimate generalization error without a separate validation set.
+
+### Random Forest
+
+**Random Forest** extends bagging with **feature randomization**: at each split, only a random subset of $m$ features is considered (not all $p$):
+
+$$m \approx \sqrt{p} \text{ (classification)}, \qquad m \approx p/3 \text{ (regression)}$$
+
+This **decorrelates** the trees — even if one feature is very strong, it doesn't dominate every split in every tree. Decorrelation further reduces variance beyond what bagging alone achieves.
+
+**Variable Importance:**
+
+- **Mean Decrease in Accuracy (MDA):** Permute each feature and measure the drop in OOB accuracy.
+- **Mean Decrease in Gini (MDG):** Sum of Gini impurity decreases from splits on each feature across all trees.
+
+MDA is more principled and robust; MDG is faster to compute.
+
+### Boosting
+
+**Boosting** builds trees sequentially, with each tree fitting the **residuals** (errors) of the previous ones:
+
+**AdaBoost:** Increases weights of misclassified observations so subsequent trees focus on hard cases.
+
+**Gradient Boosting (GBM):** Fits each tree to the negative gradient of the loss function — a generalization of residual fitting.
+
+$$F_m(x) = F_{m-1}(x) + \eta \cdot h_m(x)$$
+
+where $\eta$ is the learning rate and $h_m$ is the $m$-th tree fit to residuals. **XGBoost** and **LightGBM** are highly optimized gradient boosting implementations.
+
+### Bagging vs. Boosting
+
+| Feature | Bagging / Random Forest | Boosting |
+|---------|------------------------|---------|
+| Tree building | Parallel (independent) | Sequential (dependent) |
+| Main effect | Reduces variance | Reduces bias |
+| Overfitting risk | Low | Higher (needs regularization) |
+| Interpretability | Moderate (variable importance) | Low |
+| Typical performance | Very good | Often best-in-class |
+
+: Bagging vs. Boosting comparison {.striped}
+
+## Example: Random Forest Feature Importance
+
+**Example 9.5.** Random forest on the Pima dataset ($B = 500$ trees, $m = 2$) identifies glucose as the most important feature by both MDA and MDG, followed by BMI, age, and diabetes pedigree function. This is consistent with medical knowledge and the logistic regression results — but the random forest captures non-linear interactions that logistic regression misses.
+
+## R Example: Random Forest and Ensemble Methods
+
+```{r random-forest}
+# --- Random Forest on Pima dataset ---
+set.seed(42)
+rf_model <- randomForest(
+  type ~ glu + bmi + age + ped + npreg,
+  data       = Pima.tr,
+  ntree      = 500,
+  mtry       = 2,
+  importance = TRUE
+)
+
+print(rf_model)
+```
+
+```{r rf-importance}
+# --- Variable importance ---
+imp_rf <- as.data.frame(importance(rf_model))
+imp_rf$Variable <- rownames(imp_rf)
+imp_rf <- imp_rf |>
+  arrange(desc(MeanDecreaseAccuracy)) |>
+  rename(MDA = MeanDecreaseAccuracy,
+         MDG = MeanDecreaseGini)
+
+kable(round(imp_rf[, c("MDA","MDG")], 3),
+      caption   = "Random Forest Variable Importance",
+      col.names = c("MDA","MDG"),
+      row.names = TRUE) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+```{r rf-predict}
+# --- Predictions ---
+rf_pred  <- predict(rf_model, Pima.te)
+rf_probs <- predict(rf_model, Pima.te, type = "prob")[,"Yes"]
+rf_acc   <- mean(rf_pred == Pima.te$type)
+
+cat("Random Forest Test Accuracy:",
+    round(rf_acc * 100, 1), "%\n")
+```
+
+```{r rf-plots}
+# --- OOB error vs. number of trees ---
+oob_df <- data.frame(
+  Trees    = 1:rf_model$ntree,
+  OOB_Error = rf_model$err.rate[, "OOB"]
+)
+
+p1 <- ggplot(oob_df, aes(x = Trees, y = OOB_Error)) +
+  geom_line(color = "steelblue", linewidth = 0.8) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title    = "A. OOB Error vs. Number of Trees",
+       subtitle = "Stabilizes around 200 trees",
+       x = "Number of Trees",
+       y = "OOB Error Rate") +
+  theme_minimal(base_size = 12)
+
+# Variable importance plot
+p2 <- imp_rf |>
+  ggplot(aes(x = reorder(Variable, MDA),
+             y = MDA, fill = MDA)) +
+  geom_col(color = "white") +
+  scale_fill_gradient(low = "steelblue",
+                       high = "tomato") +
+  coord_flip() +
+  labs(title    = "B. Variable Importance (MDA)",
+       subtitle = "Mean Decrease in Accuracy",
+       x = "Variable", y = "MDA") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+
+p1 + p2
+```
+
+**Code explanation:**
+
+- `randomForest(formula, ntree, mtry, importance = TRUE)` fits the model. `importance = TRUE` enables both MDA and MDG calculation.
+- `rf_model$err.rate[, "OOB"]` gives the OOB error after each tree is added — plotting this reveals the number of trees needed for convergence.
+- `predict(rf_model, type = "prob")` returns class probabilities — needed for ROC analysis.
+- The OOB error curve (Panel A) shows that around 200 trees, additional trees provide diminishing returns — useful for balancing accuracy and computation time.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 9.5
+Using the `iris` dataset:
+
+(a) Train a random forest with $B = 500$ trees. Tune `mtry` using OOB error for $m = 1, 2, 3, 4$.
+(b) Compare OOB accuracy to test accuracy. Are they similar?
+(c) Plot variable importance (MDA and MDG). Do both methods agree on the most important features?
+(d) Fit a gradient boosting model using `gbm::gbm()` or `xgboost`. Compare test accuracy to random forest.
+:::
+
+::: {.callout-tip}
+## Exercise 9.6 (Challenge)
+Explore the bias-variance tradeoff in random forests:
+
+(a) Train forests with $B = 1, 5, 20, 100, 500$ trees on the Pima dataset. Record test accuracy for each.
+(b) Is there a point of diminishing returns? At what $B$ does accuracy stabilize?
+(c) Compare single decision tree vs. bagging vs. random forest test accuracy. Which variance reduction is greater: bagging or random forests?
+:::
+
+---
+
+# Model Evaluation
+
+## Introduction
+
+Accuracy — the proportion of correctly classified observations — is the most intuitive performance metric. But it is often deeply misleading: a classifier that always predicts "No disease" achieves 90% accuracy on a dataset where 90% of patients are healthy, yet is completely useless. **Comprehensive model evaluation** requires a suite of metrics that capture different aspects of performance, particularly for imbalanced classes and asymmetric misclassification costs.
+
+## Theory
+
+### The Confusion Matrix
+
+For binary classification (positive = 1, negative = 0):
+
+|  | Predicted Positive | Predicted Negative |
+|--|-------------------|-------------------|
+| **Actual Positive** | True Positive (TP) | False Negative (FN) |
+| **Actual Negative** | False Positive (FP) | True Negative (TN) |
+
+: Confusion matrix structure {.striped}
+
+### Derived Metrics
+
+$$\text{Accuracy} = \frac{TP + TN}{TP + TN + FP + FN}$$
+
+$$\text{Precision} = \frac{TP}{TP + FP} \quad \text{(of predicted positives, how many are truly positive?)}$$
+
+$$\text{Recall (Sensitivity)} = \frac{TP}{TP + FN} \quad \text{(of actual positives, how many did we catch?)}$$
+
+$$\text{Specificity} = \frac{TN}{TN + FP} \quad \text{(of actual negatives, how many did we correctly identify?)}$$
+
+$$F_1 = 2 \cdot \frac{\text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}} \quad \text{(harmonic mean of precision and recall)}$$
+
+$$F_\beta = (1 + \beta^2) \cdot \frac{\text{Precision} \times \text{Recall}}{\beta^2 \cdot \text{Precision} + \text{Recall}} \quad \text{($\beta > 1$: recall weighted more; $\beta < 1$: precision weighted more)}$$
+
+### The Precision-Recall Tradeoff
+
+Lowering the classification threshold increases recall (catch more positives) but decreases precision (more false alarms). The **precision-recall curve** visualizes this tradeoff across all thresholds. The **average precision (AP)** summarizes the curve.
+
+### ROC Curve and AUC
+
+The **Receiver Operating Characteristic (ROC)** curve plots Sensitivity (TPR) vs. 1 − Specificity (FPR) across all thresholds.
+
+**AUC (Area Under the Curve):**
+- AUC = 1.0: Perfect classifier
+- AUC = 0.5: Random classifier (diagonal line)
+- AUC < 0.5: Worse than random
+
+AUC has a probabilistic interpretation: the probability that the classifier ranks a random positive observation higher than a random negative one.
+
+### Metrics for Imbalanced Classes
+
+When one class is rare, accuracy is misleading. Preferred metrics:
+
+| Metric | Use When |
+|--------|---------|
+| Precision, Recall, F1 | Minority class matters most |
+| AUC-ROC | Overall ranking ability |
+| Matthews Correlation Coefficient (MCC) | Balanced summary for imbalanced data |
+| Cohen's Kappa | Agreement above chance |
+
+: Metrics for imbalanced classification {.striped}
+
+$$\text{MCC} = \frac{TP \cdot TN - FP \cdot FN}{\sqrt{(TP+FP)(TP+FN)(TN+FP)(TN+FN)}}$$
+
+MCC ranges from $-1$ to $+1$; values near $+1$ indicate excellent classification.
+
+## Example: Why Accuracy Alone is Insufficient
+
+**Example 9.6.** A fraud detection model flags 1% of transactions as fraudulent (true fraud rate = 0.5%). A model that flags nothing achieves 99.5% accuracy. The fraud-detection model that flags 1% correctly catches 80% of all fraud (recall = 0.80) but has many false alarms (precision = 0.40). Accuracy would rank the "flag nothing" model higher, but recall and F1 correctly identify the fraud detector as more valuable.
+
+## R Example: Comprehensive Model Evaluation
+
+```{r evaluation}
+# --- Compute all metrics for all models ---
+# Collect predictions from all models trained earlier
+models_df <- data.frame(
+  true      = Pima.te$type,
+  lr_class  = factor(ifelse(lr_probs >= 0.5,
+                              "Yes","No"),
+                      levels = c("No","Yes")),
+  lr_prob   = lr_probs,
+  knn_class = knn_pred,
+  knn_prob  = attr(knn_pred,"prob"),
+  tree_class = tree_pred,
+  tree_prob  = tree_probs,
+  rf_class  = rf_pred,
+  rf_prob   = rf_probs
+)
+
+# Function to compute metrics from confusion matrix
+compute_metrics <- function(pred, true, prob,
+                              model_name) {
+  cm   <- table(Predicted = pred, Actual = true)
+  TP   <- cm["Yes","Yes"]; TN <- cm["No","No"]
+  FP   <- cm["Yes","No"];  FN <- cm["No","Yes"]
+  n    <- sum(cm)
+
+  acc  <- (TP + TN) / n
+  prec <- TP / (TP + FP)
+  rec  <- TP / (TP + FN)
+  spec <- TN / (TN + FP)
+  f1   <- 2 * prec * rec / (prec + rec)
+  mcc  <- (TP*TN - FP*FN) /
+    sqrt((TP+FP)*(TP+FN)*(TN+FP)*(TN+FN))
+  auc  <- pROC::auc(
+    pROC::roc(as.integer(true == "Yes"),
+              prob, quiet = TRUE))
+
+  data.frame(
+    Model       = model_name,
+    Accuracy    = round(acc, 4),
+    Precision   = round(prec, 4),
+    Recall      = round(rec, 4),
+    Specificity = round(spec, 4),
+    F1          = round(f1, 4),
+    MCC         = round(mcc, 4),
+    AUC         = round(as.numeric(auc), 4)
+  )
+}
+
+metrics_table <- bind_rows(
+  compute_metrics(models_df$lr_class,
+                   models_df$true,
+                   models_df$lr_prob,   "Logistic Reg."),
+  compute_metrics(models_df$knn_class,
+                   models_df$true,
+                   models_df$knn_prob,  "KNN"),
+  compute_metrics(models_df$tree_class,
+                   models_df$true,
+                   models_df$tree_prob, "Decision Tree"),
+  compute_metrics(models_df$rf_class,
+                   models_df$true,
+                   models_df$rf_prob,   "Random Forest")
+)
+
+kable(metrics_table,
+      caption = "Comprehensive Model Evaluation: Pima Dataset") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(8, bold = TRUE,
+              color = ifelse(
+                metrics_table$AUC == max(metrics_table$AUC),
+                "darkgreen","steelblue"))
+```
+
+```{r evaluation-roc}
+# --- Overlay ROC curves ---
+roc_list <- list(
+  "Logistic Reg." = pROC::roc(
+    as.integer(models_df$true == "Yes"),
+    models_df$lr_prob, quiet = TRUE),
+  "KNN"           = pROC::roc(
+    as.integer(models_df$true == "Yes"),
+    models_df$knn_prob, quiet = TRUE),
+  "Decision Tree" = pROC::roc(
+    as.integer(models_df$true == "Yes"),
+    models_df$tree_prob, quiet = TRUE),
+  "Random Forest" = pROC::roc(
+    as.integer(models_df$true == "Yes"),
+    models_df$rf_prob, quiet = TRUE)
+)
+
+colors <- c("steelblue","seagreen","darkorange","tomato")
+
+roc_df_all <- map2_dfr(roc_list, names(roc_list),
+                        function(r, nm) {
+  data.frame(
+    FPR   = 1 - r$specificities,
+    TPR   = r$sensitivities,
+    Model = nm,
+    AUC   = round(as.numeric(pROC::auc(r)), 3)
+  )
+}) |>
+  mutate(Label = paste0(Model, " (AUC=", AUC, ")"))
+
+ggplot(roc_df_all, aes(x = FPR, y = TPR,
+                        color = Label)) +
+  geom_line(linewidth = 1.1) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", color = "gray50") +
+  scale_color_manual(values = setNames(
+    colors, unique(roc_df_all$Label))) +
+  labs(title    = "ROC Curves: All Models",
+       subtitle = "Pima Diabetes Dataset — Test Set",
+       x        = "False Positive Rate",
+       y        = "True Positive Rate",
+       color    = "Model") +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "bottom")
+```
+
+**Code explanation:**
+
+- The `compute_metrics()` function computes all metrics from a confusion matrix — a reusable utility applicable to any binary classifier.
+- `pROC::roc()` requires numeric labels (0/1) not factor levels — `as.integer(true == "Yes")` handles this conversion cleanly.
+- Overlaying ROC curves on the same plot enables direct visual comparison of all models' discrimination ability across all thresholds simultaneously.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 9.7
+A cancer screening test has the following confusion matrix on 1,000 patients (50 with cancer):
+
+|  | Pred. Cancer | Pred. Healthy |
+|--|-------------|--------------|
+| **Actual Cancer** | 42 | 8 |
+| **Actual Healthy** | 95 | 855 |
+
+(a) Compute accuracy, precision, recall, specificity, F1, and MCC.
+(b) Is accuracy a good metric here? Why or why not?
+(c) At what threshold would recall = 0.95? What is the precision at that threshold?
+(d) Compute and plot the precision-recall curve using `PRROC::pr.curve()`.
+:::
+
+---
+
+# Model Comparison and Selection
+
+## Introduction
+
+With multiple classifiers trained and evaluated, the final question is: **which model should be deployed?** This requires more than comparing test set metrics — we need to account for the **variance** in performance estimates, guard against overfitting the test set through repeated evaluation, and consider practical constraints (interpretability, prediction speed, maintenance cost). Cross-validation and statistical testing provide a rigorous framework for model comparison.
+
+## Theory
+
+### K-Fold Cross-Validation
+
+$K$-fold cross-validation partitions the training data into $K$ equal folds. For each fold $k$:
+
+1. Train the model on all folds except $k$.
+2. Evaluate on fold $k$.
+
+The cross-validated performance estimate is:
+$$\hat{\text{Perf}}_{\text{CV}} = \frac{1}{K}\sum_{k=1}^{K}\text{Perf}_k$$
+
+**Stratified $K$-fold** preserves class proportions in each fold — essential for imbalanced data.
+
+Common choices: $K = 5$ (fast, slightly higher bias) or $K = 10$ (standard, near-unbiased).
+
+**Repeated $K$-fold:** Repeat the entire $K$-fold process $r$ times with different random splits, averaging over $K \times r$ evaluations. More stable estimates.
+
+### The Bias-Variance of CV Estimates
+
+- **Leave-one-out CV (LOOCV):** $K = n$. Unbiased but high variance; computationally expensive.
+- **$K = 10$:** Slight bias (models trained on 90% of data), low variance — the best practical choice.
+- **$K = 5$:** Higher bias, even lower variance — used when computation is limited.
+
+### Statistical Comparison of Models
+
+After cross-validation, each model has $K$ performance scores. To test whether Model A outperforms Model B:
+
+**McNemar's test:** Tests whether two classifiers make significantly different errors on the same test set.
+
+**Paired t-test on CV scores:** Tests whether the mean CV performance differs between two models:
+$$t = \frac{\bar{d}}{s_d / \sqrt{K}}$$
+
+where $d_k$ is the performance difference in fold $k$.
+
+### The Test Set Discipline
+
+::: {.callout-warning}
+## The Test Set Must Remain Untouched
+The test set is for **final, one-time evaluation only**. Every time you peek at test results and tune the model accordingly, the test set becomes part of your training process — and your performance estimate is optimistically biased. Use cross-validation for all tuning decisions; reserve the test set for the final reported result.
+:::
+
+### Model Selection Criteria
+
+Beyond performance, consider:
+
+| Factor | Question |
+|--------|---------|
+| Interpretability | Does the stakeholder need to understand the model? |
+| Prediction speed | How fast must predictions be made? |
+| Training cost | How often will the model be retrained? |
+| Robustness | How stable is performance across data shifts? |
+| Maintenance | How easy is the model to update and monitor? |
+
+: Model selection criteria beyond performance {.striped}
+
+## Example: Cross-Validated Model Comparison
+
+**Example 9.7.** Four classifiers are evaluated with 10-fold cross-validation on the Pima dataset. Results (mean AUC ± SD):
+
+| Model | Mean AUC | SD AUC |
+|-------|---------|--------|
+| Logistic Regression | 0.833 | 0.028 |
+| KNN ($K = 15$) | 0.801 | 0.041 |
+| Decision Tree | 0.782 | 0.052 |
+| Random Forest | 0.856 | 0.022 |
+
+Random Forest has the highest mean AUC and the lowest variability. A paired t-test confirms Random Forest significantly outperforms KNN ($t_9 = 3.2$, $p = 0.011$) and Decision Tree ($p = 0.003$), but does not significantly outperform Logistic Regression ($p = 0.12$). Given that Logistic Regression is nearly as accurate and far more interpretable, it may be preferred for a clinical deployment.
+
+## R Example: Cross-Validation and Model Comparison
+
+```{r cv-comparison}
+# --- 10-fold CV comparison using caret ---
+set.seed(42)
+pima_all <- bind_rows(Pima.tr, Pima.te)
+
+# Define CV control
+ctrl_cv <- trainControl(
+  method          = "cv",
+  number          = 10,
+  classProbs      = TRUE,
+  summaryFunction = twoClassSummary,
+  savePredictions = "final"
+)
+
+# Train all models with caret
+models_cv <- list()
+
+# Logistic Regression
+models_cv$LR <- train(
+  type ~ glu + bmi + age + ped + npreg,
+  data      = pima_all,
+  method    = "glm",
+  family    = "binomial",
+  trControl = ctrl_cv,
+  metric    = "ROC"
+)
+
+# KNN
+models_cv$KNN <- train(
+  type ~ glu + bmi + age + ped + npreg,
+  data      = pima_all,
+  method    = "knn",
+  trControl = ctrl_cv,
+  tuneGrid  = data.frame(k = c(5,9,13,17,21)),
+  metric    = "ROC",
+  preProcess = c("center","scale")
+)
+
+# Decision Tree
+models_cv$Tree <- train(
+  type ~ glu + bmi + age + ped + npreg,
+  data      = pima_all,
+  method    = "rpart",
+  trControl = ctrl_cv,
+  tuneLength = 10,
+  metric    = "ROC"
+)
+
+# Random Forest
+models_cv$RF <- train(
+  type ~ glu + bmi + age + ped + npreg,
+  data      = pima_all,
+  method    = "rf",
+  trControl = ctrl_cv,
+  tuneGrid  = data.frame(mtry = c(1,2,3,4)),
+  metric    = "ROC"
+)
+
+# Compare results
+cv_results <- resamples(models_cv)
+summary(cv_results)
+```
+
+```{r cv-plot}
+# --- Visualize CV comparison ---
+dotplot(cv_results, metric = "ROC",
+        main = "10-Fold CV: AUC Comparison Across Models")
+```
+
+```{r cv-stats}
+# --- Statistical comparison ---
+cv_diff <- diff(cv_results)
+summary(cv_diff)
+```
+
+```{r final-comparison}
+# --- Final performance table ---
+# 1. Get the basic stats
+cv_summary <- summary(cv_results)$statistics$ROC 
+
+# 2. Calculate the SD separately (since summary doesn't include it)
+# We pull this from the raw values stored in the resamples object
+cv_sd <- apply(cv_results$values[, grep("~ROC", names(cv_results$values))], 2, sd)
+
+# 3. Build and arrange the table
+cv_table <- data.frame(
+  Model    = rownames(cv_summary),
+  Mean_AUC = round(cv_summary[,"Mean"], 4),
+  SD_AUC   = round(as.numeric(cv_sd), 4), # Ensure it's treated as a numeric vector
+  Min_AUC  = round(cv_summary[,"Min."], 4),
+  Max_AUC  = round(cv_summary[,"Max."], 4)
+) |> 
+  arrange(desc(Mean_AUC))
+
+# 4. View the result
+
+kable(cv_table,
+      caption   = "10-Fold Cross-Validated AUC Comparison",
+      col.names = c("Model","Mean AUC","SD",
+                    "Min","Max")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  row_spec(1, bold = TRUE, background = "#EEF2FF")
+```
+
+**Code explanation:**
+
+- `caret::train()` provides a unified interface to dozens of algorithms with consistent cross-validation. `method = "glm"`, `"knn"`, `"rpart"`, `"rf"` access different algorithms.
+- `trainControl(summaryFunction = twoClassSummary, metric = "ROC")` evaluates models by AUC rather than accuracy — critical for imbalanced data.
+- `resamples(models_cv)` collects CV results from multiple models for comparison. `diff(cv_results)` computes pairwise differences with statistical tests.
+- `dotplot(cv_results)` from `lattice` produces a confidence-interval-based comparison plot — the standard visualization for comparing CV results.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 9.8
+Using the `Sonar` dataset from the `mlbench` package (binary classification: rock vs. mine):
+
+(a) Apply 10-fold stratified CV to logistic regression, KNN, decision tree, and random forest.
+(b) Report mean and SD of accuracy and AUC for each model.
+(c) Use `diff(resamples())` to test pairwise differences. Which pairs are significantly different?
+(d) Given that the dataset is highly imbalanced, rerun with F1 as the metric. Do rankings change?
+:::
+
+::: {.callout-tip}
+## Exercise 9.9 (Challenge)
+Implement a complete classification pipeline with `caret`:
+
+(a) Load the `GermanCredit` dataset from `caret`. Predict `Class` (Good/Bad credit).
+(b) Apply SMOTE oversampling for class imbalance using `DMwR::SMOTE()`.
+(c) Train and compare random forest vs. gradient boosting (`method = "gbm"`).
+(d) Report all metrics: accuracy, precision, recall, F1, AUC, MCC. Which model would you deploy?
+:::
+
+---
+
+# Chapter Lab Activity: Medical Diagnosis Classification with `Pima` Data
+
+## Objectives
+
+In this lab you will apply the complete classification pipeline — from exploratory analysis through model training, evaluation, and comparison — to the Pima Indians diabetes dataset. The medical context makes metric choice particularly important: false negatives (missing a diabetic patient) are more costly than false positives.
+
+## The Dataset
+
+```{r lab-intro}
+data(Pima.tr, package = "MASS")
+data(Pima.te, package = "MASS")
+
+pima_full <- bind_rows(
+  Pima.tr |> mutate(partition = "Train"),
+  Pima.te |> mutate(partition = "Test")
+)
+
+cat("Training set:", nrow(Pima.tr), "observations\n")
+cat("Test set:    ", nrow(Pima.te), "observations\n\n")
+
+# Class distribution
+table(pima_full$type, pima_full$partition) |>
+  addmargins() |>
+  kable(caption = "Class Distribution by Partition") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+## Lab Task 1: Exploratory Analysis
+
+```{r lab-task1}
+# Feature correlation matrix
+pima_num <- Pima.tr |>
+  mutate(diabetic = as.integer(type == "Yes")) |>
+  dplyr::select(-type)
+
+cor_pima <- cor(pima_num)
+corrplot::corrplot(cor_pima,
+                    method      = "color",
+                    type        = "upper",
+                    addCoef.col = "black",
+                    tl.col      = "black",
+                    number.cex  = 0.8,
+                    title       = "Feature Correlation Matrix",
+                    mar         = c(0,0,2,0))
+```
+
+## Lab Task 2: Train All Classifiers
+
+```{r lab-task2}
+# Standardize
+train_features <- c("glu","bmi","age","ped","npreg","bp","skin")
+X_train <- scale(Pima.tr[, train_features])
+X_test  <- scale(Pima.te[, train_features],
+                  center = attr(X_train,"scaled:center"),
+                  scale  = attr(X_train,"scaled:scale"))
+y_train <- Pima.tr$type
+y_test  <- Pima.te$type
+
+# 1. Logistic Regression
+lr_full <- glm(type ~ .,
+                data   = Pima.tr,
+                family = binomial)
+lr_p    <- predict(lr_full, Pima.te, type = "response")
+lr_c    <- factor(ifelse(lr_p >= 0.5,"Yes","No"),
+                   levels = c("No","Yes"))
+
+# 2. KNN
+set.seed(42)
+knn_full <- class::knn(X_train, X_test,
+                        y_train, k = 15, prob = TRUE)
+knn_p    <- attr(knn_full,"prob")
+knn_p    <- ifelse(knn_full == "Yes", knn_p, 1 - knn_p)
+
+# 3. Decision Tree
+tree_full <- rpart(type ~ ., data = Pima.tr,
+                    method = "class",
+                    control = rpart.control(cp = 0.01))
+tree_c  <- predict(tree_full, Pima.te, type = "class")
+tree_p  <- predict(tree_full, Pima.te, type = "prob")[,"Yes"]
+
+# 4. Random Forest
+set.seed(42)
+rf_full <- randomForest(type ~ ., data = Pima.tr,
+                         ntree = 500, importance = TRUE)
+rf_c    <- predict(rf_full, Pima.te)
+rf_p    <- predict(rf_full, Pima.te, type = "prob")[,"Yes"]
+
+cat("All models trained successfully.\n")
+```
+
+## Lab Task 3: Comprehensive Evaluation
+
+```{r lab-task3}
+# Compute metrics for all models
+eval_all <- bind_rows(
+  compute_metrics(lr_c,    y_test, lr_p,    "Logistic Reg."),
+  compute_metrics(knn_full, y_test, knn_p,  "KNN (K=15)"),
+  compute_metrics(tree_c,  y_test, tree_p,  "Decision Tree"),
+  compute_metrics(rf_c,    y_test, rf_p,    "Random Forest")
+)
+
+kable(eval_all,
+      caption = "Full Evaluation: All Models on Test Set") |>
+  kable_styling(bootstrap_options = c("striped","hover")) |>
+  column_spec(7, bold = TRUE,
+              color = ifelse(eval_all$F1 ==
+                               max(eval_all$F1),
+                             "darkgreen","steelblue")) |>
+  column_spec(8, bold = TRUE,
+              color = ifelse(eval_all$AUC ==
+                               max(eval_all$AUC),
+                             "darkgreen","steelblue"))
+```
+
+## Lab Task 4: ROC and Threshold Analysis
+
+```{r lab-task4, fig.height=7}
+# ROC curves
+make_roc_df <- function(prob, true, model_name) {
+  roc_obj <- pROC::roc(as.integer(true == "Yes"),
+                        prob, quiet = TRUE)
+  data.frame(
+    FPR   = 1 - roc_obj$specificities,
+    TPR   = roc_obj$sensitivities,
+    Model = model_name,
+    AUC   = round(as.numeric(pROC::auc(roc_obj)), 3)
+  )
+}
+
+roc_all <- bind_rows(
+  make_roc_df(lr_p,    y_test, "Logistic Reg."),
+  make_roc_df(knn_p,   y_test, "KNN"),
+  make_roc_df(tree_p,  y_test, "Decision Tree"),
+  make_roc_df(rf_p,    y_test, "Random Forest")
+) |> mutate(Label = paste0(Model, " (",AUC,")"))
+
+p1 <- ggplot(roc_all,
+             aes(x = FPR, y = TPR, color = Label)) +
+  geom_line(linewidth = 1.1) +
+  geom_abline(slope = 1, intercept = 0,
+              linetype = "dashed", color = "gray60") +
+  scale_color_manual(
+    values = c("steelblue","seagreen",
+               "darkorange","tomato") |>
+      setNames(unique(roc_all$Label))) +
+  labs(title = "A. ROC Curves: All Models",
+       x = "FPR", y = "TPR", color = "Model") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "bottom",
+        legend.text = element_text(size = 8))
+
+# Threshold analysis for RF (clinical context)
+thresholds <- seq(0.2, 0.8, by = 0.05)
+thresh_df  <- map_dfr(thresholds, function(t) {
+  pred_t <- factor(ifelse(rf_p >= t,"Yes","No"),
+                    levels = c("No","Yes"))
+  tp <- sum(pred_t == "Yes" & y_test == "Yes")
+  fp <- sum(pred_t == "Yes" & y_test == "No")
+  fn <- sum(pred_t == "No"  & y_test == "Yes")
+  tn <- sum(pred_t == "No"  & y_test == "No")
+  data.frame(
+    Threshold = t,
+    Recall    = tp / (tp + fn),
+    Precision = tp / (tp + fp),
+    F1        = 2*tp / (2*tp + fp + fn)
+  )
+})
+
+p2 <- thresh_df |>
+  pivot_longer(-Threshold,
+               names_to  = "Metric",
+               values_to = "Value") |>
+  ggplot(aes(x = Threshold, y = Value,
+             color = Metric)) +
+  geom_line(linewidth = 1.2) +
+  geom_vline(xintercept = 0.5,
+             linetype = "dashed", color = "gray50") +
+  scale_color_manual(
+    values = c("Recall" = "tomato",
+               "Precision" = "steelblue",
+               "F1" = "seagreen")) +
+  labs(title    = "B. RF: Threshold vs. Metrics",
+       subtitle = "Medical context: recall > precision",
+       x = "Classification Threshold",
+       y = "Metric Value") +
+  theme_minimal(base_size = 11)
+
+p1 + p2
+```
+
+## Lab Discussion Questions
+
+Answer the following in writing:
+
+1. **Metric Choice:** In a diabetes screening context, which metric matters most — precision or recall? At what classification threshold (from Panel B) would you deploy the random forest model, and why?
+
+2. **Model Interpretability:** The decision tree and logistic regression are more interpretable than the random forest. For a clinical setting where doctors must understand predictions, which model would you recommend? How does interpretability trade off against accuracy?
+
+3. **Class Imbalance:** The Pima dataset has approximately 33% positive cases (diabetic). Is this a serious imbalance problem? How would you handle a dataset where only 2% of cases are positive?
+
+4. **Overfitting Check:** Compare training accuracy to test accuracy for each model. Which model shows the most overfitting? What regularization or pruning approach would you apply?
+
+5. **Deployment Decision:** You must choose one model to deploy in a rural health clinic with limited computational resources. The predictions must be explainable to doctors. Which model do you choose, and what is your justification beyond just AUC?
+
+---
+
+# Chapter Summary
+
+## Summary
+
+This chapter built a comprehensive classification toolkit from foundations to practical deployment:
+
+- **Introduction** — classification predicts categorical outcomes using labeled training data; decision boundary shape varies by algorithm; the training-test split discipline is inviolable.
+- **Logistic regression** — models probability via the sigmoid function; coefficients are log-odds, exponentiated to odds ratios; estimated by maximum likelihood; the most interpretable classifier.
+- **KNN** — classifies by majority vote among $K$ nearest neighbors; non-parametric; requires scaling; $K$ tuned by cross-validation; suffers in high dimensions.
+- **Decision trees** — recursive binary splitting minimizes impurity (Gini/entropy); pruned by cost-complexity to prevent overfitting; highly interpretable; building block of ensemble methods.
+- **Random forest** — bagging + feature randomization; reduces variance; OOB error estimates generalization; variable importance via MDA and MDG; among the most reliable classifiers for tabular data.
+- **Model evaluation** — accuracy alone is insufficient; precision, recall, F1, MCC, and AUC capture different aspects; ROC and precision-recall curves visualize threshold tradeoffs.
+- **Model comparison** — cross-validation provides unbiased performance estimates; statistical tests compare models; test set reserved for final evaluation only; practical factors (interpretability, speed) inform final selection.
+
+::: {.callout-important}
+## Key Formulas to Know
+
+**Logistic Model:**
+$$P(Y=1|\mathbf{x}) = \frac{1}{1+e^{-\boldsymbol{\beta}^T\mathbf{x}}}$$
+
+**Gini Impurity:**
+$$G(t) = 1 - \sum_{k=1}^{K}p_k(t)^2$$
+
+**Precision, Recall, F1:**
+$$\text{Precision} = \frac{TP}{TP+FP}, \quad \text{Recall} = \frac{TP}{TP+FN}$$
+$$F_1 = 2 \cdot \frac{\text{Precision} \times \text{Recall}}{\text{Precision} + \text{Recall}}$$
+
+**Matthews Correlation Coefficient:**
+$$\text{MCC} = \frac{TP \cdot TN - FP \cdot FN}{\sqrt{(TP+FP)(TP+FN)(TN+FP)(TN+FN)}}$$
+
+**Cross-Validated Performance:**
+$$\hat{\text{Perf}}_{\text{CV}} = \frac{1}{K}\sum_{k=1}^{K}\text{Perf}_k$$
+:::
+
+## References
+
+Anderson, E. (1935). The irises of the Gaspé Peninsula. *Bulletin of the American Iris Society*, *59*, 2–5.
+
+Breiman, L. (1996). Bagging predictors. *Machine Learning*, *24*(2), 123–140.
+
+Breiman, L. (2001). Random forests. *Machine Learning*, *45*(1), 5–32.
+
+Breiman, L., Friedman, J. H., Olshen, R. A., & Stone, C. J. (1984). *Classification and regression trees*. Wadsworth.
+
+Cover, T. M., & Hart, P. E. (1967). Nearest neighbor pattern classification. *IEEE Transactions on Information Theory*, *13*(1), 21–27.
+
+Friedman, J. H. (2001). Greedy function approximation: A gradient boosting machine. *Annals of Statistics*, *29*(5), 1189–1232.
+
+Hastie, T., Tibshirani, R., & Friedman, J. (2009). *The elements of statistical learning* (2nd ed.). Springer. https://hastie.su.domains/ElemStatLearn/
+
+Henderson, H. V., & Velleman, P. F. (1981). Building multiple regression models interactively. *Biometrics*, *37*(2), 391–411.
+
+James, G., Witten, D., Hastie, T., & Tibshirani, R. (2021). *An introduction to statistical learning with applications in R* (2nd ed.). Springer. https://www.statlearning.com
+
+Kuhn, M. (2008). Building predictive models in R using the caret package. *Journal of Statistical Software*, *28*(5), 1–26.
+
+Liaw, A., & Wiener, M. (2002). Classification and regression by randomForest. *R News*, *2*(3), 18–22.
+
+Matthews, B. W. (1975). Comparison of the predicted and observed secondary structure of T4 phage lysozyme. *Biochimica et Biophysica Acta*, *405*(2), 442–451.
+
+Pedersen, T. L. (2022). *patchwork: The composer of plots* (R package version 1.1.2). https://CRAN.R-project.org/package=patchwork
+
+R Core Team. (2024). *R: A language and environment for statistical computing*. R Foundation for Statistical Computing. https://www.R-project.org/
+
+Robin, X., Turck, N., Hainard, A., Tiberti, N., Lisacek, F., Sanchez, J.-C., & Müller, M. (2011). pROC: An open-source package for R and S+ to analyze and compare ROC curves. *BMC Bioinformatics*, *12*, 77.
+
+Scrucca, L., Fop, M., Murphy, T. B., & Raftery, A. E. (2016). mclust 5: Clustering, classification and density estimation using Gaussian finite mixture models. *The R Journal*, *8*(1), 289–317.
+
+Smith, J. W., Everhart, J. E., Dickson, W. C., Knowler, W. C., & Johannes, R. S. (1988). Using the ADAP learning algorithm to forecast the onset of diabetes mellitus. *Proceedings of the Symposium on Computer Applications and Medical Care* (pp. 261–265). IEEE.
+
+Therneau, T., & Atkinson, B. (2023). *rpart: Recursive partitioning and regression trees* (R package version 4.1-19). https://CRAN.R-project.org/package=rpart
+
+Venables, W. N., & Ripley, B. D. (2002). *Modern applied statistics with S* (4th ed.). Springer.
+
+Wickham, H. (2016). *ggplot2: Elegant graphics for data analysis*. Springer.
+
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. *Journal of Open Source Software*, *4*(43), 1686.
+
+Xie, Y. (2015). *Dynamic documents with R and knitr* (2nd ed.). CRC Press.
+
+---
+
+*End of Chapter 9. Proceed to Chapter 10: Regression Analysis.*

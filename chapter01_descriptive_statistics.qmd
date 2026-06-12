@@ -1,0 +1,894 @@
+# Chapter 1: Descriptive Statistics
+
+```{r setup}
+# Load all libraries needed for this chapter
+library(tidyverse)
+library(moments)     # skewness and kurtosis
+library(psych)       # describe()
+library(knitr)       # tables
+library(kableExtra)  # styled tables
+library(GGally)      # ggpairs for multivariate plots
+library(corrplot)    # correlation matrix visualization
+```
+
+------------------------------------------------------------------------
+
+# Chapter Overview
+
+## Introduction
+
+Descriptive statistics is the branch of statistics concerned with **summarizing and communicating the key features of a dataset** without making inferences beyond the data at hand. Before fitting models, testing hypotheses, or making predictions, a data scientist must first develop an intimate understanding of their data — its center, its spread, its shape, and its relationships.
+
+This chapter covers:
+
+- **Measures of Central Tendency** — where the data is centered
+- **Measures of Dispersion** — how spread out the data is
+- **Measures of Shape** — skewness and kurtosis
+- **Data Visualization** — graphical summaries
+- **Multivariate Descriptive Statistics** — describing relationships between variables
+
+::: callout-note
+## Learning Objectives
+
+By the end of this chapter, you will be able to:
+
+1.  Compute and interpret all major descriptive statistics by hand and in R.
+2.  Choose the appropriate measure of center and spread for different data types.
+3.  Diagnose distributional shape using skewness and kurtosis.
+4.  Produce and interpret publication-quality descriptive plots in R.
+5.  Describe bivariate and multivariate relationships using correlation and summary tables.
+:::
+
+------------------------------------------------------------------------
+
+# Measures of Central Tendency
+
+## Introduction
+
+The first question we ask about any variable is: *Where is the data centered?* Measures of central tendency answer this by identifying a single representative value around which the observations cluster. The three most widely used measures are the **mean**, the **median**, and the **mode** — and the choice among them is never arbitrary. It depends on the scale of measurement, the shape of the distribution, and the presence of outliers.
+
+## Theory
+
+### The Arithmetic Mean
+
+The **arithmetic mean** (commonly called "the average") is the sum of all observed values divided by the number of observations. For a sample of $n$ values $x_1, x_2, \ldots, x_n$:
+
+$$\bar{x} = \frac{1}{n} \sum_{i=1}^{n} x_i$$
+
+For a population of size $N$, we use the symbol $\mu$:
+
+$$\mu = \frac{1}{N} \sum_{i=1}^{N} x_i$$
+
+The mean minimizes the sum of squared deviations: $\sum(x_i - \bar{x})^2$ is smaller for $\bar{x}$ than for any other value. This makes it the **least squares** center of the data. However, the mean is sensitive to extreme values (outliers), because every observation contributes equally to the sum.
+
+### The Median
+
+The **median** is the middle value when data are sorted in ascending order. For $n$ observations:
+
+$$\text{Median} = \begin{cases} x_{(n+1)/2} & \text{if } n \text{ is odd} \\ \frac{x_{(n/2)} + x_{(n/2+1)}}{2} & \text{if } n \text{ is even} \end{cases}$$
+
+The median is **robust to outliers** — it is insensitive to the exact values of extreme observations. This makes it the preferred measure of center for skewed distributions such as income, house prices, and reaction times.
+
+### The Mode
+
+The **mode** is the value (or values) that appear most frequently in the data. It is the only measure of central tendency applicable to **nominal (categorical) data**. A distribution may be unimodal (one mode), bimodal (two modes), or multimodal.
+
+### When to Use Which Measure?
+
+| Situation | Recommended Measure |
+|---------------------------|---------------------------------------------|
+| Symmetric distribution, no outliers | Mean |
+| Skewed distribution or outliers present | Median |
+| Categorical or nominal data | Mode |
+| Reporting income, house prices, reaction times | Median |
+| Reporting height, temperature, test scores (approx. symmetric) | Mean |
+
+: Choosing the appropriate measure of central tendency
+
+### Weighted Mean
+
+When observations carry different importance (weights $w_i$), the **weighted mean** accounts for this:
+
+$$\bar{x}_w = \frac{\sum_{i=1}^{n} w_i x_i}{\sum_{i=1}^{n} w_i}$$
+
+This is commonly used in survey research (sampling weights), grade calculation, and portfolio analysis.
+
+## Example: Measures of Central Tendency
+
+**Example 1.1.** A researcher collects the following annual salaries (in thousands of USD) from 9 employees in a small firm:
+
+$$32, \; 35, \; 38, \; 40, \; 42, \; 45, \; 48, \; 52, \; 180$$
+
+**Step 1 — Mean:** $$\bar{x} = \frac{32+35+38+40+42+45+48+52+180}{9} = \frac{512}{9} \approx 56.9 \text{ thousand}$$
+
+**Step 2 — Median** (n = 9, odd → middle value is the 5th): $$\text{Median} = 42 \text{ thousand}$$
+
+**Step 3 — Mode:** No value repeats, so this dataset has **no mode**.
+
+**Interpretation:** The mean (\$56.9K) is substantially higher than the median (\$42K) because of the outlier salary of \$180K. The median better represents the "typical" employee salary in this firm. This illustrates why the median is preferred when data is right-skewed or contains outliers.
+
+## R Example: Measures of Central Tendency
+
+```{r central-tendency}
+# --- Define the salary data ---
+salary <- c(32, 35, 38, 40, 42, 45, 48, 52, 180)
+
+# --- Compute the three measures ---
+mean_val   <- mean(salary)
+median_val <- median(salary)
+
+# R has no built-in mode() for continuous data; we write a helper:
+get_mode <- function(x) {
+  ux <- unique(x)
+  ux[which.max(tabulate(match(x, ux)))]
+}
+mode_val <- get_mode(salary)
+
+# --- Display results ---
+cat("Mean:  ", round(mean_val, 2), "thousand USD\n")
+cat("Median:", median_val, "thousand USD\n")
+cat("Mode:  ", mode_val, "(appears once — effectively no mode)\n")
+
+# --- Visualize: dotplot showing mean vs median ---
+salary_df <- data.frame(salary = salary)
+
+ggplot(salary_df, aes(x = salary)) +
+  geom_dotplot(fill = "steelblue", color = "white", binwidth = 5) +
+  geom_vline(aes(xintercept = mean_val,   color = "Mean"),   linewidth = 1.2, linetype = "dashed") +
+  geom_vline(aes(xintercept = median_val, color = "Median"), linewidth = 1.2, linetype = "solid") +
+  scale_color_manual(values = c("Mean" = "tomato", "Median" = "darkgreen")) +
+  labs(
+    title    = "Employee Salaries: Mean vs. Median",
+    subtitle = "The outlier ($180K) pulls the mean far above the median",
+    x        = "Annual Salary (thousands USD)",
+    y        = "",
+    color    = "Measure"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "top")
+```
+
+**Code explanation:**
+
+- `mean()` and `median()` are base R functions.
+- We define `get_mode()` manually because R's built-in `mode()` returns the storage type, not the statistical mode.
+- `geom_vline()` adds vertical reference lines, making the gap between mean and median visually apparent.
+- The `scale_color_manual()` call controls line colors via a named vector.
+
+**Try modifying:** Replace 180 with 55 (removing the outlier) and observe how the mean and median converge.
+
+## Exercises
+
+::: callout-tip
+## Exercise 1.1
+
+The following values represent the number of publications per faculty member in a department:
+
+$$3, 5, 7, 2, 8, 5, 12, 5, 6, 4$$
+
+(a) Compute the mean, median, and mode by hand.\
+(b) Which measure best represents the "typical" faculty member? Justify your answer.\
+(c) Verify your answers in R.
+:::
+
+::: callout-tip
+## Exercise 1.2
+
+A student's course grades are: Midterm (weight = 30%) = 78, Final (weight = 50%) = 85, Project (weight = 20%) = 91.\
+Compute the weighted mean grade. How does it compare to the simple arithmetic mean?
+:::
+
+------------------------------------------------------------------------
+
+# Measures of Dispersion
+
+## Introduction
+
+Knowing where data is centered is necessary but not sufficient. Two datasets can have identical means yet look completely different — one tightly clustered, the other wildly spread. **Measures of dispersion** quantify the variability or spread of data around the center. This is critical in data science: high variability in model predictions indicates instability; high variability in features may require normalization.
+
+## Theory
+
+### Range
+
+The simplest measure of spread: the difference between the maximum and minimum values.
+
+$$\text{Range} = x_{\max} - x_{\min}$$
+
+The range uses only two data points and is highly sensitive to outliers. It is most useful as a quick preliminary check.
+
+### Interquartile Range (IQR)
+
+The **IQR** is the range of the middle 50% of the data — the distance between the 75th percentile (Q3) and the 25th percentile (Q1):
+
+$$\text{IQR} = Q_3 - Q_1$$
+
+The IQR is **robust to outliers** because it ignores the tails. It is the basis for the boxplot and for the standard outlier detection rule: an observation is a potential outlier if it falls below $Q_1 - 1.5 \times \text{IQR}$ or above $Q_3 + 1.5 \times \text{IQR}$.
+
+### Variance
+
+The **variance** measures the average squared deviation from the mean. For a sample:
+
+$$s^2 = \frac{1}{n-1} \sum_{i=1}^{n} (x_i - \bar{x})^2$$
+
+We divide by $n-1$ (not $n$) to obtain an **unbiased estimator** of the population variance $\sigma^2$. This correction is known as Bessel's correction. Squaring the deviations ensures all contributions are positive and penalizes large deviations more heavily.
+
+### Standard Deviation
+
+The **standard deviation** is the square root of the variance, returning units to the original scale of the data:
+
+$$s = \sqrt{\frac{1}{n-1} \sum_{i=1}^{n} (x_i - \bar{x})^2}$$
+
+It is the most widely used measure of dispersion and is interpretable as the "typical" distance of observations from the mean.
+
+### Coefficient of Variation (CV)
+
+The **CV** expresses the standard deviation as a percentage of the mean, enabling comparisons of variability across variables with different units or scales:
+
+$$\text{CV} = \frac{s}{\bar{x}} \times 100\%$$
+
+For example, comparing the variability of blood pressure (measured in mmHg) to heart rate (beats per minute) using CV makes the comparison unit-free.
+
+## Example: Measures of Dispersion
+
+**Example 1.2.** Two machine production lines produce bolts with the following lengths (mm):
+
+- **Line A:** 50.1, 49.8, 50.3, 50.0, 49.9, 50.2, 50.1, 49.7
+- **Line B:** 48.5, 51.2, 49.0, 52.1, 48.8, 51.5, 49.3, 51.6
+
+Both lines have $\bar{x}_A \approx \bar{x}_B \approx 50$ mm. But the quality implications differ dramatically.
+
+**Line A:** $$s_A^2 = \frac{(0.1^2 + 0.2^2 + 0.3^2 + 0^2 + 0.1^2 + 0.2^2 + 0.1^2 + 0.3^2)}{7} \approx 0.039, \quad s_A \approx 0.197 \text{ mm}$$
+
+**Line B:** $$s_B \approx 1.35 \text{ mm}$$
+
+Despite identical means, Line B's standard deviation is nearly 7 times larger. Line A produces consistent, high-quality bolts; Line B has unacceptable variability that would cause assembly failures.
+
+## R Example: Measures of Dispersion
+
+```{r dispersion}
+# --- Production line data ---
+line_A <- c(50.1, 49.8, 50.3, 50.0, 49.9, 50.2, 50.1, 49.7)
+line_B <- c(48.5, 51.2, 49.0, 52.1, 48.8, 51.5, 49.3, 51.6)
+
+# --- Compute dispersion measures ---
+dispersion_table <- data.frame(
+  Measure = c("Mean", "Range", "IQR", "Variance", "Std. Deviation", "CV (%)"),
+  Line_A  = c(
+    mean(line_A),
+    diff(range(line_A)),
+    IQR(line_A),
+    var(line_A),
+    sd(line_A),
+    sd(line_A) / mean(line_A) * 100
+  ),
+  Line_B  = c(
+    mean(line_B),
+    diff(range(line_B)),
+    IQR(line_B),
+    var(line_B),
+    sd(line_B),
+    sd(line_B) / mean(line_B) * 100
+  )
+)
+
+dispersion_table[, 2:3] <- round(dispersion_table[, 2:3], 4)
+
+kable(dispersion_table, 
+      caption = "Dispersion Measures: Line A vs. Line B",
+      col.names = c("Measure", "Line A", "Line B")) |>
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+```{r dispersion-plot}
+# --- Side-by-side boxplots ---
+bolt_data <- data.frame(
+  length = c(line_A, line_B),
+  line   = rep(c("Line A", "Line B"), each = 8)
+)
+
+ggplot(bolt_data, aes(x = line, y = length, fill = line)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = 21, outlier.size = 3) +
+  geom_jitter(width = 0.1, size = 2, alpha = 0.8, color = "gray30") +
+  scale_fill_manual(values = c("Line A" = "steelblue", "Line B" = "tomato")) +
+  labs(
+    title    = "Bolt Lengths by Production Line",
+    subtitle = "Both lines centered at ~50 mm, but Line B has far greater spread",
+    x        = "Production Line",
+    y        = "Bolt Length (mm)"
+  ) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "none")
+```
+
+**Code explanation:**
+
+- `var()`, `sd()`, `IQR()`, and `range()` are all base R functions.
+- `diff(range(x))` computes the range efficiently: `range()` returns min and max, `diff()` subtracts them.
+- `kable()` + `kable_styling()` produce a clean, styled comparison table suitable for reports.
+- `geom_jitter()` overlays raw data points on the boxplot, revealing the actual observations behind the summary.
+
+## Exercises
+
+::: callout-tip
+## Exercise 1.3
+
+Using the salary data from Exercise 1.1 ($3, 5, 7, 2, 8, 5, 12, 5, 6, 4$ publications):
+
+(a) Compute the variance and standard deviation by hand (show all steps).\
+(b) Identify any outliers using the IQR rule ($Q_1 - 1.5 \times \text{IQR}$, $Q_3 + 1.5 \times \text{IQR}$).\
+(c) How does removing any outlier change the standard deviation?
+:::
+
+::: callout-tip
+## Exercise 1.4
+
+Two university courses each have a class mean of 75% on the midterm. Course A has $s = 5$, Course B has $s = 18$.
+
+(a) Compute the CV for each course.\
+(b) What does this tell the instructor about each class? Which class is more homogeneous?\
+(c) Simulate this scenario in R and produce a density plot comparing both distributions.
+:::
+
+------------------------------------------------------------------------
+
+# Measures of Shape: Skewness and Kurtosis
+
+## Introduction
+
+The mean and standard deviation describe where data is centered and how spread out it is, but they say nothing about the **shape** of the distribution. Two datasets can share the same mean and variance yet differ in symmetry and tail heaviness. Measures of shape — **skewness** and **kurtosis** — capture these features and are essential for deciding which statistical methods are appropriate (many assume normality) and for understanding the nature of extreme observations.
+
+## Theory
+
+### Skewness
+
+**Skewness** measures the degree and direction of asymmetry in a distribution. The sample skewness is:
+
+$$\text{Skewness} = \frac{n}{(n-1)(n-2)} \sum_{i=1}^{n} \left(\frac{x_i - \bar{x}}{s}\right)^3$$
+
+| Skewness Value | Shape | Relationship |
+|----|----|----|
+| $\approx 0$ | Symmetric | Mean $\approx$ Median $\approx$ Mode |
+| $> 0$ | Right-skewed (positive) | Mean $>$ Median $>$ Mode |
+| $< 0$ | Left-skewed (negative) | Mean $<$ Median $<$ Mode |
+
+: Interpreting skewness
+
+**Right skew** (positive skew) is common in income, wealth, reaction times, and biological measurements where values cannot go below zero but can take large positive values. **Left skew** occurs in data like scores on an easy exam (most cluster near the maximum).
+
+As a rule of thumb: \|skewness\| \< 0.5 is approximately symmetric; 0.5–1.0 is moderately skewed; \> 1.0 is highly skewed.
+
+### Kurtosis
+
+**Kurtosis** measures the "tailedness" of a distribution — the concentration of probability in the tails relative to a normal distribution. The **excess kurtosis** (relative to the normal distribution, which has kurtosis = 3) is:
+
+$$\text{Excess Kurtosis} = \frac{n(n+1)}{(n-1)(n-2)(n-3)} \sum_{i=1}^{n}\left(\frac{x_i-\bar{x}}{s}\right)^4 - \frac{3(n-1)^2}{(n-2)(n-3)}$$
+
+| Excess Kurtosis | Distribution Type | Description |
+|-------------------------|----------------------------|--------------------|
+| $= 0$ | Mesokurtic | Normal-like tails |
+| $> 0$ | Leptokurtic | Heavy tails, peaked center (e.g., Student's $t$) |
+| $< 0$ | Platykurtic | Light tails, flatter shape (e.g., Uniform) |
+
+: Interpreting excess kurtosis
+
+High (positive) kurtosis warns of **tail risk** — a higher probability of extreme values than the normal distribution predicts. This is critical in financial risk management and anomaly detection.
+
+## Example: Measures of Shape
+
+**Example 1.3.** A researcher measures response times (milliseconds) for a cognitive task across 200 participants. Summary statistics:
+
+- $\bar{x} = 485$ ms, Median = $440$ ms, $s = 210$ ms
+- Skewness = $1.82$, Excess Kurtosis = $4.15$
+
+**Interpretation:**
+
+- The mean (485 ms) exceeds the median (440 ms), consistent with positive skewness.
+- Skewness = 1.82 indicates strong right skew — a small number of participants with very long response times pulls the mean upward.
+- Excess kurtosis = 4.15 (leptokurtic) suggests heavier tails than a normal distribution — extreme response times are more common than normality would predict.
+- **Implication:** Standard parametric tests assuming normality may be inappropriate. A log transformation or non-parametric alternatives should be considered.
+
+## R Example: Measures of Shape
+
+```{r shape}
+# --- Simulate three distributions with same mean and variance ---
+set.seed(42)
+n <- 500
+sym   <- rnorm(n, mean = 50, sd = 10)                     # symmetric
+right <- c(rnorm(400, 40, 5), rnorm(100, 85, 10))         # right-skewed
+left  <- c(rnorm(400, 60, 5), rnorm(100, 15, 10))         # left-skewed
+
+# --- Compute skewness and kurtosis using moments package ---
+shape_summary <- data.frame(
+  Distribution   = c("Symmetric", "Right-Skewed", "Left-Skewed"),
+  Mean           = round(c(mean(sym), mean(right), mean(left)), 2),
+  SD             = round(c(sd(sym), sd(right), sd(left)), 2),
+  Skewness       = round(c(skewness(sym), skewness(right), skewness(left)), 3),
+  Excess_Kurtosis = round(c(kurtosis(sym)-3, kurtosis(right)-3, kurtosis(left)-3), 3)
+)
+
+kable(shape_summary,
+      caption = "Shape Measures Across Three Distributions",
+      col.names = c("Distribution", "Mean", "SD", "Skewness", "Excess Kurtosis")) |>
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+```{r shape-plot}
+# --- Density plots for all three ---
+shape_df <- data.frame(
+  value = c(sym, right, left),
+  dist  = rep(c("Symmetric", "Right-Skewed", "Left-Skewed"), each = n)
+)
+shape_df$dist <- factor(shape_df$dist,
+                        levels = c("Left-Skewed", "Symmetric", "Right-Skewed"))
+
+ggplot(shape_df, aes(x = value, fill = dist)) +
+  geom_density(alpha = 0.5) +
+  geom_vline(data = shape_df |>
+               group_by(dist) |>
+               summarise(m = mean(value), med = median(value)),
+             aes(xintercept = m,   color = dist), linetype = "dashed", linewidth = 1) +
+  geom_vline(data = shape_df |>
+               group_by(dist) |>
+               summarise(m = mean(value), med = median(value)),
+             aes(xintercept = med, color = dist), linetype = "solid",  linewidth = 1) +
+  scale_fill_manual(values  = c("Symmetric" = "steelblue",
+                                "Right-Skewed" = "tomato",
+                                "Left-Skewed" = "seagreen")) +
+  scale_color_manual(values = c("Symmetric" = "steelblue",
+                                "Right-Skewed" = "tomato",
+                                "Left-Skewed" = "seagreen")) +
+  labs(
+    title    = "Distributional Shape: Skewness Comparison",
+    subtitle = "Dashed = Mean, Solid = Median",
+    x        = "Value", y        = "Density", fill = "Distribution"
+  ) +
+  facet_wrap(~dist, ncol = 1) +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "none")
+```
+
+**Code explanation:**
+
+- `skewness()` and `kurtosis()` come from the `moments` package. Note that `kurtosis()` returns the **raw** kurtosis (normal = 3), so we subtract 3 for excess kurtosis.
+- `facet_wrap(~dist, ncol = 1)` creates stacked panels — useful for comparing shapes visually.
+- The `factor()` call controls the panel order for logical display (left → symmetric → right).
+
+## Exercises
+
+::: callout-tip
+## Exercise 1.5
+
+Given the following frequency distribution of exam scores, determine:
+
+| Score Range | Frequency |
+|-------------|-----------|
+| 40–50       | 2         |
+| 50–60       | 8         |
+| 60–70       | 25        |
+| 70–80       | 35        |
+| 80–90       | 20        |
+| 90–100      | 10        |
+
+(a) Based on the frequency table alone, predict the direction of skewness. Explain your reasoning.\
+(b) Generate similar data in R and compute skewness and kurtosis to confirm.\
+(c) Plot a histogram with a superimposed density curve.
+:::
+
+------------------------------------------------------------------------
+
+# Data Visualization for Descriptive Statistics
+
+## Introduction
+
+Numerical summaries are powerful, but they inevitably compress information. A single summary statistic can mask patterns that are immediately obvious in a plot. The famous **Anscombe's Quartet** (1973) demonstrates that four datasets with nearly identical means, variances, correlations, and regression lines can look completely different when plotted. Visualization is not optional — it is an indispensable component of responsible data analysis.
+
+## Theory
+
+### Histograms and Density Plots
+
+A **histogram** divides the range of values into bins and plots the count (or proportion) of observations in each bin. The choice of bin width significantly affects interpretation: too few bins hides structure; too many bins shows noise as pattern. **Kernel density estimates (KDE)** provide a smooth continuous estimate of the distribution without imposing arbitrary bins.
+
+### Boxplots
+
+A **boxplot** (box-and-whisker plot) summarizes a distribution using five numbers: minimum, Q1, median, Q3, and maximum (with outliers plotted separately). Boxplots excel at **comparing distributions across groups** and at identifying outliers. Their weakness is that they can hide bimodality or other complex shapes.
+
+### Bar Charts and Frequency Tables
+
+For categorical data, **bar charts** display the frequency or proportion of each category. Unlike histograms, the bars do not touch (no ordering implied for nominal data). **Frequency tables** provide the raw counts and relative frequencies underlying any bar chart.
+
+### QQ Plots (Quantile-Quantile Plots)
+
+A **QQ plot** compares the quantiles of observed data against the quantiles of a theoretical distribution (usually normal). If the data follow that distribution, points fall approximately on a straight diagonal line. Deviations from the line reveal departures from normality — S-curves indicate skewness, heavy tails appear as points curving away at the ends.
+
+## R Example: Data Visualization
+
+```{r visualization}
+# --- Use the built-in 'iris' dataset ---
+data(iris)
+
+# 1. Histogram with density overlay for Sepal.Length
+ggplot(iris, aes(x = Sepal.Length)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 bins = 20, fill = "steelblue", color = "white", alpha = 0.8) +
+  geom_density(color = "tomato", linewidth = 1.2) +
+  labs(title    = "Distribution of Sepal Length",
+       subtitle = "Histogram with kernel density overlay — iris dataset",
+       x        = "Sepal Length (cm)", y = "Density") +
+  theme_minimal(base_size = 13)
+```
+
+```{r boxplot-vis}
+# 2. Grouped boxplot by species
+ggplot(iris, aes(x = Species, y = Petal.Length, fill = Species)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = 21, outlier.size = 3) +
+  geom_jitter(width = 0.15, alpha = 0.4, size = 1.5) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title    = "Petal Length by Species",
+       subtitle = "Boxplot with individual observations — iris dataset",
+       x        = "Species", y = "Petal Length (cm)") +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "none")
+```
+
+```{r qqplot-vis}
+# 3. QQ plot to assess normality
+ggplot(iris, aes(sample = Sepal.Length)) +
+  stat_qq(color = "steelblue", size = 2) +
+  stat_qq_line(color = "tomato", linewidth = 1) +
+  labs(title    = "Normal QQ Plot — Sepal Length",
+       subtitle = "Points near the line suggest approximate normality",
+       x        = "Theoretical Quantiles",
+       y        = "Sample Quantiles") +
+  theme_minimal(base_size = 13)
+```
+
+**Code explanation:**
+
+- `after_stat(density)` in the histogram aesthetic maps bar heights to density (not count), so the density curve overlays correctly.
+- `stat_qq()` + `stat_qq_line()` produce a QQ plot entirely within ggplot2 — no additional packages needed.
+- `scale_fill_brewer(palette = "Set2")` uses a colorblind-friendly palette from ColorBrewer.
+
+## Exercises
+
+::: callout-tip
+## Exercise 1.6
+
+Using the `mtcars` dataset in R:
+
+(a) Create a histogram of `mpg` (miles per gallon). Experiment with 5, 15, and 30 bins. Which bin count best reveals the distribution's shape?\
+(b) Create side-by-side boxplots of `mpg` grouped by number of cylinders (`cyl`). What pattern do you observe?\
+(c) Produce a QQ plot of `mpg` and assess whether it follows a normal distribution.
+:::
+
+------------------------------------------------------------------------
+
+# Multivariate Descriptive Statistics
+
+## Introduction
+
+Real-world datasets rarely consist of a single variable. Data scientists routinely work with dozens or hundreds of features simultaneously. **Multivariate descriptive statistics** extend single-variable summaries to describe **relationships between variables** — whether two variables tend to move together (covariance, correlation), and how to summarize many variables at once.
+
+## Theory
+
+### Covariance
+
+**Covariance** measures the direction of the linear relationship between two variables $X$ and $Y$:
+
+$$s_{XY} = \frac{1}{n-1} \sum_{i=1}^{n} (x_i - \bar{x})(y_i - \bar{y})$$
+
+- $s_{XY} > 0$: $X$ and $Y$ tend to increase together (positive relationship).
+- $s_{XY} < 0$: When $X$ increases, $Y$ tends to decrease (negative relationship).
+- $s_{XY} = 0$: No linear relationship.
+
+Covariance has a critical limitation: its magnitude depends on the scales of $X$ and $Y$, making direct comparisons across variable pairs impossible.
+
+### Pearson Correlation Coefficient
+
+The **Pearson correlation coefficient** $r$ standardizes covariance to a dimensionless scale from $-1$ to $+1$:
+
+$$r_{XY} = \frac{s_{XY}}{s_X \cdot s_Y} = \frac{\sum(x_i - \bar{x})(y_i - \bar{y})}{\sqrt{\sum(x_i-\bar{x})^2 \cdot \sum(y_i-\bar{y})^2}}$$
+
+| Magnitude of $r$ | Strength of Linear Relationship |
+|------------------|---------------------------------|
+| 0.00 – 0.19      | Very weak or none               |
+| 0.20 – 0.39      | Weak                            |
+| 0.40 – 0.59      | Moderate                        |
+| 0.60 – 0.79      | Strong                          |
+| 0.80 – 1.00      | Very strong                     |
+
+: Interpreting Pearson correlation
+
+**Critical caveat:** Pearson's $r$ measures only **linear** relationships. Two variables can be strongly related (e.g., quadratically) yet have $r \approx 0$. Always visualize with a scatterplot alongside computing $r$.
+
+### Spearman Rank Correlation
+
+When data violates the assumptions of Pearson's $r$ (non-normality, outliers, or ordinal scale), **Spearman's** $\rho$ provides a robust alternative based on the ranks of the data rather than raw values:
+
+$$\rho = 1 - \frac{6 \sum d_i^2}{n(n^2 - 1)}$$
+
+where $d_i$ is the difference in ranks for observation $i$.
+
+### The Covariance and Correlation Matrix
+
+For $p$ variables, the **covariance matrix** $\mathbf{\Sigma}$ is a $p \times p$ matrix where the diagonal contains variances and off-diagonal entries contain pairwise covariances. The **correlation matrix** $\mathbf{R}$ standardizes this to show all correlations. These matrices are fundamental to multivariate methods like PCA (Chapter 7) and linear regression (Chapter 10).
+
+## Example: Multivariate Descriptive Statistics
+
+**Example 1.4.** For four students, compute the correlation between study hours ($X$) and exam score ($Y$):
+
+| Student | Hours ($X$) | Score ($Y$) |
+|---------|-------------|-------------|
+| 1       | 2           | 55          |
+| 2       | 4           | 70          |
+| 3       | 6           | 80          |
+| 4       | 8           | 90          |
+
+$\bar{x} = 5$, $\bar{y} = 73.75$
+
+$$\sum(x_i-\bar{x})(y_i-\bar{y}) = (-3)(-18.75)+(-1)(-3.75)+(1)(6.25)+(3)(16.25) = 56.25+3.75+6.25+48.75 = 115$$
+
+$$s_X = \sqrt{\frac{20}{3}} \approx 2.582, \quad s_Y = \sqrt{\frac{306.75}{3}} \approx 10.11$$
+
+$$r = \frac{115/3}{2.582 \times 10.11} \approx \frac{38.33}{26.10} \approx 0.997$$
+
+This near-perfect positive correlation confirms a strong linear relationship between study time and exam performance.
+
+## R Example: Multivariate Descriptive Statistics
+
+```{r multivariate}
+# --- Correlation matrix for iris numeric variables ---
+iris_num <- iris[, 1:4]
+
+# Pearson correlation matrix
+cor_matrix <- cor(iris_num, method = "pearson")
+round(cor_matrix, 3)
+```
+
+```{r corrplot-vis}
+# --- Visualize the correlation matrix ---
+corrplot(cor_matrix,
+         method  = "color",
+         type    = "upper",
+         addCoef.col = "black",
+         tl.col  = "black",
+         tl.srt  = 45,
+         col     = colorRampPalette(c("tomato", "white", "steelblue"))(200),
+         title   = "Pearson Correlation Matrix — iris Dataset",
+         mar     = c(0, 0, 2, 0))
+```
+
+```{r ggpairs-vis}
+# --- Scatterplot matrix (pairs plot) ---
+ggpairs(iris,
+        columns   = 1:4,
+        aes(color = Species, alpha = 0.6),
+        upper = list(continuous = wrap("cor", size = 3.5)),
+        lower = list(continuous = wrap("points", size = 0.8)),
+        diag  = list(continuous = wrap("densityDiag"))) +
+  scale_color_brewer(palette = "Set1") +
+  labs(title = "Scatterplot Matrix — iris Dataset") +
+  theme_minimal(base_size = 11)
+```
+
+**Code explanation:**
+
+- `cor(iris_num, method = "pearson")` computes the full correlation matrix. Change to `"spearman"` for rank-based correlation.
+- `corrplot()` visualizes the matrix with colors encoding strength and direction; `addCoef.col` overlays the numeric values.
+- `ggpairs()` from `GGally` creates a comprehensive pairs plot: scatterplots (lower), correlations by species (upper), and density distributions (diagonal) — all in one call.
+
+## Exercises
+
+::: callout-tip
+## Exercise 1.7
+
+Using the `mtcars` dataset:
+
+(a) Compute the Pearson and Spearman correlation between `hp` (horsepower) and `mpg` (fuel efficiency). Do they differ substantially? Why?\
+(b) Produce a correlation matrix for `mpg`, `hp`, `wt`, and `qsec`. Which pair has the strongest relationship?\
+(c) Create a `ggpairs` plot for these four variables, colored by number of cylinders (`cyl`). Describe any multivariate patterns you observe.
+:::
+
+::: callout-tip
+## Exercise 1.8 (Challenge)
+
+The Anscombe Quartet is built into R as `anscombe`. It contains four pairs of variables (x1/y1, x2/y2, x3/y3, x4/y4).
+
+(a) Compute the mean, variance, and correlation for each pair. What do you notice?\
+(b) Create a 2×2 scatterplot grid for all four pairs.\
+(c) What lesson does this exercise teach about relying on summary statistics alone?
+:::
+
+------------------------------------------------------------------------
+
+# Chapter Lab Activity: Exploring the `mtcars` Dataset
+
+## Objectives
+
+In this lab, you will apply all descriptive statistics concepts from this chapter to a real-world dataset — the `mtcars` dataset, containing specifications and performance data for 32 automobiles from the 1974 *Motor Trend* magazine. The goal is to build a complete descriptive profile of the data, practicing the full workflow from initial exploration to visual communication of findings.
+
+## The Dataset
+
+```{r lab-intro}
+# Load and preview the dataset
+data(mtcars)
+
+# Display first 6 rows
+kable(head(mtcars),
+      caption = "First 6 Rows of the mtcars Dataset") |>
+  kable_styling(bootstrap_options = c("striped", "hover"), font_size = 11)
+
+# Dataset dimensions
+cat("Dimensions:", nrow(mtcars), "rows x", ncol(mtcars), "columns\n")
+```
+
+**Variable descriptions:**
+
+| Variable | Description                              | Type                  |
+|----------|------------------------------------------|-----------------------|
+| `mpg`    | Miles per gallon (fuel efficiency)       | Continuous            |
+| `cyl`    | Number of cylinders                      | Categorical (4, 6, 8) |
+| `disp`   | Displacement (cu.in.)                    | Continuous            |
+| `hp`     | Gross horsepower                         | Continuous            |
+| `wt`     | Weight (1000 lbs)                        | Continuous            |
+| `am`     | Transmission (0 = automatic, 1 = manual) | Binary                |
+| `gear`   | Number of forward gears                  | Categorical           |
+
+## Lab Task 1: Full Descriptive Summary
+
+```{r lab-task1}
+# Comprehensive descriptive statistics using psych::describe()
+mtcars_desc <- describe(mtcars[, c("mpg", "hp", "wt", "disp")])
+
+kable(round(mtcars_desc[, c("n","mean","sd","median","min","max","skew","kurtosis")], 3),
+      caption = "Descriptive Statistics for Key mtcars Variables") |>
+  kable_styling(bootstrap_options = c("striped", "hover")) |>
+  column_spec(7, bold = TRUE, color = "tomato")  # highlight skewness column
+```
+
+**Interpretation guide:** Examine the skewness column carefully. Which variables are approximately symmetric? Which are right-skewed? How does this inform your choice of summary statistics (mean vs. median) for each variable?
+
+## Lab Task 2: Central Tendency and Spread by Group
+
+```{r lab-task2}
+# Compare mpg across cylinder groups (4, 6, 8 cylinders)
+mtcars |>
+  mutate(cyl = factor(cyl, labels = c("4-cyl", "6-cyl", "8-cyl"))) |>
+  group_by(cyl) |>
+  summarise(
+    n      = n(),
+    Mean   = round(mean(mpg), 2),
+    Median = round(median(mpg), 2),
+    SD     = round(sd(mpg), 2),
+    IQR    = round(IQR(mpg), 2),
+    CV     = round(sd(mpg)/mean(mpg)*100, 1)
+  ) |>
+  kable(caption = "Fuel Efficiency (mpg) by Number of Cylinders") |>
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```
+
+## Lab Task 3: Visualizing the Full Distribution
+
+```{r lab-task3, fig.height=8}
+# Multi-panel visualization: histogram, boxplot, QQ plot for mpg
+p1 <- ggplot(mtcars, aes(x = mpg)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 12,
+                 fill = "steelblue", color = "white", alpha = 0.8) +
+  geom_density(color = "tomato", linewidth = 1.2) +
+  labs(title = "A. Distribution of mpg", x = "Miles per Gallon", y = "Density") +
+  theme_minimal(base_size = 12)
+
+p2 <- mtcars |>
+  mutate(cyl = factor(cyl)) |>
+  ggplot(aes(x = cyl, y = mpg, fill = cyl)) +
+  geom_boxplot(alpha = 0.7) +
+  geom_jitter(width = 0.1, alpha = 0.6, size = 2) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "B. mpg by Cylinders", x = "Cylinders", y = "Miles per Gallon") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+
+p3 <- ggplot(mtcars, aes(sample = mpg)) +
+  stat_qq(color = "steelblue", size = 2.5) +
+  stat_qq_line(color = "tomato", linewidth = 1) +
+  labs(title = "C. Normal QQ Plot of mpg",
+       x = "Theoretical Quantiles", y = "Sample Quantiles") +
+  theme_minimal(base_size = 12)
+
+p4 <- mtcars |>
+  mutate(am = factor(am, labels = c("Automatic", "Manual"))) |>
+  ggplot(aes(x = am, y = mpg, fill = am)) +
+  geom_violin(alpha = 0.6, trim = FALSE) +
+  geom_boxplot(width = 0.1, fill = "white", alpha = 0.8) +
+  scale_fill_manual(values = c("Automatic" = "steelblue", "Manual" = "tomato")) +
+  labs(title = "D. mpg by Transmission Type",
+       x = "Transmission", y = "Miles per Gallon") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+
+# Arrange in 2x2 grid using patchwork
+library(patchwork)
+(p1 + p2) / (p3 + p4)
+```
+
+## Lab Task 4: Correlation Analysis
+
+```{r lab-task4}
+# Compute and visualize correlations among continuous variables
+cont_vars <- mtcars[, c("mpg", "hp", "wt", "disp", "qsec")]
+cor_mat    <- cor(cont_vars)
+
+corrplot(cor_mat,
+         method      = "color",
+         type        = "upper",
+         addCoef.col = "black",
+         number.cex  = 0.85,
+         tl.col      = "black",
+         tl.srt      = 30,
+         col         = colorRampPalette(c("tomato", "white", "steelblue"))(200),
+         title       = "Correlation Matrix: mtcars Continuous Variables",
+         mar         = c(0, 0, 2, 0))
+```
+
+## Lab Discussion Questions
+
+Answer the following in writing (100–150 words each):
+
+1.  **Central Tendency:** For the variable `mpg`, which measure — mean or median — is more appropriate as a summary statistic? Justify your answer using skewness and the presence/absence of outliers.
+
+2.  **Group Comparison:** Based on Task 2, describe the relationship between engine size (cylinders) and fuel efficiency. Is the variability (CV) similar across groups or does it differ? What might explain this?
+
+3.  **Normality:** Based on the QQ plot in Task 3, does `mpg` appear normally distributed? What features of the plot support your conclusion?
+
+4.  **Correlation vs. Causation:** The correlation between `hp` and `mpg` is strongly negative. Does this mean that reducing horsepower *causes* better fuel efficiency? What other variables might explain this relationship?
+
+5.  **Visualization Choice:** In Panel D, a violin plot is used alongside a boxplot. What additional information does the violin plot reveal that the boxplot alone does not?
+
+------------------------------------------------------------------------
+
+# Chapter Summary
+
+## Summary
+
+This chapter established the descriptive foundation for all subsequent statistical analysis. The key takeaways are:
+
+- **Central tendency** (mean, median, mode) describes where data is centered. The mean is efficient but sensitive to outliers; the median is robust.
+- **Dispersion** (range, IQR, variance, SD, CV) describes how spread out the data is. The IQR and SD are complementary — one robust, one efficient.
+- **Shape** (skewness, kurtosis) reveals asymmetry and tail behavior, which guide the choice of statistical methods and transformations.
+- **Visualization** is never optional. QQ plots, boxplots, histograms, and scatterplot matrices each reveal different features of the data that numbers alone cannot capture.
+- **Correlation** quantifies linear relationships between pairs of variables but does not imply causation and cannot detect non-linear relationships.
+
+::: callout-important
+## Key Formulas to Know
+
+$$\bar{x} = \frac{1}{n}\sum x_i \qquad s^2 = \frac{1}{n-1}\sum(x_i-\bar{x})^2 \qquad \text{CV} = \frac{s}{\bar{x}} \times 100\%$$ $$r = \frac{\sum(x_i-\bar{x})(y_i-\bar{y})}{\sqrt{\sum(x_i-\bar{x})^2 \cdot \sum(y_i-\bar{y})^2}} \qquad \text{IQR} = Q_3 - Q_1$$
+:::
+
+## References
+
+Anderson, E. (1935). The irises of the Gaspé Peninsula. *Bulletin of the American Iris Society*, *59*, 2–5.
+
+Henderson, H. V., & Velleman, P. F. (1981). Building multiple regression models interactively. *Biometrics*, *37*(2), 391–411.
+
+Komsta, L., & Novomestky, F. (2022). *moments: Moments, cumulants, skewness, kurtosis and related tests* (R package version 0.14.1). https://CRAN.R-project.org/package=moments
+
+Pedersen, T. L. (2022). *patchwork: The composer of plots* (R package version 1.1.2). https://CRAN.R-project.org/package=patchwork
+
+Posit Team. (2024). *Quarto: An open-source scientific and technical publishing system*. Posit, PBC. https://quarto.org
+
+R Core Team. (2024). *R: A language and environment for statistical computing*. R Foundation for Statistical Computing. https://www.R-project.org/
+
+Spearman, C. (1904). "General intelligence," objectively determined and measured. *American Journal of Psychology*, *15*(2), 201–292.
+
+Tukey, J. W. (1977). *Exploratory data analysis*. Addison-Wesley.
+
+Wei, T., & Simko, V. (2021). *corrplot: Visualization of a correlation matrix* (R package version 0.92). https://CRAN.R-project.org/package=corrplot
+
+Wickham, H. (2016). *ggplot2: Elegant graphics for data analysis*. Springer.
+
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. *Journal of Open Source Software*, *4*(43), 1686.
+
+Xie, Y. (2015). *Dynamic documents with R and knitr* (2nd ed.). CRC Press.
+
+------------------------------------------------------------------------
+
+*End of Chapter 1. Proceed to Chapter 2: Data Distribution and Probability.*

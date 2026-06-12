@@ -1,0 +1,57 @@
+project:
+  type: book
+
+knitr:
+  opts_chunk:
+    dev: "ragg_png"
+    
+book:
+  title: "Statistics for Data Science"
+  subtitle: "229711"
+  author: "Parichart Pattarapanitchai"
+  downloads: [pdf]
+  date: "2026"
+  chapters:
+    - index.qmd
+    - chapter01_descriptive_statistics.qmd
+    - chapter02_data_distribution_probability.qmd
+    - chapter03_hypothesis_testing.qmd
+    - chapter04_test_of_independence.qmd
+    - chapter05_data_sampling.qmd
+    - chapter06_data_preprocessing.qmd
+    - chapter07_dimension_reduction.qmd
+    - chapter08_data_clustering.qmd
+    - chapter09_data_classification.qmd
+    - chapter10_regression_analysis.qmd
+    
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-title: "Contents"
+    theme: cosmo
+    highlight-style: github
+    code-fold: true
+    code-tools: false
+    number-sections: true
+    fig-width: 8
+    fig-height: 5
+  pdf:
+    pdf-engine: xelatex
+    documentclass: scrreprt
+    toc: true
+    number-sections: true
+    geometry: margin=1in
+    fontsize: 12pt
+    header-includes:
+      - \definecolor{tomato}{RGB}{255,99,71}
+      - \definecolor{steelblue}{RGB}{70,130,180}
+      - \definecolor{seagreen}{RGB}{46,139,87}
+      - \definecolor{darkgreen}{RGB}{0,100,0}
+      - \definecolor{gray40}{RGB}{102,102,102}
+    
+execute:
+  echo: false
+  warning: false
+  message: false
+

@@ -1,0 +1,10 @@
+/.quarto/
+/_book/
+/site_libs/
+/index_files/
+*.tex
+*.aux
+*.log
+*.toc
+*.synctex.gz
+*_files/

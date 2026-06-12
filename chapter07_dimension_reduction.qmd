@@ -1,0 +1,1505 @@
+# Chapter 7: Data Dimension Reduction
+
+```{r setup}
+# Load all libraries needed for this chapter
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(patchwork)
+library(factoextra)    # PCA visualization
+library(FactoMineR)    # PCA and FA
+library(psych)         # factor analysis
+library(MASS)          # LDA
+library(Rtsne)         # t-SNE
+library(caret)         # feature selection wrappers
+library(corrplot)      # correlation visualization
+library(moments)       # skewness
+```
+
+---
+
+# Chapter Overview
+
+## Introduction
+
+Modern datasets routinely contain hundreds or thousands of variables. Working directly in such high-dimensional spaces presents serious statistical, computational, and interpretive challenges. **Dimension reduction** addresses these challenges by finding a lower-dimensional representation of the data that retains as much useful information as possible — either by constructing new composite variables (feature extraction) or by selecting a subset of the original variables (feature selection).
+
+This chapter covers:
+
+- **The Curse of Dimensionality** — why high dimensions are problematic
+- **Principal Component Analysis (PCA)** — the foundational linear extraction method
+- **Factor Analysis (FA)** — discovering latent constructs underlying observed variables
+- **Linear Discriminant Analysis (LDA)** — supervised reduction maximizing class separation
+- **t-SNE** — non-linear reduction for high-dimensional visualization
+- **Feature Selection Methods** — filter, wrapper, and embedded approaches
+- **Evaluating Dimension Reduction** — criteria for choosing the right number of dimensions
+
+::: {.callout-note}
+## Learning Objectives
+By the end of this chapter, you will be able to:
+
+1. Explain the curse of dimensionality and its practical consequences.
+2. Perform and interpret PCA including scree plots, biplots, and loadings.
+3. Distinguish PCA from factor analysis and apply FA with rotation.
+4. Apply LDA for supervised dimension reduction and visualize class separation.
+5. Use t-SNE for non-linear visualization of high-dimensional data.
+6. Apply filter, wrapper, and embedded feature selection methods.
+7. Evaluate and compare dimension reduction solutions using principled criteria.
+:::
+
+---
+
+# The Curse of Dimensionality
+
+## Introduction
+
+Adding more variables to a dataset seems intuitively beneficial — more information should lead to better analysis. In reality, as the number of dimensions grows, the data becomes increasingly sparse, distances lose their meaning, and models require exponentially more observations to maintain statistical reliability. This phenomenon, coined by Richard Bellman in 1957, is the **curse of dimensionality** — and understanding it is the essential motivation for all dimension reduction methods.
+
+## Theory
+
+### Sparsity in High Dimensions
+
+Consider a unit hypercube in $p$ dimensions. To capture 10% of the data volume, the required edge length of a sub-hypercube is:
+
+$$\ell = (0.10)^{1/p}$$
+
+In 2 dimensions: $\ell = 0.316$ (32% of the range).
+In 10 dimensions: $\ell = 0.794$ (79% of the range!).
+In 100 dimensions: $\ell = 0.977$ (98% of the range).
+
+As $p$ grows, any local neighborhood must span almost the entire range of each variable to contain even a small fraction of the data. **Local methods** (KNN, kernel density estimation, local regression) break down entirely in high dimensions.
+
+### Distance Concentration
+
+In high dimensions, all pairwise distances between random points converge to the same value:
+
+$$\frac{\max_{\mathbf{x},\mathbf{y}} d(\mathbf{x},\mathbf{y}) - \min_{\mathbf{x},\mathbf{y}} d(\mathbf{x},\mathbf{y})}{\min_{\mathbf{x},\mathbf{y}} d(\mathbf{x},\mathbf{y})} \to 0 \quad \text{as } p \to \infty$$
+
+When all distances are nearly equal, the concept of "nearest neighbor" becomes meaningless. KNN classification, K-means clustering, and any distance-based method degrades catastrophically.
+
+### The Sample Size Requirement
+
+To maintain a fixed density of observations in $p$-dimensional space, the required sample size grows **exponentially** with $p$:
+
+$$n \propto c^p$$
+
+To have 10 observations per unit cell in 1D requires $n = 10$; in 10D requires $n = 10^{10}$; in 20D requires $n = 10^{20}$. Most real datasets are **severely undersampled** relative to their dimensionality.
+
+### Practical Consequences
+
+| Problem | Consequence in High Dimensions |
+|---------|-------------------------------|
+| Sparsity | Local methods unreliable |
+| Distance concentration | Clustering and KNN degrade |
+| Sample scarcity | Overfitting; model instability |
+| Multicollinearity | Matrix inversion fails; regression unstable |
+| Visualization | Impossible beyond 3 dimensions |
+| Computation | Memory and time scale poorly |
+
+: Practical consequences of high dimensionality {.striped}
+
+## Example: Distance Concentration
+
+**Example 7.1.** We simulate 100 random points uniformly distributed in a $p$-dimensional unit hypercube, and compute the ratio $(\max - \min)/\min$ distance as $p$ increases from 1 to 100. This ratio should approach 0 as distances concentrate — demonstrating the breakdown of distance-based reasoning.
+
+## R Example: Visualizing the Curse of Dimensionality
+
+```{r curse-dim}
+# --- Distance concentration demonstration ---
+set.seed(42)
+n_pts <- 100
+dims  <- c(1, 2, 5, 10, 20, 50, 100)
+
+dist_ratio <- sapply(dims, function(p) {
+  X    <- matrix(runif(n_pts * p), nrow = n_pts)
+  D    <- as.matrix(dist(X))
+  diag(D) <- NA
+  d_max <- max(D, na.rm = TRUE)
+  d_min <- min(D, na.rm = TRUE)
+  (d_max - d_min) / d_min
+})
+
+dist_df <- data.frame(
+  Dimensions   = dims,
+  Distance_Ratio = round(dist_ratio, 4)
+)
+
+kable(dist_df,
+      caption   = "Distance Concentration as Dimensions Increase",
+      col.names = c("Dimensions (p)",
+                    "(max − min) / min Distance")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(2, bold = TRUE,
+              color = ifelse(dist_df$Distance_Ratio < 0.5,
+                             "tomato", "steelblue"))
+```
+
+```{r curse-dim-plot}
+# --- Sparsity: neighborhood size needed to capture 10% of data ---
+p_seq    <- 1:50
+edge_len <- (0.10)^(1 / p_seq)
+
+p1 <- ggplot(data.frame(p = p_seq, edge = edge_len),
+             aes(x = p, y = edge)) +
+  geom_line(color = "steelblue", linewidth = 1.3) +
+  geom_hline(yintercept = 1, linetype = "dashed",
+             color = "tomato", linewidth = 0.9) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title    = "A. Neighborhood Size to Capture 10% of Data",
+       subtitle = "Edge length approaches 100% as dimensions grow",
+       x        = "Number of Dimensions (p)",
+       y        = "Required Edge Length") +
+  theme_minimal(base_size = 12)
+
+# Distance ratio plot
+p2 <- ggplot(dist_df, aes(x = Dimensions,
+                            y = Distance_Ratio)) +
+  geom_line(color = "tomato", linewidth = 1.3) +
+  geom_point(size = 3, color = "tomato") +
+  labs(title    = "B. Distance Concentration",
+       subtitle = "(max−min)/min → 0 in high dimensions",
+       x        = "Number of Dimensions (p)",
+       y        = "(max − min) / min Distance") +
+  theme_minimal(base_size = 12)
+
+p1 + p2
+```
+
+**Code explanation:**
+
+- `dist(X)` computes the Euclidean distance matrix for all pairs of rows. `diag(D) <- NA` removes self-distances (which are 0).
+- `(0.10)^(1/p_seq)` directly implements the hypercube edge-length formula — a vectorized calculation across all dimensions simultaneously.
+- The two plots together show both faces of the curse: Panel A shows that local neighborhoods must become global, Panel B shows that all pairwise distances converge.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 7.1
+(a) Extend the distance concentration simulation to $p = 200$ and $p = 500$. Does the ratio continue to decrease?
+(b) Repeat the simulation with $n = 1000$ points. Does a larger sample size solve the concentration problem?
+(c) In your own words, explain why K-nearest neighbors classification is expected to perform poorly on a dataset with 500 features and 200 observations.
+:::
+
+---
+
+# Principal Component Analysis (PCA)
+
+## Introduction
+
+**Principal Component Analysis** is the most widely used method for linear dimension reduction. It finds a new set of orthogonal axes — the **principal components** — that are linear combinations of the original variables, ordered so that the first component captures the maximum variance, the second captures the maximum remaining variance orthogonal to the first, and so on. PCA is unsupervised: it uses only the structure of $X$, not any outcome variable $Y$.
+
+## Theory
+
+### Mathematical Foundation
+
+Given $n$ observations of $p$ variables, arranged in a centered data matrix $\mathbf{X}$ (each column has mean zero), PCA finds the directions $\mathbf{w}_k$ that maximize variance:
+
+$$\mathbf{w}_1 = \arg\max_{\|\mathbf{w}\|=1} \text{Var}(\mathbf{X}\mathbf{w})$$
+
+The solution is the **eigendecomposition** of the sample covariance matrix $\mathbf{S} = \frac{1}{n-1}\mathbf{X}^T\mathbf{X}$:
+
+$$\mathbf{S}\mathbf{w}_k = \lambda_k \mathbf{w}_k$$
+
+where $\lambda_k$ are eigenvalues (variance explained by each component) and $\mathbf{w}_k$ are eigenvectors (**loadings** — the weights of each original variable in the component).
+
+The **principal component scores** (projections of observations onto new axes) are:
+
+$$\mathbf{Z} = \mathbf{X}\mathbf{W}$$
+
+where $\mathbf{W} = [\mathbf{w}_1, \mathbf{w}_2, \ldots, \mathbf{w}_k]$.
+
+### Proportion of Variance Explained
+
+The proportion of total variance explained by component $k$ is:
+
+$$\text{PVE}_k = \frac{\lambda_k}{\sum_{j=1}^{p} \lambda_j}$$
+
+The **cumulative PVE** is used to decide how many components to retain. Common thresholds: retain enough components to explain 70–90% of total variance.
+
+### Key Assumptions and Properties
+
+- Components are **orthogonal** (uncorrelated with each other).
+- PCA finds **linear** combinations only — it cannot capture non-linear structure.
+- PCA is **scale-sensitive**: always standardize variables (Z-score) before PCA unless all variables are measured in the same units.
+- The components are ordered by variance explained, not by interpretability.
+
+### Loadings vs. Scores
+
+| Term | Definition | Interpretation |
+|------|-----------|---------------|
+| **Loadings** $\mathbf{w}_k$ | Coefficients of original variables in the $k$-th component | How much each variable contributes |
+| **Scores** $z_{ik}$ | Projection of observation $i$ onto component $k$ | Coordinates of observations in new space |
+| **Biplot** | Overlays scores and loadings | Shows observations and variables together |
+
+: PCA terminology {.striped}
+
+## Example: PCA on Student Exam Data
+
+**Example 7.2.** A dataset records scores on 5 subjects (Math, Physics, Chemistry, History, Literature) for 100 students. PCA reveals:
+
+- PC1 (explains 45% variance): high positive loadings on all subjects — a **general academic ability** factor.
+- PC2 (explains 22% variance): high positive loadings on Math/Physics/Chemistry, negative on History/Literature — a **STEM vs. Humanities** contrast.
+
+Two components explain 67% of the total variance, reducing 5 dimensions to 2 while retaining most information.
+
+## R Example: PCA
+
+```{r pca}
+# --- PCA on iris dataset (4 numeric variables) ---
+data(iris)
+iris_scaled <- scale(iris[, 1:4])
+
+# Perform PCA
+pca_result <- prcomp(iris_scaled, center = FALSE,
+                      scale. = FALSE)  # already scaled
+
+# Summary
+summary(pca_result)
+```
+
+```{r pca-loadings}
+# --- Loadings (rotation matrix) ---
+loadings_df <- as.data.frame(pca_result$rotation)
+loadings_df$Variable <- rownames(loadings_df)
+loadings_df <- loadings_df |>
+  dplyr::select(Variable, PC1, PC2, PC3, PC4) |>
+  mutate(across(PC1:PC4, ~round(.x, 4)))
+
+kable(loadings_df,
+      caption = "PCA Loadings: iris Dataset",
+      row.names = FALSE) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(2:3, bold = TRUE)
+```
+
+```{r pca-variance}
+# --- Variance explained ---
+pve <- pca_result$sdev^2 / sum(pca_result$sdev^2)
+cum_pve <- cumsum(pve)
+
+var_df <- data.frame(
+  Component      = paste0("PC", 1:4),
+  Eigenvalue     = round(pca_result$sdev^2, 4),
+  PVE            = round(pve * 100, 2),
+  Cumulative_PVE = round(cum_pve * 100, 2)
+)
+
+kable(var_df,
+      caption   = "Variance Explained by Each Principal Component",
+      col.names = c("Component","Eigenvalue",
+                    "% Variance","Cumulative %")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(4, bold = TRUE,
+              color = ifelse(var_df$Cumulative_PVE >= 95,
+                             "darkgreen","steelblue"))
+```
+
+```{r pca-plots, fig.height=8}
+# --- Scree plot ---
+p1 <- fviz_eig(pca_result,
+               addlabels = TRUE,
+               barfill   = "steelblue",
+               barcolor  = "white",
+               linecolor = "tomato") +
+  labs(title = "A. Scree Plot: Variance Explained") +
+  theme_minimal(base_size = 12)
+
+# --- Biplot: scores colored by species ---
+scores_df <- as.data.frame(pca_result$x)
+scores_df$Species <- iris$Species
+
+p2 <- ggplot(scores_df, aes(x = PC1, y = PC2,
+                              color = Species)) +
+  geom_point(size = 2.5, alpha = 0.8) +
+  scale_color_brewer(palette = "Set1") +
+  labs(title    = "B. PCA Score Plot (PC1 vs PC2)",
+       subtitle = paste0("PC1: ", round(pve[1]*100, 1),
+                          "% | PC2: ",
+                          round(pve[2]*100, 1), "% variance"),
+       x = paste0("PC1 (", round(pve[1]*100,1), "%)"),
+       y = paste0("PC2 (", round(pve[2]*100,1), "%)")) +
+  theme_minimal(base_size = 12)
+
+# --- Variable contributions ---
+p3 <- fviz_pca_var(pca_result,
+                    col.var = "contrib",
+                    gradient.cols = c("steelblue",
+                                      "gold","tomato"),
+                    repel = TRUE) +
+  labs(title = "C. Variable Contributions to PC1 & PC2") +
+  theme_minimal(base_size = 12)
+
+# --- Loading heatmap ---
+load_long <- as.data.frame(pca_result$rotation[, 1:2]) |>
+  rownames_to_column("Variable") |>
+  pivot_longer(-Variable,
+               names_to  = "Component",
+               values_to = "Loading")
+
+p4 <- ggplot(load_long,
+             aes(x = Component, y = Variable,
+                 fill = Loading)) +
+  geom_tile(color = "white", linewidth = 1.2) +
+  geom_text(aes(label = round(Loading, 3)),
+            fontface = "bold", size = 4) +
+  scale_fill_gradient2(low  = "steelblue",
+                        mid  = "white",
+                        high = "tomato",
+                        midpoint = 0) +
+  labs(title = "D. Loading Heatmap: PC1 & PC2") +
+  theme_minimal(base_size = 12)
+
+(p1 + p2) / (p3 + p4)
+```
+
+**Code explanation:**
+
+- `prcomp(X, center, scale.)` performs PCA. When data is pre-scaled, set `center = FALSE` and `scale. = FALSE` to avoid double-standardization.
+- `pca_result$rotation` contains the loadings matrix; `pca_result$x` contains the scores.
+- `fviz_eig()` and `fviz_pca_var()` from `factoextra` produce publication-ready PCA diagnostics with minimal code.
+- The loading heatmap (Panel D) makes the contribution of each original variable to each component immediately readable.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 7.2
+Using the `mtcars` dataset (all numeric variables):
+
+(a) Standardize the data and perform PCA. How many components are needed to explain 80% of variance?
+(b) Interpret the loadings of PC1 and PC2. What underlying dimension does each represent?
+(c) Create a score plot colored by number of cylinders (`cyl`). Do cars cluster by cylinder count in PC space?
+(d) Which original variable contributes most to PC1? Use `fviz_contrib()`.
+:::
+
+::: {.callout-tip}
+## Exercise 7.3 (Challenge)
+Apply PCA to the `USArrests` dataset.
+
+(a) Should you standardize before PCA? Compare results with and without standardization. Why does it matter here?
+(b) Produce a full biplot using `fviz_pca_biplot()`. Which states are most similar? Which variables cluster together?
+(c) Compute the reconstruction error for $k = 1, 2, 3$ components. At what $k$ does reconstruction become adequate?
+:::
+
+---
+
+# Factor Analysis
+
+## Introduction
+
+**Factor Analysis (FA)** shares mathematical roots with PCA but has a fundamentally different purpose. PCA is a purely descriptive technique for summarizing variance. FA is a **latent variable model** — it assumes the observed variables are caused by a smaller number of unobserved **latent factors**, and seeks to identify these underlying constructs. FA is the method of choice when the research question is about the structure of a psychological scale, the dimensions of a concept, or the latent traits driving observed responses.
+
+## Theory
+
+### The Factor Model
+
+The common factor model expresses each observed variable $x_j$ as a linear combination of $m$ common factors $F_1, F_2, \ldots, F_m$ plus a unique error:
+
+$$x_j = \lambda_{j1}F_1 + \lambda_{j2}F_2 + \cdots + \lambda_{jm}F_m + \varepsilon_j$$
+
+where:
+- $\lambda_{jk}$ are **factor loadings** — how strongly factor $k$ influences variable $j$
+- $F_k$ are **common factors** — latent variables shared across observed variables
+- $\varepsilon_j$ is the **unique factor** — variance in $x_j$ not explained by common factors
+
+The **communality** of variable $j$ is the proportion of its variance explained by the common factors:
+$$h_j^2 = \sum_{k=1}^{m} \lambda_{jk}^2$$
+
+The **uniqueness** (specific variance) is $1 - h_j^2$.
+
+### PCA vs. Factor Analysis
+
+| Feature | PCA | Factor Analysis |
+|---------|-----|----------------|
+| Goal | Maximize variance explained | Identify latent factors |
+| Model | No error term | Includes unique variance |
+| Factors | As many as variables | Fewer than variables |
+| Interpretation | Components are combinations of variables | Variables are indicators of factors |
+| Use case | Data compression, preprocessing | Scale development, construct validation |
+
+: PCA vs. Factor Analysis {.striped}
+
+### Factor Rotation
+
+Unrotated factor solutions are often difficult to interpret — many variables have moderate loadings on all factors. **Rotation** transforms the factor axes to achieve **simple structure**: each variable loads highly on one factor and near-zero on others.
+
+**Orthogonal rotation (Varimax):** Keeps factors uncorrelated. Maximizes the variance of squared loadings within each factor — produces clean, interpretable factors.
+
+**Oblique rotation (Promax, Oblimin):** Allows factors to be correlated. More realistic when underlying constructs are expected to relate to each other (e.g., verbal and spatial ability in intelligence research).
+
+### Determining the Number of Factors
+
+| Criterion | Rule |
+|-----------|------|
+| **Kaiser criterion** | Retain factors with eigenvalue > 1 |
+| **Scree plot** | Retain factors before the "elbow" |
+| **Parallel analysis** | Compare eigenvalues to random data eigenvalues |
+| **Theory** | Retain the number justified by the research context |
+
+: Criteria for number of factors {.striped}
+
+Parallel analysis is the most defensible criterion and is recommended for research purposes.
+
+## Example: Factor Analysis of a Psychological Scale
+
+**Example 7.3.** A questionnaire measures student engagement with 10 items across two hypothesized dimensions: academic engagement (items 1–5) and social engagement (items 6–10). FA with 2 factors and Varimax rotation produces:
+
+- **Factor 1:** High loadings (0.70–0.85) on items 1–5, near-zero on items 6–10 → Academic Engagement.
+- **Factor 2:** Near-zero on items 1–5, high loadings (0.65–0.80) on items 6–10 → Social Engagement.
+- Communalities range from 0.52 to 0.78 — most item variance is captured.
+- Cronbach's alpha = 0.84 (Factor 1), 0.79 (Factor 2) — good internal consistency.
+
+## R Example: Factor Analysis
+
+```{r factor-analysis}
+# --- Factor analysis on mtcars ---
+# Use continuous variables
+data(mtcars)
+mtcars_fa <- mtcars[, c("mpg","cyl","disp",
+                          "hp","drat","wt","qsec")]
+
+# Determine number of factors: parallel analysis
+fa_parallel <- psych::fa.parallel(
+  mtcars_fa, fm = "ml", fa = "fa",
+  show.legend = FALSE, main = "Parallel Analysis Scree Plot"
+)
+```
+
+```{r factor-fit}
+# Fit 2-factor model with Varimax rotation
+fa_result <- psych::fa(mtcars_fa,
+                        nfactors = 2,
+                        rotate   = "varimax",
+                        fm       = "ml")
+
+# Factor loadings
+print(fa_result$loadings, cutoff = 0.3)
+```
+
+```{r factor-table}
+# --- Clean loadings table ---
+loadings_mat <- as.data.frame(
+  unclass(fa_result$loadings)
+)
+loadings_mat$Communality <- fa_result$communality
+loadings_mat$Uniqueness  <- fa_result$uniquenesses
+loadings_mat <- round(loadings_mat, 3)
+
+kable(loadings_mat,
+      caption = "Factor Loadings (Varimax Rotation) — mtcars") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(2:3, bold = TRUE)
+```
+
+```{r factor-plot}
+# --- Factor loading plot ---
+load_df <- as.data.frame(unclass(fa_result$loadings)) |>
+  rownames_to_column("Variable")
+
+ggplot(load_df, aes(x = ML1, y = ML2,
+                     label = Variable)) +
+  geom_hline(yintercept = 0, color = "gray60") +
+  geom_vline(xintercept = 0, color = "gray60") +
+  geom_point(color = "steelblue", size = 4, alpha = 0.8) +
+  ggrepel::geom_text_repel(size = 4, fontface = "bold",
+                             color = "gray20") +
+  #geom_circle_factor <- function() NULL  # placeholder
+  annotate("path",
+           x = cos(seq(0, 2*pi, length.out = 100)),
+           y = sin(seq(0, 2*pi, length.out = 100)),
+           color = "gray80", linetype = "dashed") +
+  labs(title    = "Factor Loading Plot (Varimax Rotation)",
+       subtitle = "Variables closer to an axis load primarily on that factor",
+       x        = "Factor 1 (ML1)",
+       y        = "Factor 2 (ML2)") +
+  coord_equal(xlim = c(-1.1, 1.1),
+              ylim = c(-1.1, 1.1)) +
+  theme_minimal(base_size = 13)
+```
+
+
+**Code explanation:**
+
+- `psych::fa.parallel()` conducts parallel analysis — the recommended method for choosing the number of factors.
+- `psych::fa(data, nfactors, rotate, fm)` fits the factor model. `fm = "ml"` uses maximum likelihood estimation; `rotate = "varimax"` applies orthogonal rotation.
+- `print(loadings, cutoff = 0.3)` suppresses loadings below 0.3 to highlight the simple structure — a standard reporting convention.
+- The loading plot (also called a **factor map**) places each variable as a point; variables near the same axis are dominated by the same factor.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 7.4
+Using the `Harman23.cor` dataset in the `psych` package (correlations among 23 psychological tests):
+
+(a) Perform parallel analysis to determine the number of factors.
+(b) Fit the factor model with Varimax rotation.
+(c) Interpret each factor by examining which variables load on it.
+(d) Compare Varimax (orthogonal) to Oblimin (oblique) rotation. Which produces a cleaner simple structure?
+:::
+
+---
+
+# Linear Discriminant Analysis (LDA)
+
+## Introduction
+
+PCA and FA are **unsupervised** — they ignore the class labels of observations. When class membership is known, we can do better: **Linear Discriminant Analysis** finds the linear combination of variables that **maximally separates** predefined classes while minimizing within-class variation. LDA is simultaneously a dimension reduction technique and a classification method. It is the supervised counterpart to PCA — and when class structure is strong, it provides far more informative low-dimensional representations.
+
+## Theory
+
+### Fisher's Discriminant Criterion
+
+LDA finds the projection vector $\mathbf{w}$ that maximizes the ratio of **between-class variance** to **within-class variance**:
+
+$$J(\mathbf{w}) = \frac{\mathbf{w}^T \mathbf{S}_B \mathbf{w}}{\mathbf{w}^T \mathbf{S}_W \mathbf{w}}$$
+
+where:
+- $\mathbf{S}_B = \sum_{k=1}^{K} n_k (\bar{\mathbf{x}}_k - \bar{\mathbf{x}})(\bar{\mathbf{x}}_k - \bar{\mathbf{x}})^T$ is the **between-class scatter matrix**
+- $\mathbf{S}_W = \sum_{k=1}^{K} \sum_{i \in C_k} (\mathbf{x}_i - \bar{\mathbf{x}}_k)(\mathbf{x}_i - \bar{\mathbf{x}}_k)^T$ is the **within-class scatter matrix**
+
+The solution is the generalized eigendecomposition $\mathbf{S}_W^{-1}\mathbf{S}_B\mathbf{w} = \lambda\mathbf{w}$.
+
+### Number of Discriminants
+
+For $K$ classes and $p$ variables, at most $\min(K-1, p)$ discriminant functions exist. For $K = 3$ classes, there are at most 2 discriminants — allowing a complete 2D visualization of class separation.
+
+### LDA Assumptions
+
+1. Observations within each class follow a multivariate normal distribution.
+2. All classes share the same covariance matrix (homoscedasticity).
+3. Variables are linearly related to the discriminant scores.
+
+**Quadratic Discriminant Analysis (QDA)** relaxes assumption 2, allowing class-specific covariance matrices, at the cost of more parameters.
+
+### LDA vs. PCA
+
+| Feature | PCA | LDA |
+|---------|-----|-----|
+| Supervision | Unsupervised | Supervised (uses class labels) |
+| Objective | Maximize total variance | Maximize class separation |
+| Max dimensions | $p$ | $K-1$ |
+| Best when | No class labels available | Class labels known |
+
+: LDA vs. PCA comparison {.striped}
+
+## Example: LDA for Species Separation
+
+**Example 7.4.** For the `iris` dataset (3 species, 4 variables), LDA produces 2 discriminant functions. LD1 explains 99.1% of between-group variance, primarily contrasting setosa against the other two species. LD2 (0.9%) separates versicolor from virginica. Together, the 2 LDs provide near-perfect visual separation of all three species in 2D — far cleaner than the PCA projection.
+
+## R Example: Linear Discriminant Analysis
+
+```{r lda}
+# --- LDA on iris ---
+data(iris)
+lda_result <- MASS::lda(Species ~ .,
+                          data = iris)
+
+# Print LDA output
+print(lda_result)
+```
+
+```{r lda-scores}
+# --- Compute discriminant scores ---
+lda_pred   <- predict(lda_result, iris)
+lda_scores <- as.data.frame(lda_pred$x)
+lda_scores$Species <- iris$Species
+
+# Proportion of trace (between-group variance explained)
+prop_trace <- lda_result$svd^2 / sum(lda_result$svd^2)
+cat("Proportion of between-group variance:\n")
+cat("LD1:", round(prop_trace[1]*100, 2), "%\n")
+cat("LD2:", round(prop_trace[2]*100, 2), "%\n")
+```
+
+```{r lda-plots}
+# --- Compare PCA vs LDA separation ---
+# PCA scores
+pca_lda    <- prcomp(scale(iris[,1:4]))
+pca_scores <- as.data.frame(pca_lda$x[,1:2])
+pca_scores$Species <- iris$Species
+
+p1 <- ggplot(pca_scores,
+             aes(x = PC1, y = PC2, color = Species)) +
+  geom_point(size = 2.5, alpha = 0.8) +
+  stat_ellipse(level = 0.95, linewidth = 0.8) +
+  scale_color_brewer(palette = "Set1") +
+  labs(title    = "A. PCA: First Two Components",
+       subtitle = "Unsupervised — ignores species labels",
+       x = "PC1", y = "PC2") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
+
+p2 <- ggplot(lda_scores,
+             aes(x = LD1, y = LD2, color = Species)) +
+  geom_point(size = 2.5, alpha = 0.8) +
+  stat_ellipse(level = 0.95, linewidth = 0.8) +
+  scale_color_brewer(palette = "Set1") +
+  labs(title    = "B. LDA: First Two Discriminants",
+       subtitle = "Supervised — maximizes class separation",
+       x = paste0("LD1 (",round(prop_trace[1]*100,1),"%)"),
+       y = paste0("LD2 (",round(prop_trace[2]*100,1),"%)")) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
+
+p1 + p2
+```
+
+```{r lda-confusion}
+# --- Classification accuracy ---
+lda_class <- lda_pred$class
+conf_mat  <- table(Predicted = lda_class,
+                    Actual    = iris$Species)
+
+kable(conf_mat,
+      caption = "LDA Classification: Confusion Matrix") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+
+cat("Overall accuracy:",
+    round(mean(lda_class == iris$Species)*100, 1), "%\n")
+```
+
+**Code explanation:**
+
+- `MASS::lda(formula, data)` fits the LDA model. The formula specifies the outcome (class variable) on the left, predictors on the right.
+- `predict(lda_result, data)` returns a list with `$class` (predicted labels) and `$x` (discriminant scores).
+- `stat_ellipse(level = 0.95)` draws 95% confidence ellipses for each group — a clean way to show class separation visually.
+- Comparing PCA (Panel A) and LDA (Panel B) side by side demonstrates LDA's advantage when class structure is the primary interest.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 7.5
+Using the `Wine` dataset from the `rattle` package (or simulate a 3-class dataset):
+
+(a) Fit LDA and compute discriminant scores for all observations.
+(b) Plot the first two discriminant functions. How well do the classes separate?
+(c) Compare classification accuracy of LDA to a simple decision tree on the same data.
+(d) Test the homoscedasticity assumption using `biotools::boxM()`. If violated, fit QDA (`MASS::qda()`) and compare accuracy.
+:::
+
+---
+
+# t-SNE
+
+## Introduction
+
+PCA and LDA produce **linear** projections — they can only capture structure that is linearly embedded in the data. Many real high-dimensional datasets have **non-linear** structure: clusters that are curved, nested, or interleaved in ways that no linear projection can reveal. **t-distributed Stochastic Neighbor Embedding (t-SNE)**, developed by van der Maaten and Hinton (2008), is the dominant method for non-linear visualization of high-dimensional data. It is widely used in genomics, single-cell biology, NLP (visualizing word embeddings), and image analysis.
+
+## Theory
+
+### The t-SNE Algorithm
+
+t-SNE works in two steps:
+
+**Step 1 — High-dimensional similarities:** For each pair of points $i, j$ in the original space, compute a conditional probability $p_{j|i}$ proportional to the Gaussian density centered at $x_i$:
+
+$$p_{j|i} = \frac{\exp(-\|x_i - x_j\|^2 / 2\sigma_i^2)}{\sum_{k \neq i} \exp(-\|x_i - x_k\|^2 / 2\sigma_i^2)}$$
+
+Symmetrize: $p_{ij} = (p_{j|i} + p_{i|j}) / 2n$.
+
+**Step 2 — Low-dimensional similarities:** In the 2D map, use a Student's t-distribution (heavier tails than Gaussian) for similarities:
+
+$$q_{ij} = \frac{(1 + \|y_i - y_j\|^2)^{-1}}{\sum_{k \neq l}(1 + \|y_k - y_l\|^2)^{-1}}$$
+
+**Optimization:** Minimize the KL divergence between $P$ and $Q$ using gradient descent:
+
+$$\text{KL}(P \| Q) = \sum_{i \neq j} p_{ij} \log \frac{p_{ij}}{q_{ij}}$$
+
+The heavy-tailed t-distribution in the low-dimensional space allows moderate distances to be represented as large distances — preventing the "crowding problem" that plagues Gaussian-based methods.
+
+### The Perplexity Parameter
+
+The **perplexity** controls the effective number of neighbors each point considers. It is the most important hyperparameter:
+
+$$\text{Perplexity} = 2^{H(P_i)}, \quad H(P_i) = -\sum_j p_{j|i} \log_2 p_{j|i}$$
+
+Typical range: 5–50. **Low perplexity** focuses on local structure (tight clusters); **high perplexity** captures more global structure. The optimal value depends on the dataset — always try multiple values.
+
+### Critical Limitations of t-SNE
+
+::: {.callout-warning}
+## t-SNE Interpretation Cautions
+1. **Distances between clusters are not meaningful** — cluster separation in a t-SNE plot does not represent true distances in the original space.
+2. **Cluster sizes are not meaningful** — a large cluster in t-SNE may not be larger than a small one in reality.
+3. **Results are not reproducible** without fixing the random seed — always set `set.seed()`.
+4. **t-SNE is for visualization only** — do not use t-SNE coordinates as features for downstream modeling.
+5. **Perplexity must be tuned** — a single plot can be misleading; always explore multiple perplexity values.
+:::
+
+## Example: t-SNE on MNIST-style Data
+
+**Example 7.5.** t-SNE applied to the 784-dimensional MNIST handwritten digit dataset (60,000 images) produces a 2D map where each digit class forms a distinct cluster. Digits 4 and 9 partially overlap (visually similar), as do 3 and 5. This structure is completely invisible in a PCA projection. The t-SNE visualization directly reveals the intrinsic difficulty of the classification problem.
+
+## R Example: t-SNE
+
+```{r tsne}
+# --- t-SNE on iris (as a simple demonstration) ---
+data(iris)
+set.seed(42)
+
+# Run t-SNE (perplexity = 30 is default)
+tsne_result <- Rtsne::Rtsne(
+  iris[, 1:4],
+  dims        = 2,
+  perplexity  = 15,
+  verbose     = FALSE,
+  max_iter    = 1000,
+  check_duplicates = FALSE
+)
+
+tsne_df <- data.frame(
+  tSNE1   = tsne_result$Y[, 1],
+  tSNE2   = tsne_result$Y[, 2],
+  Species = iris$Species
+)
+```
+
+```{r tsne-perplexity}
+# --- Compare three perplexity values ---
+perplexities <- c(5, 15, 40)
+
+tsne_list <- lapply(perplexities, function(perp) {
+  set.seed(42)
+  res <- Rtsne::Rtsne(iris[, 1:4], dims = 2,
+                       perplexity = perp, verbose = FALSE,
+                       max_iter = 1000,
+                       check_duplicates = FALSE)
+  data.frame(
+    tSNE1      = res$Y[, 1],
+    tSNE2      = res$Y[, 2],
+    Species    = iris$Species,
+    Perplexity = paste0("Perplexity = ", perp)
+  )
+})
+
+tsne_all <- bind_rows(tsne_list)
+tsne_all$Perplexity <- factor(tsne_all$Perplexity,
+                               levels = paste0("Perplexity = ",
+                                               perplexities))
+
+ggplot(tsne_all, aes(x = tSNE1, y = tSNE2,
+                      color = Species)) +
+  geom_point(size = 1.8, alpha = 0.8) +
+  scale_color_brewer(palette = "Set1") +
+  facet_wrap(~Perplexity, scales = "free", ncol = 3) +
+  labs(title    = "t-SNE with Different Perplexity Values",
+       subtitle = "iris dataset — 3 classes, 4 dimensions → 2D",
+       x = "t-SNE 1", y = "t-SNE 2") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "bottom")
+```
+
+```{r tsne-vs-pca}
+# --- Side-by-side: PCA vs t-SNE ---
+pca_iris  <- prcomp(scale(iris[, 1:4]))
+pca_df    <- data.frame(pca_iris$x[, 1:2],
+                          Species = iris$Species)
+
+p1 <- ggplot(pca_df, aes(x = PC1, y = PC2,
+                           color = Species)) +
+  geom_point(size = 2.5, alpha = 0.8) +
+  scale_color_brewer(palette = "Set1") +
+  labs(title = "PCA (linear)",
+       x = "PC1", y = "PC2") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
+
+p2 <- ggplot(tsne_df, aes(x = tSNE1, y = tSNE2,
+                            color = Species)) +
+  geom_point(size = 2.5, alpha = 0.8) +
+  scale_color_brewer(palette = "Set1") +
+  labs(title = "t-SNE (non-linear)",
+       x = "t-SNE 1", y = "t-SNE 2") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
+
+p1 + p2
+```
+
+**Code explanation:**
+
+- `Rtsne::Rtsne(X, dims, perplexity, max_iter)` runs t-SNE. Always set `set.seed()` before calling — results are stochastic.
+- `check_duplicates = FALSE` prevents errors when the dataset has identical rows (iris has some).
+- `lapply()` over perplexity values followed by `bind_rows()` cleanly generates multiple t-SNE runs for comparison.
+- `facet_wrap(scales = "free")` is essential for t-SNE comparisons — axes have no consistent meaning across runs, so free scales prevent misleading size comparisons.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 7.6
+Using the `digits` dataset (available via `keras` or as a subset of MNIST):
+
+(a) Run t-SNE with perplexities 5, 30, and 100. How does the cluster structure change?
+(b) Run PCA on the same data and compare the first two PCs to the t-SNE plot. Which reveals clearer cluster structure?
+(c) Does t-SNE preserve global structure (e.g., similarity between digit classes)? How would you verify this?
+:::
+
+::: {.callout-tip}
+## Exercise 7.7
+Apply both PCA and t-SNE to the `mtcars` dataset.
+
+(a) In the PCA plot, color points by `cyl` (number of cylinders). In the t-SNE plot, do the same.
+(b) Do the two methods agree on which cars are most similar?
+(c) Given that `mtcars` has only 32 observations and 11 variables, is t-SNE appropriate here? What are the risks?
+:::
+
+---
+
+# Feature Selection Methods
+
+## Introduction
+
+**Feature extraction** (PCA, LDA, t-SNE) creates new variables as combinations of the originals. **Feature selection** instead chooses a subset of the original variables to keep, discarding the rest. Feature selection preserves interpretability — the selected features remain the original, meaningful variables. It is essential for high-dimensional datasets where many features are redundant, irrelevant, or noisy, and where model interpretability is required.
+
+## Theory
+
+### Filter Methods
+
+Filter methods assess the relevance of each feature **independently of any model**, using statistical measures. They are fast and scalable but ignore feature interactions.
+
+**Variance threshold:** Remove features with near-zero variance — they carry little information.
+
+**Correlation filter:** Remove one variable from each highly correlated pair ($|r| > 0.90$).
+
+**Statistical tests:**
+- ANOVA F-test or mutual information for continuous features vs. categorical outcome.
+- Chi-square test for categorical feature vs. categorical outcome.
+- Spearman correlation for continuous feature vs. continuous outcome.
+
+### Wrapper Methods
+
+Wrapper methods evaluate feature subsets by training and testing a model on each subset. They account for feature interactions but are computationally expensive.
+
+**Forward selection:** Start with no features; add the feature that most improves model performance at each step.
+
+**Backward elimination:** Start with all features; remove the feature whose removal least degrades performance.
+
+**Recursive Feature Elimination (RFE):** Fit the model on all features, rank by importance, remove the least important, and repeat until the desired number remains.
+
+### Embedded Methods
+
+Embedded methods perform feature selection **as part of model training** — the most computationally efficient approach.
+
+**LASSO (L1 regularization):** Shrinks some coefficients exactly to zero, effectively excluding those features.
+
+**Ridge (L2 regularization):** Shrinks coefficients toward zero but rarely to exactly zero — does not perform selection.
+
+**Random Forest importance:** Measures each feature's contribution to reducing impurity across all trees. The `varImp()` function in `caret` extracts these.
+
+### Comparison
+
+| Method | Speed | Interactions | Interpretability | Best For |
+|--------|-------|-------------|-----------------|---------|
+| Filter | Fast | No | High | Preprocessing, first pass |
+| Wrapper | Slow | Yes | Medium | Final model tuning |
+| Embedded | Medium | Partial | Medium | Regularized models |
+
+: Feature selection method comparison {.striped}
+
+## Example: Feature Selection for Predicting MPG
+
+**Example 7.6.** In `mtcars`, 10 potential predictors of `mpg` are available. Filter: correlation analysis removes `disp` (highly correlated with `cyl`, $r = 0.90$). Wrapper RFE: selects `wt`, `cyl`, `hp` as the top 3. Embedded (LASSO): retains `wt`, `hp`, `am` with non-zero coefficients. All methods agree that `wt` and `hp` are the most important predictors.
+
+## R Example: Feature Selection
+
+```{r feature-selection-filter}
+# === FILTER METHOD: Correlation-based ===
+data(mtcars)
+predictors <- mtcars[, !names(mtcars) %in% "mpg"]
+
+# Correlation matrix
+cor_mat <- cor(predictors)
+
+# Find highly correlated pairs (|r| > 0.85)
+high_cor <- which(abs(cor_mat) > 0.85 &
+                    abs(cor_mat) < 1, arr.ind = TRUE)
+high_cor_df <- data.frame(
+  Var1 = rownames(cor_mat)[high_cor[,1]],
+  Var2 = colnames(cor_mat)[high_cor[,2]],
+  r    = round(cor_mat[high_cor], 3)
+) |>
+  filter(Var1 < Var2) |>   # remove duplicates
+  arrange(desc(abs(r)))
+
+kable(high_cor_df,
+      caption   = "Highly Correlated Feature Pairs (|r| > 0.85)",
+      col.names = c("Variable 1","Variable 2","Pearson r")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+```{r feature-selection-rfe}
+# === WRAPPER METHOD: Recursive Feature Elimination ===
+set.seed(42)
+ctrl <- rfeControl(functions  = lmFuncs,
+                    method     = "cv",
+                    number     = 10,
+                    verbose    = FALSE)
+
+rfe_result <- rfe(x       = predictors,
+                   y       = mtcars$mpg,
+                   sizes   = c(2, 3, 4, 5, 6),
+                   rfeControl = ctrl)
+
+cat("RFE Selected Features:\n")
+print(predictors(rfe_result))
+cat("\nOptimal number of features:", rfe_result$optsize, "\n")
+```
+
+```{r feature-selection-lasso}
+# === EMBEDDED METHOD: LASSO ===
+library(glmnet)
+
+X     <- as.matrix(predictors)
+y     <- mtcars$mpg
+X_std <- scale(X)
+
+# Cross-validated LASSO
+set.seed(42)
+lasso_cv <- cv.glmnet(X_std, y, alpha = 1, nfolds = 10)
+
+# Coefficients at optimal lambda
+lasso_coef <- coef(lasso_cv, s = "lambda.min")
+lasso_df   <- data.frame(
+  Variable    = rownames(lasso_coef)[-1],
+  Coefficient = round(as.numeric(lasso_coef)[-1], 4)
+) |>
+  filter(Coefficient != 0) |>
+  arrange(desc(abs(Coefficient)))
+
+kable(lasso_df,
+      caption = "LASSO Selected Features (λ = λ.min)") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+```{r feature-selection-plot}
+# --- Variable importance comparison ---
+# Random Forest importance
+library(randomForest)
+set.seed(42)
+rf_model <- randomForest(mpg ~ ., data = mtcars,
+                          importance = TRUE)
+
+imp_df <- as.data.frame(importance(rf_model)) |>
+  rownames_to_column("Variable") |>
+  arrange(desc(`%IncMSE`)) |>
+  rename(Importance = `%IncMSE`)
+
+ggplot(imp_df, aes(x = reorder(Variable, Importance),
+                    y = Importance, fill = Importance)) +
+  geom_col(color = "white") +
+  scale_fill_gradient(low = "steelblue", high = "tomato") +
+  coord_flip() +
+  labs(title    = "Random Forest Variable Importance",
+       subtitle = "% Increase in MSE when variable is permuted",
+       x        = "Variable",
+       y        = "% Increase in MSE") +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "none")
+```
+
+**Code explanation:**
+
+- `rfe(x, y, sizes, rfeControl)` runs Recursive Feature Elimination using cross-validation. `lmFuncs` specifies linear regression as the model.
+- `cv.glmnet(X, y, alpha=1)` fits LASSO with cross-validated lambda selection. `alpha=1` is LASSO; `alpha=0` is Ridge; values between are Elastic Net.
+- `randomForest(formula, importance=TRUE)` computes permutation-based variable importance — the gold standard for non-linear feature ranking.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 7.8
+Using the `Boston` dataset from `MASS` (housing prices):
+
+(a) Apply correlation filter: remove features with $|r| > 0.85$ with any other feature.
+(b) Apply RFE with cross-validation to identify the top 5 features for predicting `medv`.
+(c) Fit a LASSO model. Which features are retained at `lambda.min` vs. `lambda.1se`?
+(d) Do all three methods agree on the most important features? Summarize in a comparison table.
+:::
+
+---
+
+# Evaluating Dimension Reduction
+
+## Introduction
+
+Dimension reduction involves an inherent trade-off: more dimensions retain more information but defeat the purpose of reduction. Fewer dimensions are more interpretable and computationally efficient but lose information. **Evaluating** a dimension reduction solution means answering: *How many dimensions do we need, and how much do we lose by using fewer?* This section provides a principled toolkit of criteria for making this decision.
+
+## Theory
+
+### Scree Plot and the Elbow Rule
+
+A **scree plot** displays eigenvalues (or variance explained) against the component number. The **elbow** — where the curve bends and flattens — indicates the number of components beyond which additional components contribute little. The elbow is identified visually and is subjective; it works best when there is a clear break.
+
+### Kaiser's Criterion
+
+For PCA on standardized data, retain components with **eigenvalue > 1**. The rationale: a component with eigenvalue < 1 explains less variance than a single original standardized variable — it is not "earning its keep." This criterion tends to retain too many components in large datasets.
+
+### Cumulative Variance Threshold
+
+Retain the minimum number of components needed to explain a specified proportion of total variance (commonly 70%, 80%, or 90%). The threshold should be chosen based on the purpose:
+
+- For **visualization**: 2–3 components (interpretability is paramount)
+- For **preprocessing before modeling**: 80–90% variance
+- For **lossy compression**: problem-specific
+
+### Reconstruction Error
+
+The **reconstruction error** measures how well the reduced representation can recreate the original data:
+
+$$\text{RE}(k) = \frac{1}{n} \|\mathbf{X} - \hat{\mathbf{X}}_k\|_F^2 = \sum_{j=k+1}^{p} \lambda_j$$
+
+where $\hat{\mathbf{X}}_k = \mathbf{Z}_k \mathbf{W}_k^T$ is the rank-$k$ approximation. The reconstruction error equals the sum of discarded eigenvalues — confirming that PCA is the optimal linear reconstruction.
+
+### Parallel Analysis
+
+Compare the eigenvalues from the actual data to eigenvalues from **random data** of the same dimensions. Retain components whose eigenvalues exceed the corresponding random eigenvalues. This is more rigorous than the elbow rule or Kaiser's criterion and is the current methodological recommendation.
+
+### Cross-Validation for Dimension Selection
+
+In a supervised context, use cross-validation to evaluate predictive performance as a function of the number of retained dimensions — the optimal $k$ balances dimensionality reduction against predictive accuracy.
+
+## Example: Choosing $k$ for PCA
+
+**Example 7.7.** For a dataset with 20 variables:
+
+| Criterion | Suggested $k$ |
+|-----------|--------------|
+| Elbow rule | 3 |
+| Kaiser (eigenvalue > 1) | 5 |
+| 80% variance | 4 |
+| Parallel analysis | 3 |
+| Cross-validation (classification) | 4 |
+
+Most criteria agree on 3–4 components. The final choice of $k = 4$ is justified by the 80% variance threshold, confirmed by parallel analysis suggesting 3 (conservative) and cross-validation suggesting 4 (predictive).
+
+## R Example: Evaluating Dimension Reduction
+
+```{r eval-dr}
+# --- Comprehensive evaluation for mtcars PCA ---
+data(mtcars)
+mtcars_scaled <- scale(mtcars)
+pca_eval      <- prcomp(mtcars_scaled)
+
+# Eigenvalues and variance explained
+eval_df <- data.frame(
+  Component  = 1:ncol(mtcars),
+  Eigenvalue = round(pca_eval$sdev^2, 4),
+  PVE        = round(pca_eval$sdev^2 /
+                       sum(pca_eval$sdev^2) * 100, 2),
+  Cum_PVE    = round(cumsum(pca_eval$sdev^2 /
+                              sum(pca_eval$sdev^2)) * 100, 2)
+)
+
+kable(eval_df,
+      caption   = "PCA Evaluation: mtcars",
+      col.names = c("Component","Eigenvalue",
+                    "% Variance","Cumulative %")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(2, bold = TRUE,
+              color = ifelse(eval_df$Eigenvalue > 1,
+                             "darkgreen","tomato")) |>
+  column_spec(4, bold = TRUE,
+              color = ifelse(eval_df$Cum_PVE >= 80,
+                             "darkgreen","steelblue"))
+```
+
+```{r eval-reconstruction}
+# --- Reconstruction error as function of k ---
+X     <- mtcars_scaled
+W     <- pca_eval$rotation
+Z     <- pca_eval$x
+
+recon_error <- sapply(1:ncol(mtcars), function(k) {
+  X_hat <- Z[, 1:k, drop=FALSE] %*% t(W[, 1:k, drop=FALSE])
+  mean((X - X_hat)^2)
+})
+
+recon_df <- data.frame(
+  k     = 1:ncol(mtcars),
+  error = round(recon_error, 4),
+  pve   = eval_df$Cum_PVE
+)
+```
+
+```{r eval-plots}
+# --- Four evaluation plots ---
+p1 <- ggplot(eval_df, aes(x = Component,
+                            y = Eigenvalue)) +
+  geom_line(color = "steelblue", linewidth = 1.2) +
+  geom_point(color = "steelblue", size = 3) +
+  geom_hline(yintercept = 1, color = "tomato",
+             linetype = "dashed", linewidth = 1) +
+  annotate("text", x = 8, y = 1.15,
+           label = "Kaiser criterion (λ=1)",
+           color = "tomato", size = 3.5) +
+  labs(title = "A. Scree Plot",
+       x = "Component", y = "Eigenvalue") +
+  theme_minimal(base_size = 11)
+
+p2 <- ggplot(eval_df, aes(x = Component,
+                            y = Cum_PVE)) +
+  geom_line(color = "steelblue", linewidth = 1.2) +
+  geom_point(color = "steelblue", size = 3) +
+  geom_hline(yintercept = c(70, 80, 90),
+             color    = c("tomato","seagreen","purple"),
+             linetype = "dashed", linewidth = 0.8) +
+  annotate("text", x = 9.5, y = c(71.5, 81.5, 91.5),
+           label = c("70%","80%","90%"),
+           color = c("tomato","seagreen","purple"),
+           size  = 3.2) +
+  labs(title = "B. Cumulative Variance Explained",
+       x = "Component", y = "Cumulative %") +
+  theme_minimal(base_size = 11)
+
+p3 <- ggplot(recon_df, aes(x = k, y = error)) +
+  geom_line(color = "tomato", linewidth = 1.2) +
+  geom_point(color = "tomato", size = 3) +
+  labs(title    = "C. Reconstruction Error",
+       subtitle = "MSE between X and rank-k approximation",
+       x = "Number of Components (k)",
+       y = "Mean Squared Error") +
+  theme_minimal(base_size = 11)
+
+p4 <- fviz_eig(pca_eval, addlabels = TRUE,
+               barfill   = "steelblue",
+               barcolor  = "white",
+               linecolor = "tomato",
+               ncp       = 11) +
+  geom_hline(yintercept = 100/ncol(mtcars),
+             linetype = "dashed", color = "gray40") +
+  labs(title = "D. % Variance per Component") +
+  theme_minimal(base_size = 11)
+
+(p1 + p2) / (p3 + p4)
+```
+
+**Code explanation:**
+
+- `Z[, 1:k] %*% t(W[, 1:k])` computes the rank-$k$ reconstruction of the standardized data. The reconstruction error decreases monotonically as $k$ increases.
+- The four panels together provide a complete evaluation framework: scree plot for elbow, cumulative variance for threshold, reconstruction error for information loss, and bar chart for per-component contribution.
+- The dashed line at $100/p$ in Panel D represents the "equal contribution" baseline — components above this line explain more than their fair share.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 7.9
+Using the `decathlon2` dataset from `factoextra`:
+
+(a) Perform PCA and apply all four criteria (elbow, Kaiser, 80% variance, parallel analysis) to choose $k$.
+(b) Do the criteria agree? Which $k$ would you choose and why?
+(c) Compute reconstruction errors for $k = 1, \ldots, p$. At what $k$ does the error drop below 20% of the original variance?
+:::
+
+::: {.callout-tip}
+## Exercise 7.10 (Challenge)
+Compare PCA and t-SNE as preprocessing steps for K-means clustering on the `iris` dataset.
+
+(a) Cluster using raw data (no reduction), first 2 PCA components, and 2 t-SNE dimensions.
+(b) Compare cluster quality using the Adjusted Rand Index (`mclust::adjustedRandIndex()`).
+(c) Which preprocessing leads to better recovery of the true species groups? Why?
+:::
+
+---
+
+# Chapter Lab Activity: Dimension Reduction Pipeline with `decathlon2`
+
+## Objectives
+
+In this lab you will apply the full dimension reduction pipeline — PCA, FA, LDA, t-SNE, feature selection, and evaluation — to the `decathlon2` dataset from `factoextra`. This dataset records performance of athletes across 10 events, providing a rich multivariate structure with a clear theoretical interpretation (general athletic ability vs. event-specific skills).
+
+## The Dataset
+
+```{r lab-intro}
+# decathlon2: 27 athletes × 13 variables
+# (10 events + rank + points + competition)
+data(decathlon2, package = "factoextra")
+
+# Use event scores only (columns 1-10)
+dec_events <- decathlon2[, 1:10]
+
+cat("Dimensions:", nrow(dec_events), "athletes ×",
+    ncol(dec_events), "events\n\n")
+
+kable(head(round(dec_events, 2), 6),
+      caption = "decathlon2: First 6 Athletes") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                font_size = 11)
+```
+
+## Lab Task 1: PCA — Structure of Athletic Performance
+
+```{r lab-task1}
+# Standardize (events have different units/scales)
+dec_scaled <- scale(dec_events)
+pca_dec    <- prcomp(dec_scaled)
+
+# Variance explained
+pve_dec    <- pca_dec$sdev^2 / sum(pca_dec$sdev^2)
+cum_pve_dec <- cumsum(pve_dec)
+
+var_table <- data.frame(
+  PC         = paste0("PC", 1:10),
+  Eigenvalue = round(pca_dec$sdev^2, 3),
+  PVE        = round(pve_dec * 100, 2),
+  Cum_PVE    = round(cum_pve_dec * 100, 2)
+)
+
+kable(var_table,
+      caption   = "PCA Variance Explained — Decathlon Events",
+      col.names = c("Component","Eigenvalue",
+                    "% Variance","Cumulative %")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(2, color = ifelse(var_table$Eigenvalue > 1,
+                                 "darkgreen","tomato"),
+              bold = TRUE)
+```
+
+```{r lab-task1b}
+# Biplot
+fviz_pca_biplot(pca_dec,
+                label      = "var",
+                col.var    = "tomato",
+                col.ind    = "steelblue",
+                repel      = TRUE,
+                title      = "PCA Biplot: Decathlon Athletes & Events") +
+  theme_minimal(base_size = 12)
+```
+
+## Lab Task 2: Factor Analysis — Latent Athletic Dimensions
+
+```{r lab-task2}
+# Parallel analysis to determine number of factors
+psych::fa.parallel(dec_scaled, fm = "ml", fa = "fa",
+                    show.legend = FALSE,
+                    main = "Parallel Analysis: Decathlon Events")
+```
+
+```{r lab-task2b}
+# 2-factor model with Varimax rotation
+fa_dec <- psych::fa(dec_scaled, nfactors = 2,
+                     rotate = "varimax", fm = "ml")
+
+# Loadings table
+load_dec <- as.data.frame(unclass(fa_dec$loadings)) |>
+  rownames_to_column("Event") |>
+  mutate(
+    ML1          = round(ML1, 3),
+    ML2          = round(ML2, 3),
+    Communality  = round(fa_dec$communality, 3),
+    Uniqueness   = round(fa_dec$uniquenesses, 3)
+  )
+
+kable(load_dec,
+      caption = "Factor Loadings: Decathlon (Varimax Rotation)") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(2:3, bold = TRUE)
+```
+
+## Lab Task 3: t-SNE Visualization
+
+```{r lab-task3}
+set.seed(42)
+tsne_dec <- Rtsne::Rtsne(dec_scaled, dims = 2,
+                           perplexity = 8,
+                           max_iter   = 1000,
+                           verbose    = FALSE,
+                           check_duplicates = FALSE)
+
+tsne_dec_df <- data.frame(
+  tSNE1      = tsne_dec$Y[, 1],
+  tSNE2      = tsne_dec$Y[, 2],
+  Athlete    = rownames(dec_events),
+  Competition = decathlon2$Competition
+)
+
+ggplot(tsne_dec_df, aes(x = tSNE1, y = tSNE2,
+                         color = Competition,
+                         label = Athlete)) +
+  geom_point(size = 3.5, alpha = 0.9) +
+  ggrepel::geom_text_repel(size = 3, color = "gray20") +
+  scale_color_manual(values = c("Decastar"  = "steelblue",
+                                 "OlympicG" = "tomato")) +
+  labs(title    = "t-SNE: Decathlon Athletes",
+       subtitle = "Colored by competition (Decastar vs. Olympic Games)",
+       x = "t-SNE 1", y = "t-SNE 2") +
+  theme_minimal(base_size = 13)
+```
+
+## Lab Task 4: Feature Selection for Predicting Total Score
+
+```{r lab-task4}
+# Use total points as outcome
+dec_full <- decathlon2[, 1:11]  # 10 events + Points
+names(dec_full)[11] <- "Points"
+
+# Correlation filter
+cor_points <- cor(dec_full)[,"Points"]
+cor_filter_df <- data.frame(
+  Event       = names(cor_points[-11]),
+  Correlation = round(cor_points[-11], 3)
+) |>
+  arrange(desc(abs(Correlation)))
+
+kable(cor_filter_df,
+      caption = "Filter Method: Correlation of Events with Total Points") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(2, bold = TRUE,
+              color = ifelse(abs(cor_filter_df$Correlation) > 0.5,
+                             "tomato","steelblue"))
+```
+
+## Lab Task 5: Comprehensive Evaluation
+
+```{r lab-task5, fig.height=7}
+p1 <- fviz_eig(pca_dec, addlabels = TRUE,
+               barfill = "steelblue",
+               barcolor = "white",
+               linecolor = "tomato",
+               ncp = 10) +
+  labs(title = "A. Scree Plot") +
+  theme_minimal(base_size = 11)
+
+p2 <- ggplot(data.frame(k   = 1:10,
+                          cum = cum_pve_dec * 100),
+             aes(x = k, y = cum)) +
+  geom_line(color = "steelblue", linewidth = 1.2) +
+  geom_point(size = 3, color = "steelblue") +
+  geom_hline(yintercept = 80, color = "tomato",
+             linetype = "dashed") +
+  labs(title = "B. Cumulative Variance",
+       x = "k", y = "Cumulative %") +
+  theme_minimal(base_size = 11)
+
+p3 <- ggplot(load_dec,
+             aes(x = ML1, y = ML2, label = Event)) +
+  geom_hline(yintercept = 0, color = "gray70") +
+  geom_vline(xintercept = 0, color = "gray70") +
+  geom_point(color = "steelblue", size = 4) +
+  ggrepel::geom_text_repel(size = 3.5, fontface = "bold") +
+  labs(title = "C. Factor Loading Plot",
+       x = "Factor 1", y = "Factor 2") +
+  coord_equal(xlim = c(-1.1,1.1), ylim = c(-1.1,1.1)) +
+  theme_minimal(base_size = 11)
+
+p4 <- ggplot(cor_filter_df,
+             aes(x = reorder(Event, abs(Correlation)),
+                 y = Correlation, fill = Correlation > 0)) +
+  geom_col(color = "white") +
+  scale_fill_manual(values = c("FALSE" = "steelblue",
+                                "TRUE"  = "tomato")) +
+  coord_flip() +
+  labs(title = "D. Feature Correlations with Points",
+       x = "Event", y = "r") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "none")
+
+(p1 + p2) / (p3 + p4)
+```
+
+## Lab Discussion Questions
+
+Answer the following in writing:
+
+1. **PCA Interpretation:** Based on the biplot in Lab Task 1, which events cluster together? What does PC1 represent physically (hint: consider which events load positively and which negatively on PC1)?
+
+2. **PCA vs. FA:** Both PCA and FA reduce the decathlon data to 2 dimensions. Compare the loadings — do they tell a similar story? When would you prefer FA over PCA for this dataset?
+
+3. **t-SNE Findings:** In Lab Task 3, do athletes from the same competition (Decastar vs. Olympic Games) cluster together in the t-SNE plot? What would it mean if they did not?
+
+4. **Feature Selection:** Based on Lab Task 4, which events are most predictive of total points? Is this consistent with the PCA loadings? What events might be candidates for removal from a predictive model?
+
+5. **Curse of Dimensionality:** The decathlon dataset has 27 observations and 10 variables. Is this ratio (observations to variables) concerning? How does dimension reduction help, and what are the risks of reducing to 2 dimensions?
+
+---
+
+# Chapter Summary
+
+## Summary
+
+This chapter established dimension reduction as an essential toolkit for working with high-dimensional data:
+
+- **The curse of dimensionality** — sparsity, distance concentration, and exponential sample requirements make direct analysis of high-dimensional data unreliable; dimension reduction is a necessary response.
+- **PCA** — the foundational linear method; finds orthogonal components maximizing variance; requires standardization; interpreted via loadings and score plots.
+- **Factor Analysis** — a latent variable model identifying unobserved constructs; rotation (Varimax, Oblimin) improves interpretability; distinct from PCA in purpose and assumptions.
+- **LDA** — supervised reduction maximizing between-class separation; more informative than PCA when class labels are available; limited to $K-1$ dimensions.
+- **t-SNE** — non-linear visualization of complex structure; powerful but distances and cluster sizes are not interpretable; perplexity must be tuned; for visualization only.
+- **Feature selection** — filter (fast, model-free), wrapper (slower, interaction-aware), and embedded (LASSO, RF importance) methods select original variables rather than creating new ones.
+- **Evaluation** — scree plot, Kaiser criterion, cumulative variance, reconstruction error, and parallel analysis provide complementary perspectives for choosing the number of dimensions.
+
+::: {.callout-important}
+## Key Formulas to Know
+
+**PCA Eigendecomposition:**
+$$\mathbf{S}\mathbf{w}_k = \lambda_k \mathbf{w}_k, \quad \text{PVE}_k = \frac{\lambda_k}{\sum_j \lambda_j}$$
+
+**Reconstruction Error:**
+$$\text{RE}(k) = \sum_{j=k+1}^{p} \lambda_j$$
+
+**Fisher's LDA Criterion:**
+$$J(\mathbf{w}) = \frac{\mathbf{w}^T \mathbf{S}_B \mathbf{w}}{\mathbf{w}^T \mathbf{S}_W \mathbf{w}}$$
+
+**Factor Model:**
+$$x_j = \sum_{k=1}^{m} \lambda_{jk}F_k + \varepsilon_j, \quad h_j^2 = \sum_{k=1}^{m}\lambda_{jk}^2$$
+
+**t-SNE KL Divergence:**
+$$\text{KL}(P \| Q) = \sum_{i \neq j} p_{ij} \log \frac{p_{ij}}{q_{ij}}$$
+:::
+
+## References
+
+Bellman, R. (1957). *Dynamic programming*. Princeton University Press.
+
+Fisher, R. A. (1936). The use of multiple measurements in taxonomic problems. *Annals of Eugenics*, *7*(2), 179–188.
+
+Friedman, J., Hastie, T., & Tibshirani, R. (2010). Regularization paths for generalized linear models via coordinate descent. *Journal of Statistical Software*, *33*(1), 1–22.
+
+Harrison, D., & Rubinfeld, D. L. (1978). Hedonic housing prices and the demand for clean air. *Journal of Environmental Economics and Management*, *5*(1), 81–102.
+
+Hastie, T., Tibshirani, R., & Friedman, J. (2009). *The elements of statistical learning* (2nd ed.). Springer. https://hastie.su.domains/ElemStatLearn/
+
+Henderson, H. V., & Velleman, P. F. (1981). Building multiple regression models interactively. *Biometrics*, *37*(2), 391–411.
+
+Hotelling, H. (1933). Analysis of a complex of statistical variables into principal components. *Journal of Educational Psychology*, *24*(6), 417–441.
+
+James, G., Witten, D., Hastie, T., & Tibshirani, R. (2021). *An introduction to statistical learning with applications in R* (2nd ed.). Springer. https://www.statlearning.com
+
+Kassambara, A. (2023). *factoextra: Extract and visualize the results of multivariate data analyses* (R package version 1.0.7). https://CRAN.R-project.org/package=factoextra
+
+Krijthe, J. H. (2015). *Rtsne: T-distributed stochastic neighbor embedding* (R package version 0.15). https://github.com/jkrijthe/Rtsne
+
+Kuhn, M. (2008). Building predictive models in R using the caret package. *Journal of Statistical Software*, *28*(5), 1–26.
+
+Lê, S., Josse, J., & Husson, F. (2008). FactoMineR: An R package for multivariate analysis. *Journal of Statistical Software*, *25*(1), 1–18.
+
+Maaten, L. van der, & Hinton, G. (2008). Visualizing data using t-SNE. *Journal of Machine Learning Research*, *9*, 2579–2605.
+
+Pedersen, T. L. (2022). *patchwork: The composer of plots* (R package version 1.1.2). https://CRAN.R-project.org/package=patchwork
+
+R Core Team. (2024). *R: A language and environment for statistical computing*. R Foundation for Statistical Computing. https://www.R-project.org/
+
+Revelle, W. (2023). *psych: Procedures for psychological, psychometric, and personality research* (R package version 2.3.6). Northwestern University.
+
+Slowikowski, K. (2023). *ggrepel: Automatically position non-overlapping text labels with ggplot2* (R package version 0.9.3). https://CRAN.R-project.org/package=ggrepel
+
+Tibshirani, R. (1996). Regression shrinkage and selection via the Lasso. *Journal of the Royal Statistical Society: Series B*, *58*(1), 267–288.
+
+Venables, W. N., & Ripley, B. D. (2002). *Modern applied statistics with S* (4th ed.). Springer.
+
+Wickham, H. (2016). *ggplot2: Elegant graphics for data analysis*. Springer.
+
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. *Journal of Open Source Software*, *4*(43), 1686.
+
+Xie, Y. (2015). *Dynamic documents with R and knitr* (2nd ed.). CRC Press.
+
+---
+
+*End of Chapter 7. Proceed to Chapter 8: Data Clustering.*

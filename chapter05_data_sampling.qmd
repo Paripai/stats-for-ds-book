@@ -1,0 +1,1512 @@
+# Chapter 5: Data Sampling Techniques
+
+```{r setup}
+# Load all libraries needed for this chapter
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(patchwork)
+library(sampling)      # probability sampling methods
+library(boot)          # bootstrap resampling
+library(survey)        # complex survey analysis
+```
+
+---
+
+# Chapter Overview
+
+## Introduction
+
+Every data science project begins with data — but where does that data come from? The way data is collected determines what conclusions can be drawn from it. A poorly designed sample produces biased estimates no matter how sophisticated the analysis. Conversely, a well-designed sample allows powerful inferences from surprisingly small amounts of data. **Sampling** is the bridge between the population we want to understand and the data we actually have.
+
+This chapter covers:
+
+- **Why Sampling Matters** — population vs. sample, sources of error, and the stakes of sampling design
+- **Probability Sampling Methods** — simple random, systematic, stratified, and cluster sampling
+- **Non-Probability Sampling Methods** — convenience, purposive, snowball, and quota sampling
+- **Sample Size Determination** — computing required $n$ for means and proportions
+- **Sampling Bias and Common Pitfalls** — selection bias, non-response, undercoverage
+- **Bootstrap Resampling** — a computational approach to uncertainty estimation
+- **Evaluating Sample Quality** — checking representativeness after data collection
+
+::: {.callout-note}
+## Learning Objectives
+By the end of this chapter, you will be able to:
+
+1. Distinguish between probability and non-probability sampling and justify the choice of method.
+2. Implement simple random, systematic, stratified, and cluster sampling in R.
+3. Compute the required sample size for estimating means and proportions.
+4. Identify and describe common sources of sampling bias.
+5. Apply bootstrap resampling to estimate standard errors and confidence intervals.
+6. Evaluate whether a collected sample is representative of the target population.
+:::
+
+---
+
+# Why Sampling Matters
+
+## Introduction
+
+In an ideal world, we would study every member of a population — a **census**. In practice, populations are often too large, too expensive, or too inaccessible to study in full. Sampling solves this problem: by studying a carefully chosen subset, we can draw valid inferences about the whole. But "carefully chosen" is the key phrase. The history of statistics is littered with catastrophic sampling failures — the 1936 Literary Digest poll that confidently predicted the wrong US presidential election winner, based on 2.4 million responses, remains one of the most famous examples of how a large but biased sample can be worse than a small representative one.
+
+## Theory
+
+### Key Terminology
+
+| Term | Definition |
+|------|-----------|
+| **Population** | The complete set of all units of interest |
+| **Sample** | A subset of the population selected for study |
+| **Sampling frame** | The list or mechanism from which the sample is drawn |
+| **Parameter** | A numerical characteristic of the population (e.g., $\mu$, $\sigma^2$, $p$) |
+| **Statistic** | A numerical characteristic of the sample (e.g., $\bar{x}$, $s^2$, $\hat{p}$) |
+| **Estimator** | A function of sample data used to estimate a parameter |
+
+: Core sampling terminology {.striped}
+
+### Two Sources of Error
+
+Every sample-based estimate differs from the true population parameter. This difference arises from two distinct sources:
+
+**Sampling error** (random error): The natural variation between samples due to random selection. It is **unavoidable** but **quantifiable** — it decreases as sample size increases and forms the basis of confidence intervals and margin of error.
+
+$$\text{Sampling Error} = \hat{\theta} - \theta$$
+
+**Non-sampling error** (systematic error / bias): Error arising from flaws in the study design, data collection process, or measurement instrument. Unlike sampling error, it does **not** decrease with larger samples — a biased sampling method applied to a million observations is still biased.
+
+$$\text{Bias} = E[\hat{\theta}] - \theta$$
+
+This distinction is critical: **a larger sample reduces sampling error but cannot fix bias**.
+
+### The Mean Squared Error Framework
+
+The quality of an estimator is captured by its **Mean Squared Error (MSE)**:
+
+$$\text{MSE}(\hat{\theta}) = \text{Variance}(\hat{\theta}) + [\text{Bias}(\hat{\theta})]^2$$
+
+A good estimator minimizes both variance (through adequate sample size) and bias (through sound sampling design). This decomposition mirrors the bias-variance tradeoff encountered in machine learning model evaluation.
+
+### When Is a Census Preferable?
+
+Sampling is not always the right choice. A census is preferable when:
+
+- The population is small (e.g., all 50 branch managers of a company).
+- Every unit must be measured (e.g., 100% quality inspection for safety-critical parts).
+- The cost of sampling error is unacceptably high.
+
+For most data science applications involving large populations, sampling is necessary and, when done well, sufficient.
+
+## Example: Sampling Error vs. Bias
+
+**Example 5.1.** A university wants to estimate the average GPA of its 10,000 students.
+
+**Scenario A — Simple random sample of 200:** The sample mean $\bar{x} = 3.21$ differs from the true mean $\mu = 3.18$ by 0.03. This difference is **sampling error** — it would disappear on average across repeated samples, and a larger sample would reduce it.
+
+**Scenario B — Convenience sample of 200 from the honors college:** The sample mean $\bar{x} = 3.74$ differs from $\mu = 3.18$ by 0.56. This difference is **bias** — it persists regardless of sample size because honors students systematically have higher GPAs. No amount of statistical analysis can recover the true mean from this biased sample.
+
+**Key lesson:** Scenario B with $n = 200$ is far worse than Scenario A with $n = 50$. Sampling design matters more than sample size.
+
+## R Example: Sampling Error vs. Bias
+
+```{r sampling-error}
+# --- Simulate sampling error vs. bias ---
+set.seed(42)
+
+# True population: 10,000 students, GPA ~ N(3.18, 0.4^2)
+population <- data.frame(
+  id     = 1:10000,
+  gpa    = rnorm(10000, mean = 3.18, sd = 0.4),
+  honors = c(rep(TRUE, 1000), rep(FALSE, 9000))  # 10% honors students
+)
+# Honors students have higher GPA
+population$gpa[population$honors] <-
+  population$gpa[population$honors] + 0.55
+
+true_mean <- mean(population$gpa)
+cat("True population mean GPA:", round(true_mean, 4), "\n\n")
+
+# Simulate 1000 simple random samples of n=200
+srs_means <- replicate(1000, {
+  s <- population[sample(nrow(population), 200), ]
+  mean(s$gpa)
+})
+
+# Simulate 1000 biased (honors-only) samples of n=200
+biased_means <- replicate(1000, {
+  honors_pool <- population[population$honors, ]
+  s <- honors_pool[sample(nrow(honors_pool), 200), ]
+  mean(s$gpa)
+})
+
+cat("Simple Random Sampling (n=200):\n")
+cat("  Mean of sample means:", round(mean(srs_means), 4), "\n")
+cat("  Bias:                ", round(mean(srs_means) - true_mean, 4), "\n")
+cat("  SE (sampling error): ", round(sd(srs_means), 4), "\n\n")
+
+cat("Biased Sampling (honors only, n=200):\n")
+cat("  Mean of sample means:", round(mean(biased_means), 4), "\n")
+cat("  Bias:                ", round(mean(biased_means) - true_mean, 4), "\n")
+cat("  SE:                  ", round(sd(biased_means), 4), "\n")
+```
+
+```{r sampling-error-plot}
+# --- Visualize sampling distributions ---
+sim_df <- data.frame(
+  mean   = c(srs_means, biased_means),
+  method = rep(c("Simple Random Sample",
+                  "Biased Sample (Honors Only)"), each = 1000)
+)
+
+ggplot(sim_df, aes(x = mean, fill = method)) +
+  geom_histogram(bins = 50, alpha = 0.7,
+                 color = "white", position = "identity") +
+  geom_vline(xintercept = true_mean, color = "black",
+             linewidth = 1.2, linetype = "dashed") +
+  annotate("text", x = true_mean + 0.01, y = 90,
+           label = paste0("True μ = ", round(true_mean, 2)),
+           hjust = 0, size = 4, fontface = "bold") +
+  scale_fill_manual(values = c("Simple Random Sample" = "steelblue",
+                                "Biased Sample (Honors Only)" = "tomato")) +
+  labs(title    = "Sampling Error vs. Bias: 1000 Simulated Samples",
+       subtitle = "SRS centers on true mean; biased sample is systematically off",
+       x        = "Sample Mean GPA",
+       y        = "Frequency",
+       fill     = "Sampling Method") +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "top")
+```
+
+**Code explanation:**
+
+- `replicate(n, expr)` repeats an expression `n` times and collects results — the cleanest way to simulate repeated sampling in R.
+- The simulation demonstrates a fundamental truth: the SRS distribution centers on the true mean (unbiased), while the biased distribution is shifted entirely away from it regardless of $n$.
+- Setting `position = "identity"` in `geom_histogram()` overlaps the two distributions for direct visual comparison.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 5.1
+Using the simulated population from the R example:
+
+(a) Repeat the simulation with $n = 50$, $n = 200$, and $n = 1000$ for the SRS. How does the standard error change? Verify against the theoretical formula $\text{SE} = \sigma/\sqrt{n}$.
+(b) Does increasing the biased sample to $n = 1000$ reduce the bias? Show with simulation.
+(c) Write a 100-word explanation of why a biased large sample is worse than an unbiased small sample.
+:::
+
+---
+
+# Probability Sampling Methods
+
+## Introduction
+
+**Probability sampling** methods give every unit in the population a **known, non-zero probability** of being selected. This property is what allows valid statistical inference — without it, we cannot compute unbiased estimates or valid confidence intervals. There are four fundamental probability sampling designs, each with different trade-offs between cost, precision, and practical feasibility.
+
+## Theory
+
+### Simple Random Sampling (SRS)
+
+In **Simple Random Sampling**, every possible sample of size $n$ from a population of size $N$ has an equal probability of selection. Each unit has probability $n/N$ of being included.
+
+**With replacement (SRSWR):** Each draw is independent; a unit can appear more than once.
+
+**Without replacement (SRSWOR):** Each unit can appear at most once. More common in practice.
+
+**Estimator for mean:** $\hat{\mu} = \bar{x}$, with $\text{SE}(\bar{x}) = \sqrt{\frac{s^2}{n}\left(1 - \frac{n}{N}\right)}$
+
+The term $(1 - n/N)$ is the **finite population correction (FPC)** — it reduces the SE when the sample is a substantial fraction of the population. When $n/N < 0.05$, the FPC is negligible.
+
+**Advantages:** Simple, unbiased, easy to analyze.
+**Disadvantages:** Requires a complete sampling frame; may oversample or undersample important subgroups by chance.
+
+### Systematic Sampling
+
+Select every $k$-th unit from a list, where $k = N/n$ is the **sampling interval**, after a random start between 1 and $k$.
+
+**Procedure:**
+1. Compute $k = \lfloor N/n \rfloor$.
+2. Randomly select a starting point $r \in \{1, 2, \ldots, k\}$.
+3. Select units $r, r+k, r+2k, \ldots$
+
+**Advantages:** Simple to implement; spreads the sample evenly across the list.
+**Disadvantages:** If the list has a **periodic pattern** with period $k$, systematic sampling can be badly biased (e.g., always selecting the same day of the week).
+
+### Stratified Sampling
+
+Divide the population into $H$ non-overlapping, exhaustive **strata** (subgroups) based on a known characteristic (e.g., gender, region, age group), then draw independent SRS samples from each stratum.
+
+**Proportional allocation:** Sample from each stratum proportional to its size: $n_h = n \cdot N_h/N$.
+
+**Optimal (Neyman) allocation:** Allocate more to strata with greater variability: $n_h \propto N_h \sigma_h$.
+
+**Estimator for mean:**
+$$\hat{\mu}_{st} = \sum_{h=1}^{H} W_h \bar{x}_h, \qquad W_h = N_h/N$$
+
+**Advantages:** Guarantees representation of all strata; more precise than SRS when strata are internally homogeneous.
+**Disadvantages:** Requires prior knowledge of strata; more complex analysis.
+
+### Cluster Sampling
+
+Divide the population into **clusters** (naturally occurring groups, e.g., schools, villages, hospitals), randomly select a sample of clusters, then survey **all** (or a sample of) units within selected clusters.
+
+**One-stage:** Select clusters, survey all units within.
+**Two-stage:** Select clusters, then randomly sample units within selected clusters.
+
+**Advantages:** No complete sampling frame needed (only a list of clusters); cost-effective when population is geographically dispersed.
+**Disadvantages:** Units within clusters tend to be similar (**intraclass correlation**), reducing effective sample size. Less precise than SRS of the same $n$.
+
+**Design effect (DEFF):** The ratio of the variance under cluster sampling to the variance under SRS:
+$$\text{DEFF} = 1 + (m-1)\rho$$
+where $m$ is the average cluster size and $\rho$ is the intraclass correlation coefficient.
+
+### Summary Comparison
+
+| Method | Frame Required | Precision vs. SRS | Best Used When |
+|--------|---------------|------------------|----------------|
+| SRS | Complete list | Baseline | Population is homogeneous |
+| Systematic | Ordered list | ≈ SRS (if no periodicity) | List is available and random |
+| Stratified | Complete list + strata info | Better | Known subgroups differ |
+| Cluster | List of clusters only | Worse | Geographically dispersed |
+
+: Probability sampling methods comparison {.striped}
+
+## Example: Stratified vs. Simple Random Sampling
+
+**Example 5.2.** A researcher wants to estimate average student satisfaction (0–100) at a university with 3 faculties: Science (1,200 students), Arts (800), Business (500). Total $N = 2,500$, target $n = 100$.
+
+**SRS:** Select 100 students at random. Possible but might severely under-represent Business (only 20% of population).
+
+**Proportional stratified sampling:**
+- Science: $n_1 = 100 \times 1200/2500 = 48$
+- Arts: $n_2 = 100 \times 800/2500 = 32$
+- Business: $n_3 = 100 \times 500/2500 = 20$
+
+This guarantees each faculty is represented proportionally, and if satisfaction differs between faculties, stratified sampling will be more precise than SRS.
+
+## R Example: Probability Sampling Methods
+
+```{r prob-sampling}
+# --- Build a simulated university population ---
+set.seed(123)
+N <- 2500
+population <- data.frame(
+  id         = 1:N,
+  faculty    = c(rep("Science", 1200),
+                  rep("Arts",    800),
+                  rep("Business",500)),
+  year       = sample(1:4, N, replace = TRUE),
+  satisfaction = c(
+    rnorm(1200, mean = 72, sd = 12),  # Science
+    rnorm(800,  mean = 78, sd = 10),  # Arts
+    rnorm(500,  mean = 68, sd = 15)   # Business
+  )
+)
+population$satisfaction <- pmin(pmax(
+  round(population$satisfaction), 0), 100)
+
+true_mean <- mean(population$satisfaction)
+cat("True population mean satisfaction:",
+    round(true_mean, 2), "\n\n")
+```
+
+```{r srs}
+# === 1. SIMPLE RANDOM SAMPLING ===
+n <- 100
+srs_sample <- population[sample(N, n, replace = FALSE), ]
+cat("SRS estimate:", round(mean(srs_sample$satisfaction), 2), "\n")
+```
+
+```{r systematic}
+# === 2. SYSTEMATIC SAMPLING ===
+k <- floor(N / n)          # sampling interval = 25
+start <- sample(1:k, 1)    # random start
+systematic_idx <- seq(start, N, by = k)[1:n]
+sys_sample <- population[systematic_idx, ]
+cat("Systematic estimate:",
+    round(mean(sys_sample$satisfaction), 2), "\n")
+```
+
+```{r stratified}
+# === 3. STRATIFIED SAMPLING (proportional) ===
+strata_sizes <- c(Science = 48, Arts = 32, Business = 20)
+
+stratified_sample <- population |>
+  group_by(faculty) |>
+  group_modify(~ {
+    nh <- strata_sizes[.y$faculty]
+    .x[sample(nrow(.x), nh), ]
+  }) |>
+  ungroup()
+
+# Weighted estimate
+strat_estimate <- stratified_sample |>
+  group_by(faculty) |>
+  summarise(mean_sat = mean(satisfaction),
+            nh = n(), .groups = "drop") |>
+  mutate(Wh = c(800, 500, 1200) / N) |>
+  summarise(est = sum(Wh * mean_sat)) |>
+  pull(est)
+
+cat("Stratified estimate:", round(strat_estimate, 2), "\n")
+```
+
+```{r cluster}
+# === 4. CLUSTER SAMPLING ===
+# Treat year groups as clusters (4 clusters)
+# Randomly select 2 clusters, survey all within
+selected_years <- sample(1:4, 2, replace = FALSE)
+cluster_sample  <- population |>
+  filter(year %in% selected_years)
+
+cat("Cluster estimate (",
+    paste(selected_years, collapse=" & "),
+    "year):",
+    round(mean(cluster_sample$satisfaction), 2), "\n\n")
+
+# --- Compare all methods ---
+comparison <- data.frame(
+  Method    = c("True Mean", "SRS", "Systematic",
+                "Stratified", "Cluster"),
+  Estimate  = round(c(true_mean,
+                       mean(srs_sample$satisfaction),
+                       mean(sys_sample$satisfaction),
+                       strat_estimate,
+                       mean(cluster_sample$satisfaction)), 2),
+  n         = c(N, n, n, n, nrow(cluster_sample))
+)
+
+kable(comparison,
+      caption   = "Sampling Method Comparison",
+      col.names = c("Method", "Mean Estimate", "Sample Size")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  row_spec(1, bold = TRUE, background = "#EEF2FF")
+```
+
+```{r prob-sampling-plot}
+# --- Visualize stratified vs SRS sample composition ---
+srs_comp  <- srs_sample |>
+  count(faculty) |>
+  mutate(method = "SRS", pct = n / sum(n))
+
+strat_comp <- stratified_sample |>
+  count(faculty) |>
+  mutate(method = "Stratified", pct = n / sum(n))
+
+pop_comp <- population |>
+  count(faculty) |>
+  mutate(method = "Population", pct = n / sum(n))
+
+comp_df <- bind_rows(srs_comp, strat_comp, pop_comp)
+comp_df$method <- factor(comp_df$method,
+                          levels = c("Population","SRS","Stratified"))
+
+ggplot(comp_df, aes(x = method, y = pct, fill = faculty)) +
+  geom_col(color = "white", position = "fill") +
+  scale_fill_brewer(palette = "Set2") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title    = "Faculty Composition: Population vs. Sampling Methods",
+       subtitle = "Stratified sampling mirrors population composition exactly",
+       x        = "Source",
+       y        = "Proportion",
+       fill     = "Faculty") +
+  theme_minimal(base_size = 13)
+```
+
+**Code explanation:**
+
+- `group_modify()` applies a function within each group and row-binds the results — the cleanest way to implement stratified sampling in `tidyverse`.
+- `seq(start, N, by = k)[1:n]` generates systematic indices starting from a random point.
+- The composition plot visually demonstrates why stratified sampling is more representative — it guarantees the sample reflects population proportions, while SRS can deviate by chance.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 5.2
+Using the `population` data frame created in the R example:
+
+(a) Implement proportional stratified sampling by **year** (instead of faculty) with total $n = 120$.
+(b) Compute the stratified mean estimate and compare to the true mean.
+(c) Simulate 500 SRS samples and 500 stratified samples, each of size 100. Plot the two sampling distributions side by side. Which is more precise (lower variance)?
+:::
+
+::: {.callout-tip}
+## Exercise 5.3
+A retail chain has 80 stores across 5 regions. You want to estimate the average weekly sales using cluster sampling.
+
+(a) Describe how you would implement one-stage and two-stage cluster sampling.
+(b) What is the main statistical disadvantage of cluster sampling? Define the design effect (DEFF).
+(c) If $\rho = 0.15$ and average cluster size $m = 20$, compute the DEFF and the effective sample size for a sample of $n = 200$.
+:::
+
+---
+
+# Non-Probability Sampling Methods
+
+## Introduction
+
+Probability sampling requires a complete sampling frame and often significant resources. In many real-world situations — exploratory research, pilot studies, social media data collection, qualitative work — probability sampling is impractical. **Non-probability sampling** methods select units based on convenience, judgment, or referral rather than random selection. While these methods cannot support formal statistical inference about populations, they are widely used and their limitations must be understood.
+
+## Theory
+
+### Convenience Sampling
+
+Units are selected because they are **easy to reach** — students in a classroom, website visitors, volunteers. It is the most common sampling method in published research, and the most criticized.
+
+**Limitations:** High potential for selection bias; results are not generalizable. The Literary Digest 1936 disaster used a form of convenience sampling (telephone and car ownership lists in the Depression era).
+
+### Purposive (Judgmental) Sampling
+
+The researcher deliberately selects units believed to be **representative or informative** based on expert judgment. Common in qualitative research and case studies.
+
+**Subtypes:**
+
+- *Typical case sampling:* Select units that are "average" or "normal."
+- *Extreme case sampling:* Select outliers to understand the range.
+- *Critical case sampling:* Select cases that are most informative for the research question.
+
+**Limitations:** Results depend heavily on researcher judgment; no mechanism for assessing representativeness.
+
+### Snowball Sampling
+
+Initial participants **recruit further participants** from their social networks. Used when the target population is hard to reach (e.g., undocumented migrants, drug users, rare disease patients).
+
+**Limitations:** Sample is biased toward well-connected individuals; risk of clustering within social networks.
+
+### Quota Sampling
+
+Divide the population into subgroups and fill **predetermined quotas** for each — similar in structure to stratified sampling, but without random selection within quotas.
+
+**Example:** Survey 50 males and 50 females, selecting whoever is available until quotas are filled.
+
+**Limitations:** Selection within quotas is non-random (convenience-based); harder to assess bias than stratified sampling.
+
+### When Non-Probability Sampling Is Acceptable
+
+| Purpose | Acceptable? | Caution |
+|---------|------------|---------|
+| Exploratory/pilot research | Yes | Don't generalize findings |
+| Hypothesis generation | Yes | Confirm with probability sample |
+| Qualitative understanding | Yes | Not intended for inference |
+| Population-level estimation | No | Use probability sampling |
+| Machine learning (IID data) | Partially | Check for covariate shift |
+
+: Appropriateness of non-probability sampling {.striped}
+
+## Example: Comparing Sampling Methods in Practice
+
+**Example 5.3.** A researcher wants to understand attitudes toward remote work among Thai university employees.
+
+- **Convenience sample:** Survey colleagues in the same department → fast but severely biased toward one unit.
+- **Snowball sample:** Ask initial respondents to forward a survey link → reaches dispersed staff but over-represents social clusters.
+- **Quota sample:** Recruit until 100 academic and 50 administrative staff have responded → better balance but non-random within groups.
+- **Stratified random sample:** Obtain staff list from HR, stratify by role and faculty, randomly select from each stratum → most valid for inference, requires HR cooperation.
+
+The right method depends on resources, research purpose, and the required level of generalizability.
+
+## R Example: Simulating Non-Probability Sampling Bias
+
+```{r nonprob-sampling}
+# --- Simulate convenience sampling bias ---
+set.seed(77)
+
+# Population: employees with income and satisfaction
+N <- 5000
+employee_pop <- data.frame(
+  id           = 1:N,
+  department   = sample(c("Research","Teaching",
+                           "Admin","Support"),
+                         N, replace = TRUE,
+                         prob = c(0.3, 0.4, 0.2, 0.1)),
+  income       = c(rnorm(1500, 65000, 12000),  # Research
+                    rnorm(2000, 55000, 10000),  # Teaching
+                    rnorm(1000, 45000,  8000),  # Admin
+                    rnorm(500,  38000,  7000)), # Support
+  satisfaction = NA
+)
+
+# Satisfaction correlates with income but varies by dept
+employee_pop$satisfaction <-
+  40 + 0.0003 * employee_pop$income +
+  rnorm(N, 0, 8)
+employee_pop$satisfaction <-
+  pmin(pmax(round(employee_pop$satisfaction), 0), 100)
+
+true_mean_sat <- mean(employee_pop$satisfaction)
+true_mean_inc <- mean(employee_pop$income)
+
+cat("True mean satisfaction:", round(true_mean_sat, 2), "\n")
+cat("True mean income:      ", round(true_mean_inc, 0), "\n\n")
+
+# Convenience sample: only Research dept (easiest to reach)
+convenience <- employee_pop |>
+  filter(department == "Research") |>
+  slice_sample(n = 200)
+
+# Quota sample: 50 per dept
+quota <- employee_pop |>
+  group_by(department) |>
+  slice_sample(n = 50) |>
+  ungroup()
+
+# SRS
+srs <- employee_pop |> slice_sample(n = 200)
+
+# Compare
+results <- data.frame(
+  Method           = c("True Population",
+                        "SRS (n=200)",
+                        "Convenience (Research only)",
+                        "Quota (50 per dept)"),
+  Mean_Satisfaction = round(c(
+    true_mean_sat,
+    mean(srs$satisfaction),
+    mean(convenience$satisfaction),
+    mean(quota$satisfaction)
+  ), 2),
+  Mean_Income      = round(c(
+    true_mean_inc,
+    mean(srs$income),
+    mean(convenience$income),
+    mean(quota$income)
+  ), 0),
+  Bias_Satisfaction = round(c(
+    0,
+    mean(srs$satisfaction) - true_mean_sat,
+    mean(convenience$satisfaction) - true_mean_sat,
+    mean(quota$satisfaction) - true_mean_sat
+  ), 2)
+)
+
+kable(results,
+      caption   = "Sampling Method Bias Comparison",
+      col.names = c("Method","Mean Satisfaction",
+                    "Mean Income","Bias")) |>
+  kable_styling(bootstrap_options = c("striped","hover")) |>
+  column_spec(4, bold = TRUE,
+              color = ifelse(abs(results$Bias_Satisfaction) > 1,
+                             "tomato", "darkgreen"))
+```
+
+**Code explanation:**
+
+- `slice_sample(n)` randomly samples $n$ rows from a data frame — the tidyverse equivalent of `sample()`.
+- `group_by() |> slice_sample(n)` implements quota or stratified sampling within groups easily.
+- The bias column quantifies how far each method's estimate is from the truth — making the cost of convenience sampling concrete and visible.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 5.4
+(a) For the employee population above, simulate 500 convenience samples (Research dept only, $n = 100$) and 500 SRS samples ($n = 100$). Plot both sampling distributions with a vertical line at the true mean.
+(b) Compute the bias and variance of each sampling distribution.
+(c) Explain why the convenience sample's variance is low but its MSE is high.
+:::
+
+---
+
+# Sample Size Determination
+
+## Introduction
+
+One of the most common questions in research design is: *How many observations do I need?* Too few and the study lacks power to detect real effects; too many and resources are wasted. **Sample size determination** is a formal calculation based on the desired precision or power, the expected variability, and the acceptable error rates. This section covers the two most common scenarios: estimating a population mean and estimating a population proportion.
+
+## Theory
+
+### Sample Size for Estimating a Mean
+
+We want the **margin of error** $E$ (half-width of the CI) to be no larger than a specified value:
+
+$$E = z_{\alpha/2} \cdot \frac{\sigma}{\sqrt{n}} \quad \Rightarrow \quad n = \left(\frac{z_{\alpha/2} \cdot \sigma}{E}\right)^2$$
+
+Since $\sigma$ is usually unknown, we substitute a prior estimate, a pilot study result, or the rule of thumb $\sigma \approx \text{range}/4$.
+
+With finite population correction:
+$$n^* = \frac{n}{1 + (n-1)/N}$$
+
+### Sample Size for Estimating a Proportion
+
+For a binary outcome with proportion $p$:
+
+$$n = \frac{z_{\alpha/2}^2 \cdot p(1-p)}{E^2}$$
+
+When $p$ is unknown, use $p = 0.5$ (maximizes $p(1-p) = 0.25$, giving the most conservative — largest — required $n$).
+
+### Sample Size for Hypothesis Testing
+
+For a two-sample t-test with equal group sizes, the required $n$ per group to detect effect size $d$ with power $1-\beta$ at significance $\alpha$:
+
+$$n = \frac{2(z_{\alpha/2} + z_\beta)^2}{d^2}$$
+
+where $d = |\mu_1 - \mu_2|/\sigma$ is Cohen's d. In practice, use `pwr.t.test()` as in Chapter 3.
+
+### Common z-Values
+
+| Confidence Level | $\alpha$ | $z_{\alpha/2}$ |
+|-----------------|---------|----------------|
+| 90% | 0.10 | 1.645 |
+| 95% | 0.05 | 1.960 |
+| 99% | 0.01 | 2.576 |
+
+: Critical z-values for common confidence levels {.striped}
+
+## Example: Sample Size Calculation
+
+**Example 5.4 — Estimating a mean.** A hospital administrator wants to estimate average patient waiting time within $\pm 3$ minutes, with 95% confidence. From a pilot study, $\sigma \approx 18$ minutes. Total patient population $N = 8,000$.
+
+$$n = \left(\frac{1.96 \times 18}{3}\right)^2 = (11.76)^2 = 138.3 \approx 139$$
+
+Applying FPC (since $n/N = 139/8000 = 1.7\%$ — small, so FPC barely matters):
+$$n^* = \frac{139}{1 + 138/8000} = \frac{139}{1.01725} \approx 137$$
+
+**Example 5.5 — Estimating a proportion.** A data scientist wants to estimate the proportion of app users who click on a recommendation, within $\pm 2\%$ with 95% confidence. No prior estimate of $p$ is available.
+
+$$n = \frac{(1.96)^2 \times 0.5 \times 0.5}{(0.02)^2} = \frac{3.8416 \times 0.25}{0.0004} = 2401$$
+
+Using $p = 0.5$ guarantees the sample will be large enough regardless of the true click rate.
+
+## R Example: Sample Size Calculations
+
+```{r sample-size}
+# === SAMPLE SIZE FOR ESTIMATING A MEAN ===
+sample_size_mean <- function(sigma, E, conf = 0.95, N = Inf) {
+  z    <- qnorm(1 - (1 - conf) / 2)
+  n    <- ceiling((z * sigma / E)^2)
+  # Finite population correction
+  if (is.finite(N)) {
+    n_fpc <- ceiling(n / (1 + (n - 1) / N))
+  } else {
+    n_fpc <- n
+  }
+  data.frame(
+    Confidence  = paste0(conf * 100, "%"),
+    Sigma       = sigma,
+    Margin_E    = E,
+    n_infinite  = n,
+    n_FPC       = n_fpc
+  )
+}
+
+# Waiting time example
+cat("=== Sample Size for Mean (Waiting Time) ===\n")
+map_dfr(c(0.90, 0.95, 0.99), ~
+  sample_size_mean(sigma = 18, E = 3,
+                   conf = .x, N = 8000)) |>
+  kable(caption = "Required n for Estimating Mean Waiting Time",
+        col.names = c("Confidence","$\\sigma$","Margin E",
+                      "n (infinite pop)","n (N=8000)")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+```{r sample-size-prop}
+# === SAMPLE SIZE FOR ESTIMATING A PROPORTION ===
+sample_size_prop <- function(p, E, conf = 0.95, N = Inf) {
+  z    <- qnorm(1 - (1 - conf) / 2)
+  n    <- ceiling(z^2 * p * (1 - p) / E^2)
+  if (is.finite(N)) {
+    n_fpc <- ceiling(n / (1 + (n - 1) / N))
+  } else {
+    n_fpc <- n
+  }
+  data.frame(p = p, Margin_E = E,
+             n_infinite = n, n_FPC = n_fpc)
+}
+
+cat("\n=== Sample Size for Proportion (Click Rate) ===\n")
+# Compare different assumed p values
+map_dfr(c(0.1, 0.3, 0.5, 0.7, 0.9), ~
+  sample_size_prop(p = .x, E = 0.02, conf = 0.95)) |>
+  kable(caption = "Required n for Estimating Proportion (E=2$\\%$, 95$\\%$ CI)",
+        col.names = c("Assumed p","Margin E",
+                      "n (infinite)","n (FPC N=50000)")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+```{r sample-size-plot}
+# --- Visualize: n vs. margin of error for different sigma ---
+E_seq    <- seq(1, 20, by = 0.5)
+sigma_vals <- c(10, 15, 20, 25)
+
+n_df <- map_dfr(sigma_vals, function(s) {
+  data.frame(
+    E     = E_seq,
+    n     = ceiling((1.96 * s / E_seq)^2),
+    sigma = paste0("$\\sigma$ = ", s)
+  )
+})
+
+ggplot(n_df, aes(x = E, y = n, color = sigma)) +
+  geom_line(linewidth = 1.2) +
+  geom_hline(yintercept = c(100, 200, 400),
+             linetype = "dashed", color = "gray60",
+             linewidth = 0.6) +
+  scale_color_brewer(palette = "Set1") +
+  scale_y_continuous(limits = c(0, 1000)) +
+  labs(title    = "Required Sample Size vs. Margin of Error",
+       subtitle = "95% confidence level; dashed lines at n = 100, 200, 400",
+       x        = "Desired Margin of Error (E)",
+       y        = "Required Sample Size (n)",
+       color    = "Population SD") +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "top")
+```
+
+**Code explanation:**
+
+- `qnorm(1 - alpha/2)` gives the critical z-value for any confidence level — no need to look up tables.
+- `ceiling()` rounds up to ensure the sample is at least large enough.
+- `map_dfr()` applies a function across a vector and stacks results — clean for building comparison tables across parameter values.
+- The plot shows the crucial insight: required $n$ drops sharply as $E$ increases, but there are diminishing returns — halving precision does not halve cost.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 5.5
+A researcher wants to estimate the average monthly expenditure of university students.
+
+(a) With $\sigma = 2,500$ THB and desired margin of error $E = 200$ THB at 95% confidence, compute the required $n$.
+(b) How does $n$ change if the confidence level is increased to 99%?
+(c) If the university has $N = 15,000$ students, apply the FPC. Does it make a meaningful difference?
+(d) Plot required $n$ vs. $E$ for $E$ ranging from 100 to 1,000 THB.
+:::
+
+::: {.callout-tip}
+## Exercise 5.6
+An election poll wants to estimate the proportion of voters who support a candidate within $\pm 3\%$ at 95% confidence.
+
+(a) Compute the required $n$ assuming $p = 0.5$ (worst case).
+(b) If a prior poll suggests $p \approx 0.35$, how does the required $n$ change?
+(c) If the polling budget only allows $n = 600$, what is the resulting margin of error at 95% confidence?
+:::
+
+---
+
+# Sampling Bias and Common Pitfalls
+
+## Introduction
+
+Even with careful planning, sampling can go wrong in ways that are difficult to detect after the fact. **Sampling bias** systematically distorts estimates in one direction, producing results that are internally consistent but fundamentally misleading. Understanding the mechanisms of common biases is essential for both designing better studies and critically evaluating published research.
+
+## Theory
+
+### Selection Bias
+
+**Selection bias** occurs when the probability of inclusion in the sample is related to the outcome of interest — certain types of units are systematically more or less likely to be selected.
+
+**Examples:**
+
+- *Volunteer bias:* People who volunteer for studies are typically more health-conscious, educated, or motivated than the general population.
+- *Survivorship bias:* Studying only units that "survived" a selection process (successful companies, published studies, military veterans who returned home) ignores the failures.
+- *Ascertainment bias:* In medical research, patients who seek care are sicker than those who don't, biasing disease prevalence estimates upward.
+
+### Non-Response Bias
+
+**Non-response bias** occurs when units selected for the sample do not respond, and the non-responders differ systematically from responders.
+
+**Example:** A survey on working conditions sent to all employees. Dissatisfied employees may be more motivated to respond, while satisfied employees ignore it — producing an overly negative picture.
+
+**Rule of thumb:** Response rates below 70% should trigger careful investigation of non-response bias. Compare known characteristics (age, gender, department) of responders and non-responders if possible.
+
+### Undercoverage
+
+**Undercoverage** occurs when the sampling frame does not include all members of the target population.
+
+**Classic example:** Telephone surveys using landline directories miss mobile-only households, which are disproportionately young and lower-income. Internet surveys miss elderly and rural populations without internet access.
+
+### Measurement Bias
+
+Even a perfectly representative sample produces biased estimates if the **measurement instrument** is flawed:
+
+- *Social desirability bias:* Respondents answer in ways they think are socially acceptable rather than truthfully (e.g., underreporting alcohol consumption, overreporting charitable giving).
+- *Leading questions:* Survey wording that suggests a preferred answer.
+- *Recall bias:* Asking about past events; memory is imperfect and systematically distorted.
+
+### Publication Bias
+
+In research, studies with significant positive results are more likely to be published than null results. This creates a biased literature where effect sizes appear larger than they truly are — a form of **survivorship bias** at the level of the scientific record.
+
+## Example: Survivorship Bias
+
+**Example 5.6.** During World War II, the statistician Abraham Wald was asked to analyze bullet holes on returning aircraft to recommend where to add armor. The military wanted to reinforce the areas with the most damage. Wald correctly pointed out that they should armor the areas with *least* damage — because aircraft hit in those areas did not return. The sample (returning aircraft) was biased: it excluded the most informative cases (aircraft shot down).
+
+This is a perfect illustration of survivorship bias: the sample of "survivors" systematically misrepresents the population of "all aircraft."
+
+## R Example: Detecting Non-Response Bias
+
+```{r nonresponse-bias}
+# --- Simulate non-response bias ---
+set.seed(55)
+N <- 3000
+
+# True population: satisfaction correlated with income
+full_pop <- data.frame(
+  id           = 1:N,
+  income_group = sample(c("Low","Middle","High"),
+                         N, replace = TRUE,
+                         prob = c(0.35, 0.45, 0.20)),
+  satisfaction = NA
+)
+
+full_pop$satisfaction <- ifelse(
+  full_pop$income_group == "Low",    rnorm(N, 55, 12),
+  ifelse(full_pop$income_group == "Middle", rnorm(N, 68, 10),
+         rnorm(N, 79, 9))
+)
+full_pop$satisfaction <- pmin(pmax(
+  round(full_pop$satisfaction), 0), 100)
+
+# Non-response: high-income people less likely to respond (busy)
+full_pop$response_prob <- ifelse(
+  full_pop$income_group == "Low",    0.75,
+  ifelse(full_pop$income_group == "Middle", 0.60,
+         0.30)
+)
+
+# Select a stratified sample and simulate non-response
+selected  <- full_pop[sample(N, 600), ]
+responded <- selected[runif(nrow(selected)) <
+                        selected$response_prob, ]
+
+true_mean <- mean(full_pop$satisfaction)
+sample_mean_all  <- mean(selected$satisfaction)
+sample_mean_resp <- mean(responded$satisfaction)
+
+cat("True population mean satisfaction:   ",
+    round(true_mean, 2), "\n")
+cat("Sample mean (all selected, n=600):   ",
+    round(sample_mean_all, 2), "\n")
+cat("Sample mean (respondents only, n=",
+    nrow(responded), "):", round(sample_mean_resp, 2), "\n\n")
+
+# Income group composition comparison
+comp <- bind_rows(
+  full_pop   |> count(income_group) |>
+    mutate(pct = n/sum(n), source = "Population"),
+  responded  |> count(income_group) |>
+    mutate(pct = n/sum(n), source = "Respondents")
+)
+
+kable(comp |> select(source, income_group, pct) |>
+        mutate(pct = round(pct * 100, 1)) |>
+        pivot_wider(names_from = income_group,
+                    values_from = pct),
+      caption   = "Income Group Composition: Population vs. Respondents ($\\%$)",
+      col.names = c("Source","High","Low","Middle")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+**Code explanation:**
+
+- `response_prob` simulates differential non-response by income group — a realistic representation of how non-response actually works.
+- The composition table reveals the mechanism of bias: high-income (higher satisfaction) respondents are under-represented in the responding sample, biasing the satisfaction estimate downward.
+- This pattern is detectable if demographic data is available for both responders and non-responders — the first diagnostic step in non-response analysis.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 5.7
+(a) In the non-response simulation above, compute the non-response rate overall and by income group.
+(b) If you could only follow up with 100 non-respondents, which income group should you prioritize and why?
+(c) Apply a simple **non-response weight** (inverse of response probability) to the respondent data and recompute the mean. Does it recover the true mean more accurately?
+:::
+
+---
+
+# Bootstrap Resampling
+
+## Introduction
+
+Classical inference relies on distributional assumptions (normality, known variance) and closed-form formulas for standard errors. But what about statistics with no simple formula — the median, a trimmed mean, a correlation coefficient, or a machine learning model's accuracy? **Bootstrap resampling** is a computational technique that estimates uncertainty by repeatedly resampling **with replacement** from the observed data, treating the sample as a proxy for the population. It requires minimal assumptions and works for virtually any statistic.
+
+## Theory
+
+### The Bootstrap Principle
+
+The **bootstrap principle** states: the relationship between the population and the sample mirrors the relationship between the sample and bootstrap samples drawn from it.
+
+**Algorithm:**
+
+1. From the original sample of size $n$, draw $B$ bootstrap samples, each of size $n$, **with replacement**.
+2. Compute the statistic of interest $\hat{\theta}^*_b$ for each bootstrap sample $b = 1, \ldots, B$.
+3. The distribution of $\hat{\theta}^*_b - \hat{\theta}$ approximates the sampling distribution of $\hat{\theta} - \theta$.
+
+**Bootstrap standard error:**
+$$\widehat{\text{SE}}_{\text{boot}} = \sqrt{\frac{1}{B-1}\sum_{b=1}^{B}(\hat{\theta}^*_b - \bar{\theta}^*)^2}$$
+
+### Bootstrap Confidence Intervals
+
+**Percentile CI:** Use the $\alpha/2$ and $1-\alpha/2$ quantiles of the bootstrap distribution:
+$$\text{CI} = \left[\hat{\theta}^*_{(\alpha/2)},\; \hat{\theta}^*_{(1-\alpha/2)}\right]$$
+
+**BCa (Bias-Corrected and Accelerated) CI:** Corrects for bias and skewness in the bootstrap distribution — preferred in practice and implemented in R's `boot.ci()`.
+
+### When to Use the Bootstrap
+
+| Situation | Bootstrap Appropriate? |
+|-----------|----------------------|
+| No closed-form SE formula | Yes |
+| Small sample, unknown distribution | Yes |
+| Complex statistic (e.g., ratio, quantile) | Yes |
+| Simple mean, large sample, normal population | Unnecessary (t-interval works) |
+| Time series data (dependent observations) | Use block bootstrap instead |
+
+: Bootstrap usage guide {.striped}
+
+## Example: Bootstrapping the Median
+
+**Example 5.7.** A sample of 30 house prices (in million THB) has a median of 4.2M. The classical SE formula for the median is complex and assumes normality. The bootstrap provides a distribution-free CI.
+
+Bootstrap result (B = 5,000): 95% percentile CI = (3.6M, 5.1M).
+
+**Interpretation:** We are 95% confident the true population median house price lies between 3.6M and 5.1M THB, with no normality assumption required.
+
+## R Example: Bootstrap Resampling
+
+```{r bootstrap}
+# --- Bootstrap CI for the median ---
+set.seed(314)
+
+# Simulate right-skewed house prices (log-normal)
+house_prices <- exp(rnorm(30, mean = log(4.2), sd = 0.5))
+observed_median <- median(house_prices)
+cat("Observed sample median:", round(observed_median, 3),
+    "million THB\n\n")
+
+# Manual bootstrap (educational)
+B <- 5000
+boot_medians <- replicate(B, {
+  boot_sample <- sample(house_prices, length(house_prices),
+                        replace = TRUE)
+  median(boot_sample)
+})
+
+# Bootstrap SE and CI
+boot_se  <- sd(boot_medians)
+boot_ci  <- quantile(boot_medians, c(0.025, 0.975))
+
+cat("Bootstrap SE of median:      ", round(boot_se, 4), "\n")
+cat("95% Percentile CI:  [",
+    round(boot_ci[1], 3), ",",
+    round(boot_ci[2], 3), "]\n\n")
+```
+
+```{r bootstrap-pkg}
+# --- Using the boot package (more rigorous) ---
+library(boot)
+
+# Define statistic function
+median_fn <- function(data, indices) {
+  median(data[indices])
+}
+
+boot_result <- boot(data      = house_prices,
+                     statistic = median_fn,
+                     R         = 5000)
+
+# BCa confidence interval
+bca_ci <- boot.ci(boot_result, type = "bca")
+print(bca_ci)
+```
+
+```{r bootstrap-plot}
+# --- Visualize bootstrap distribution ---
+boot_df <- data.frame(median = boot_medians)
+
+ggplot(boot_df, aes(x = median)) +
+  geom_histogram(bins  = 60, fill  = "steelblue",
+                 color = "white", alpha = 0.8) +
+  geom_vline(xintercept = observed_median,
+             color = "black", linewidth = 1.2,
+             linetype = "dashed") +
+  geom_vline(xintercept = boot_ci,
+             color = "tomato", linewidth = 1,
+             linetype = "solid") +
+  annotate("text", x = observed_median + 0.05,
+           y = 350,
+           label = paste0("Observed\nmedian = ",
+                           round(observed_median, 2)),
+           hjust = 0, size = 3.8) +
+  annotate("text", x = boot_ci[2] + 0.05,
+           y = 280,
+           label = paste0("95% CI\n[",
+                           round(boot_ci[1],2), ", ",
+                           round(boot_ci[2],2), "]"),
+           color = "tomato", hjust = 0, size = 3.8) +
+  labs(title    = "Bootstrap Distribution of the Median",
+       subtitle = paste0("B = 5,000 resamples | SE = ",
+                          round(boot_se, 3)),
+       x        = "Bootstrap Median (million THB)",
+       y        = "Frequency") +
+  theme_minimal(base_size = 13)
+```
+
+**Code explanation:**
+
+- `sample(x, n, replace = TRUE)` is the core of bootstrap resampling — drawing $n$ observations with replacement from the data.
+- `replicate(B, expr)` runs the resampling loop efficiently without explicit `for` loops.
+- The `boot` package's `boot.ci(type = "bca")` provides the BCa interval, which is more accurate than the simple percentile interval for skewed distributions.
+- The histogram visualizes the bootstrap distribution — its spread represents uncertainty in the median estimate.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 5.8
+Using the `airquality` dataset (Ozone column, removing NAs):
+
+(a) Compute the observed mean and median of Ozone.
+(b) Bootstrap both statistics ($B = 5,000$). Compute SE and 95% percentile CIs for each.
+(c) Compare the bootstrap CI for the mean to the classical t-interval (`t.test()`). Do they agree?
+(d) Why is the bootstrap particularly valuable for the median in this dataset?
+:::
+
+::: {.callout-tip}
+## Exercise 5.9 (Challenge)
+Bootstrap the **correlation coefficient** between `mpg` and `hp` in `mtcars`.
+
+(a) Compute the observed Pearson $r$.
+(b) Bootstrap $r$ with $B = 5,000$ and plot the distribution.
+(c) Compute the 95% BCa CI using `boot.ci()`.
+(d) Compare to the analytical CI from `cor.test()`. Which is wider, and why?
+:::
+
+---
+
+# Evaluating Sample Quality
+
+## Introduction
+
+After data has been collected, a critical question remains: **Is this sample representative of the target population?** A good sampling design gives a high probability of representativeness, but it does not guarantee it. Evaluating sample quality is essential before drawing any conclusions — it protects against over-confident inference and reveals where caution is needed. This section covers practical tools for comparing sample and population distributions and detecting imbalance.
+
+## Theory
+
+### Comparing Sample and Population Distributions
+
+When population-level data is available (from a census, administrative records, or prior studies), we can directly compare:
+
+**Categorical variables:** Compare proportions using chi-square goodness-of-fit test:
+
+$$\chi^2 = \sum_{i=1}^{k} \frac{(O_i - E_i)^2}{E_i}$$
+
+where $O_i$ is the observed count in category $i$ and $E_i = n \cdot p_i^{\text{pop}}$ is the expected count based on population proportions.
+
+**Continuous variables:** Compare distributions using the Kolmogorov-Smirnov test or by visual comparison of histograms/density plots.
+
+### Weighting for Representativeness
+
+When the sample over- or under-represents certain groups, **post-stratification weights** can partially correct for this:
+
+$$w_i = \frac{p_i^{\text{pop}}}{p_i^{\text{sample}}}$$
+
+Applying these weights to estimates adjusts for the imbalance. However, weights cannot fix severe under-representation (e.g., if a group is entirely absent from the sample).
+
+### Key Diagnostics
+
+| Diagnostic | Tool | What to Look For |
+|-----------|------|-----------------|
+| Demographic balance | Chi-square goodness-of-fit | Sample proportions ≈ population proportions |
+| Distribution shape | KS test, QQ plot | Sample distribution ≈ known distribution |
+| Non-response pattern | Compare respondents vs. frame | No systematic differences |
+| Outliers from selection | Mahalanobis distance | No extreme imbalance in multivariate space |
+
+: Sample quality diagnostics {.striped}
+
+## Example: Goodness-of-Fit for Sample Representativeness
+
+**Example 5.8.** A survey of 400 employees is collected. The company's HR records show the true gender and department breakdown. We test whether the sample matches the population.
+
+If the chi-square goodness-of-fit test gives $p < 0.05$, the sample is significantly different from the population in its composition — estimates should be weighted before reporting.
+
+## R Example: Evaluating Sample Quality
+
+```{r sample-quality}
+# --- Evaluate sample representativeness ---
+set.seed(88)
+
+# Known population proportions (from HR records)
+pop_props <- c(Science = 0.30, Arts = 0.40,
+               Business = 0.20, Admin = 0.10)
+
+# Simulate a biased sample (Science over-represented)
+n_sample  <- 400
+sample_depts <- sample(
+  names(pop_props), n_sample,
+  replace = TRUE,
+  prob    = c(0.45, 0.35, 0.15, 0.05)  # biased draw
+)
+
+# Observed counts
+obs_counts  <- table(sample_depts)
+exp_counts  <- n_sample * pop_props[names(obs_counts)]
+
+# Chi-square goodness-of-fit test
+gof_test <- chisq.test(obs_counts,
+                        p = pop_props[names(obs_counts)])
+print(gof_test)
+```
+
+```{r sample-quality-weights}
+# --- Post-stratification weights ---
+obs_props <- obs_counts / n_sample
+weights   <- pop_props[names(obs_props)] / obs_props
+
+cat("\nPost-Stratification Weights:\n")
+print(round(weights, 3))
+
+# Apply weights to a satisfaction estimate
+sample_data <- data.frame(
+  department   = sample_depts,
+  satisfaction = rnorm(n_sample, mean = 70, sd = 12)
+)
+
+# Weighted mean
+w_vector <- weights[sample_data$department]
+weighted_mean <- weighted.mean(sample_data$satisfaction,
+                                w = w_vector)
+unweighted_mean <- mean(sample_data$satisfaction)
+
+cat("\nUnweighted mean satisfaction:", round(unweighted_mean, 2))
+cat("\nWeighted mean satisfaction:  ", round(weighted_mean, 2), "\n")
+```
+
+```{r sample-quality-plot}
+# --- Visualize sample vs. population composition ---
+comp_df <- data.frame(
+  Department = names(pop_props),
+  Population = as.numeric(pop_props),
+  Sample     = as.numeric(obs_counts / n_sample)
+) |>
+  pivot_longer(cols      = c(Population, Sample),
+               names_to  = "Source",
+               values_to = "Proportion")
+
+ggplot(comp_df, aes(x = Department, y = Proportion,
+                     fill = Source)) +
+  geom_col(position = "dodge", color = "white",
+           width = 0.65) +
+  geom_text(aes(label = scales::percent(Proportion, 1)),
+            position = position_dodge(width = 0.65),
+            vjust = -0.4, size = 3.5) +
+  scale_fill_manual(values = c("Population" = "steelblue",
+                                "Sample"     = "tomato")) +
+  scale_y_continuous(labels = scales::percent,
+                     limits = c(0, 0.55)) +
+  labs(title    = "Sample vs. Population Composition",
+       subtitle = paste0("Chi-square GOF test: χ²(",
+                          gof_test$parameter, ") = ",
+                          round(gof_test$statistic, 2),
+                          ", p = ",
+                          round(gof_test$p.value, 4)),
+       x        = "Department",
+       y        = "Proportion",
+       fill     = "Source") +
+  theme_minimal(base_size = 13)
+```
+
+**Code explanation:**
+
+- `chisq.test(observed_counts, p = population_proportions)` performs the goodness-of-fit test — note `p` takes the expected proportions (must sum to 1).
+- Post-stratification weights are computed as the ratio of population to sample proportions. `weighted.mean(x, w)` applies them.
+- The side-by-side bar chart immediately reveals which departments are over- or under-represented — Science is clearly over-sampled (45% vs. 30% in the population).
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 5.10
+Using the `population` data frame from Section 2 (the university satisfaction example):
+
+(a) Draw a sample of $n = 150$ using convenience sampling (Arts faculty only).
+(b) Test representativeness using chi-square goodness-of-fit against the known population proportions.
+(c) Compute post-stratification weights and apply them to estimate mean satisfaction.
+(d) Compare unweighted, weighted, and true mean estimates.
+:::
+
+---
+
+# Chapter Lab Activity: Exploring Sampling with `nhanes`-Style Data
+
+## Objectives
+
+In this lab you will apply the full sampling workflow — from designing a sampling strategy to evaluating sample quality and applying bootstrap inference — using a simulated population representative of a national health survey. You will compare different sampling methods, diagnose bias, and use bootstrap resampling to estimate uncertainty for a non-standard statistic.
+
+## Simulated Population
+
+```{r lab-intro}
+# --- Create a realistic simulated health survey population ---
+set.seed(2024)
+N_pop <- 20000
+
+health_pop <- data.frame(
+  id       = 1:N_pop,
+  region   = sample(c("North","Central","South","East","West"),
+                     N_pop, replace = TRUE,
+                     prob = c(0.20, 0.30, 0.20, 0.15, 0.15)),
+  age_group = sample(c("18-30","31-45","46-60","61+"),
+                      N_pop, replace = TRUE,
+                      prob = c(0.25, 0.30, 0.25, 0.20)),
+  income   = exp(rnorm(N_pop, log(35000), 0.6)),
+  bmi      = rnorm(N_pop, 24.5, 4.2),
+  smoker   = rbinom(N_pop, 1, 0.22)
+)
+
+# Introduce realistic correlations
+health_pop$bmi <- health_pop$bmi +
+  ifelse(health_pop$age_group == "61+", 1.5,
+  ifelse(health_pop$age_group == "46-60", 0.8, 0))
+health_pop$bmi <- pmax(health_pop$bmi, 15)
+
+cat("Population size:", N_pop, "\n")
+cat("True mean BMI:  ", round(mean(health_pop$bmi), 3), "\n")
+cat("True mean income:", round(mean(health_pop$income), 0), "\n")
+cat("True smoking rate:", round(mean(health_pop$smoker), 4), "\n\n")
+
+# Population composition
+health_pop |>
+  count(region, age_group) |>
+  pivot_wider(names_from = age_group, values_from = n) |>
+  kable(caption = "Population: Region x Age Group") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                font_size = 11)
+```
+
+## Lab Task 1: Implement Four Sampling Methods
+
+```{r lab-task1}
+set.seed(42)
+n_target <- 400
+
+# 1. SRS
+srs_lab <- health_pop |> slice_sample(n = n_target)
+
+# 2. Systematic
+k_sys  <- floor(N_pop / n_target)
+start  <- sample(1:k_sys, 1)
+sys_lab <- health_pop[seq(start, N_pop, by = k_sys)[1:n_target], ]
+
+# 3. Stratified by region (proportional)
+region_counts <- table(health_pop$region)
+strat_lab <- health_pop |>
+  group_by(region) |>
+  group_modify(~ {
+    nh <- round(n_target * nrow(.x) / N_pop)
+    slice_sample(.x, n = max(nh, 1))
+  }) |>
+  ungroup()
+
+# 4. Cluster by region (select 3 of 5 regions, survey all)
+selected_regions <- sample(unique(health_pop$region), 3)
+cluster_lab <- health_pop |>
+  filter(region %in% selected_regions)
+
+# Summary
+true_bmi <- mean(health_pop$bmi)
+sampling_comparison <- data.frame(
+  Method    = c("True Population", "SRS",
+                "Systematic", "Stratified", "Cluster"),
+  n         = c(N_pop, nrow(srs_lab), nrow(sys_lab),
+                nrow(strat_lab), nrow(cluster_lab)),
+  Mean_BMI  = round(c(true_bmi,
+                       mean(srs_lab$bmi),
+                       mean(sys_lab$bmi),
+                       mean(strat_lab$bmi),
+                       mean(cluster_lab$bmi)), 4),
+  Bias      = round(c(0,
+                       mean(srs_lab$bmi)      - true_bmi,
+                       mean(sys_lab$bmi)      - true_bmi,
+                       mean(strat_lab$bmi)    - true_bmi,
+                       mean(cluster_lab$bmi)  - true_bmi), 4)
+)
+
+kable(sampling_comparison,
+      caption   = "Sampling Method Comparison: Mean BMI",
+      col.names = c("Method","n","Mean BMI","Bias")) |>
+  kable_styling(bootstrap_options = c("striped","hover")) |>
+  row_spec(1, bold = TRUE, background = "#EEF2FF") |>
+  column_spec(4, color = ifelse(
+    abs(sampling_comparison$Bias) > 0.1, "tomato", "darkgreen"),
+    bold = TRUE)
+```
+
+## Lab Task 2: Sample Size Planning
+
+```{r lab-task2}
+# For the smoking rate (proportion)
+true_p <- mean(health_pop$smoker)
+cat("True smoking rate:", round(true_p, 4), "\n\n")
+
+# Required sample sizes for different margins of error
+margins <- c(0.01, 0.02, 0.03, 0.05)
+n_required <- data.frame(
+  Margin_E    = margins,
+  n_p_unknown = ceiling((1.96^2 * 0.5 * 0.5) / margins^2),
+  n_p_known   = ceiling((1.96^2 * true_p * (1-true_p)) / margins^2)
+)
+
+kable(n_required,
+      caption   = "Required n for Estimating Smoking Rate (95$\\%$ CI)",
+      col.names = c("Margin of Error", "n (p=0.5)",
+                    paste0("n (p=", round(true_p,2), ")"))) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+## Lab Task 3: Bootstrap Inference
+
+```{r lab-task3}
+# Bootstrap the 75th percentile of BMI (no closed-form CI)
+bmi_sample <- srs_lab$bmi
+obs_p75    <- quantile(bmi_sample, 0.75)
+
+p75_fn <- function(data, indices) {
+  quantile(data[indices], 0.75)
+}
+
+boot_p75 <- boot(data = bmi_sample, statistic = p75_fn,
+                  R = 5000)
+ci_p75   <- boot.ci(boot_p75, type = "bca")
+
+cat("Observed 75th percentile BMI:  ",
+    round(obs_p75, 3), "\n")
+cat("True 75th percentile (pop):    ",
+    round(quantile(health_pop$bmi, 0.75), 3), "\n")
+cat("95% BCa CI: [",
+    round(ci_p75$bca[4], 3), ",",
+    round(ci_p75$bca[5], 3), "]\n")
+
+# Plot bootstrap distribution
+ggplot(data.frame(p75 = boot_p75$t), aes(x = p75)) +
+  geom_histogram(bins  = 60, fill  = "steelblue",
+                 color = "white", alpha = 0.8) +
+  geom_vline(xintercept = obs_p75, color = "black",
+             linewidth = 1.2, linetype = "dashed") +
+  geom_vline(xintercept = c(ci_p75$bca[4], ci_p75$bca[5]),
+             color = "tomato", linewidth = 1) +
+  labs(title    = "Bootstrap Distribution: 75th Percentile of BMI",
+       subtitle = paste0("B = 5,000 | 95% BCa CI: [",
+                          round(ci_p75$bca[4],2), ", ",
+                          round(ci_p75$bca[5],2), "]"),
+       x        = "Bootstrap 75th Percentile",
+       y        = "Frequency") +
+  theme_minimal(base_size = 13)
+```
+
+## Lab Task 4: Representativeness Check
+
+```{r lab-task4}
+# Check if SRS sample is representative by region
+pop_region_props  <- prop.table(table(health_pop$region))
+srs_region_counts <- table(srs_lab$region)
+
+gof_region <- chisq.test(
+  srs_region_counts,
+  p = pop_region_props[names(srs_region_counts)]
+)
+
+cat("Goodness-of-Fit Test (Region):\n")
+cat("χ²(", gof_region$parameter, ") =",
+    round(gof_region$statistic, 3),
+    "  p =", round(gof_region$p.value, 4), "\n\n")
+
+# Visual comparison
+comp_region <- data.frame(
+  Region     = names(pop_region_props),
+  Population = as.numeric(pop_region_props),
+  SRS        = as.numeric(table(srs_lab$region) /
+                            nrow(srs_lab))[
+                              order(names(table(srs_lab$region)))]
+) |>
+  pivot_longer(c(Population, SRS),
+               names_to = "Source", values_to = "Proportion")
+
+ggplot(comp_region,
+       aes(x = Region, y = Proportion, fill = Source)) +
+  geom_col(position = "dodge", color = "white") +
+  scale_fill_manual(values = c("Population" = "steelblue",
+                                "SRS"        = "tomato")) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title    = "SRS Representativeness Check: Region",
+       subtitle = paste0("GOF test p = ",
+                          round(gof_region$p.value, 3),
+                          " — sample composition matches population"),
+       x = "Region", y = "Proportion") +
+  theme_minimal(base_size = 13)
+```
+
+## Lab Discussion Questions
+
+Answer the following in writing:
+
+1. **Sampling Design Choice:** In Lab Task 1, which sampling method produced the estimate closest to the true mean BMI? Is the "best" method always the most accurate for a single sample? What matters more — accuracy on average (bias) or consistency across samples (variance)?
+
+2. **Sample Size Trade-offs:** In Lab Task 2, the required $n$ drops substantially when prior knowledge of $p$ is used. In practice, researchers often set $p = 0.5$ to be "safe." Under what circumstances is this overly conservative, and when is it genuinely necessary?
+
+3. **Bootstrap vs. Classical:** In Lab Task 3, the bootstrap was used for the 75th percentile. Could you use a classical formula instead? Look up or derive the asymptotic SE of a sample quantile. When does the bootstrap offer a real advantage?
+
+4. **Representativeness:** Lab Task 4 tests whether the SRS sample matches population region proportions. Even if the test passes, does this guarantee the sample is representative on all variables? What else would you check?
+
+5. **Real-World Application:** You are hired to estimate the prevalence of diabetes in Thailand using a sample of 2,000 adults. Describe your complete sampling strategy: sampling method, strata (if any), sample size justification, and how you would evaluate the final sample's quality.
+
+---
+
+# Chapter Summary
+
+## Summary
+
+This chapter established sampling as the foundation of all empirical data science:
+
+- **Why sampling matters** — sampling error is unavoidable but quantifiable; bias is avoidable but insidious. The MSE framework combines both, and sound sampling design is more important than large sample size.
+- **Probability sampling** (SRS, systematic, stratified, cluster) provides known inclusion probabilities and supports valid inference. Stratified sampling improves precision when subgroups differ; cluster sampling reduces cost at the expense of precision.
+- **Non-probability sampling** (convenience, purposive, snowball, quota) is widely used but does not support formal population-level inference; its limitations must be clearly acknowledged.
+- **Sample size determination** balances desired precision (margin of error), confidence level, and population variability. The finite population correction reduces required $n$ when sampling a substantial fraction of the population.
+- **Sampling bias** (selection bias, non-response, undercoverage, survivorship bias) systematically distorts estimates and cannot be corrected by larger samples.
+- **Bootstrap resampling** provides distribution-free uncertainty estimates for any statistic, requiring only that the sample represent the population.
+- **Sample quality evaluation** using goodness-of-fit tests and compositional comparisons guards against over-confident inference from unrepresentative samples.
+
+::: {.callout-important}
+## Key Formulas to Know
+
+**Standard Error of Sample Mean:**
+$$\text{SE}(\bar{x}) = \sqrt{\frac{s^2}{n}\left(1 - \frac{n}{N}\right)}$$
+
+**Sample Size for Mean:**
+$$n = \left(\frac{z_{\alpha/2} \cdot \sigma}{E}\right)^2$$
+
+**Sample Size for Proportion:**
+$$n = \frac{z_{\alpha/2}^2 \cdot p(1-p)}{E^2}$$
+
+**Bootstrap Standard Error:**
+$$\widehat{\text{SE}}_{\text{boot}} = \sqrt{\frac{1}{B-1}\sum_{b=1}^{B}(\hat{\theta}^*_b - \bar{\theta}^*)^2}$$
+
+**Design Effect:**
+$$\text{DEFF} = 1 + (m-1)\rho$$
+
+**Post-Stratification Weight:**
+$$w_i = \frac{p_i^{\text{pop}}}{p_i^{\text{sample}}}$$
+:::
+
+## References
+
+Cochran, W. G. (1977). *Sampling techniques* (3rd ed.). Wiley.
+
+Efron, B. (1979). Bootstrap methods: Another look at the jackknife. *Annals of Statistics*, *7*(1), 1–26.
+
+Henderson, H. V., & Velleman, P. F. (1981). Building multiple regression models interactively. *Biometrics*, *37*(2), 391–411.
+
+Lumley, T. (2023). *survey: Analysis of complex survey samples* (R package version 4.2). https://CRAN.R-project.org/package=survey
+
+Pedersen, T. L. (2022). *patchwork: The composer of plots* (R package version 1.1.2). https://CRAN.R-project.org/package=patchwork
+
+R Core Team. (2024). *R: A language and environment for statistical computing*. R Foundation for Statistical Computing. https://www.R-project.org/
+
+Tillé, Y., & Matei, A. (2021). *sampling: Survey sampling* (R package version 2.9). https://CRAN.R-project.org/package=sampling
+
+Wickham, H. (2016). *ggplot2: Elegant graphics for data analysis*. Springer.
+
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. *Journal of Open Source Software*, *4*(43), 1686.
+
+Xie, Y. (2015). *Dynamic documents with R and knitr* (2nd ed.). CRC Press.
+
+---
+
+*End of Chapter 5. Proceed to Chapter 6: Data Preprocessing.*

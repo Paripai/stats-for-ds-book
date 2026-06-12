@@ -1,0 +1,206 @@
+# Preface
+
+This book is a hands-on introduction to statistics for students and practitioners in data science. It is designed to bridge the gap between mathematical theory and practical application in R — every concept is accompanied by worked examples, derivations, and reproducible code.
+
+The course progresses from foundational descriptive tools (Chapter 1) through probability and inference (Chapters 2–4), to the full data-science pipeline: sampling, preprocessing, dimensionality reduction, clustering, classification, and regression (Chapters 5–10). By the final chapter, you will be equipped to build, evaluate, and interpret predictive models from raw data.
+
+::: callout-note
+## How to Use This Book
+
+Each chapter follows a consistent four-part structure:
+
+1. **Theory** — mathematical foundations with derivations and formulas
+2. **Worked Examples** — step-by-step calculations by hand
+3. **R Examples** — fully reproducible code with line-by-line explanations
+4. **Exercises** — practice problems ranging from computational to conceptual
+
+Read the theory, work through the examples by hand, then reproduce and extend the R code. The exercises at the end of each section are designed to reinforce understanding — do not skip them.
+:::
+
+------------------------------------------------------------------------
+
+# Course Overview
+
+## About This Course
+
+**Statistics for Data Science** introduces the probabilistic and statistical foundations that underpin modern data analysis and machine learning. The course emphasizes both mathematical rigor and practical fluency in R, the leading language for statistical computing.
+
+At its core, data science is applied statistics. Understanding *why* methods work — not just *how* to call a function — makes the difference between a practitioner who applies tools blindly and one who chooses the right tool, diagnoses failures, and communicates results with confidence. This course builds that understanding from the ground up.
+
+## Learning Objectives
+
+::: callout-note
+## By the End of This Course, You Will Be Able To:
+
+1. Describe, visualize, and interpret any dataset using appropriate descriptive statistics.
+2. Apply probability theory and common distributions to model real-world phenomena.
+3. Design and conduct hypothesis tests and correctly interpret *p*-values, confidence intervals, and effect sizes.
+4. Test for independence and association in categorical and continuous data.
+5. Design and evaluate sampling strategies to collect valid data.
+6. Clean, transform, and encode messy data for downstream analysis.
+7. Reduce high-dimensional data using PCA and related methods.
+8. Apply and evaluate clustering algorithms to discover structure in unlabeled data.
+9. Build and assess classification models to predict categorical outcomes.
+10. Fit, diagnose, and interpret simple and multiple linear regression models.
+:::
+
+## Software Requirements
+
+All examples in this book use **R** (version ≥ 4.3) and are written within the **Quarto** publishing framework. The following packages are used throughout:
+
+| Package | Purpose | Chapters |
+|---|---|---|
+| `tidyverse` | Data manipulation and visualization (`ggplot2`, `dplyr`) | All |
+| `moments` | Skewness and kurtosis | 1 |
+| `psych` | Comprehensive descriptive statistics | 1 |
+| `knitr` / `kableExtra` | Table formatting | All |
+| `GGally` / `corrplot` | Correlation visualization | 1, 10 |
+| `MASS` | Statistical distributions and datasets | 2, 3 |
+| `stats` | Hypothesis tests (base R) | 3, 4 |
+| `survey` | Complex survey design | 5 |
+| `recipes` / `caret` | Preprocessing and modeling pipelines | 6, 9 |
+| `factoextra` | PCA and clustering visualization | 7, 8 |
+| `cluster` | Clustering algorithms | 8 |
+| `class` / `e1071` / `rpart` | Classification models | 9 |
+| `car` / `lmtest` | Regression diagnostics | 10 |
+
+: Core R packages used in this course. Install all at once with `install.packages(c("tidyverse", "moments", "psych", "knitr", "kableExtra", "GGally", "corrplot", "MASS", "survey", "recipes", "caret", "factoextra", "cluster", "e1071", "rpart", "car", "lmtest"))`.
+
+------------------------------------------------------------------------
+
+# Course Structure
+
+The ten chapters are organized into three parts that reflect the natural progression of a data science project.
+
+## Part I — Foundations (Chapters 1–4)
+
+Before modeling data, you must understand it. Part I builds the statistical vocabulary and inferential framework that all subsequent chapters rely on.
+
+| Chapter | Title | Key Topics |
+|---|---|---|
+| 1 | **Descriptive Statistics** | Mean, median, variance, SD, IQR, skewness, kurtosis, correlation, visualization |
+| 2 | **Data Distribution & Probability** | Probability rules, random variables, Binomial, Poisson, Normal, Central Limit Theorem |
+| 3 | **Hypothesis Testing** | Null/alternative hypotheses, *z*-test, *t*-test, Type I/II errors, *p*-values, power, confidence intervals |
+| 4 | **Test of Independence** | Chi-square test, Fisher's exact test, Cramér's V, ANOVA, post-hoc tests |
+
+: Part I — Statistical Foundations
+
+## Part II — Data Preparation (Chapters 5–6)
+
+Real data is never clean. Part II covers how to collect it properly and prepare it for analysis.
+
+| Chapter | Title | Key Topics |
+|---|---|---|
+| 5 | **Data Sampling** | Simple random, stratified, cluster, systematic sampling; sample size determination; sampling bias |
+| 6 | **Data Preprocessing** | Missing values, outlier detection, normalization, encoding, feature engineering, train/test split |
+
+: Part II — Data Collection and Preparation
+
+## Part III — Modeling and Machine Learning (Chapters 7–10)
+
+With clean data in hand, Part III introduces the core modeling techniques used in applied data science.
+
+| Chapter | Title | Key Topics |
+|---|---|---|
+| 7 | **Dimension Reduction** | PCA, scree plots, biplots, variance explained, factor rotation |
+| 8 | **Data Clustering** | k-Means, hierarchical clustering, DBSCAN, silhouette scores, elbow method |
+| 9 | **Data Classification** | k-NN, Naive Bayes, decision trees, confusion matrix, precision, recall, ROC/AUC |
+| 10 | **Regression Analysis** | Simple and multiple linear regression, OLS, model diagnostics, regularization, interpretation |
+
+: Part III — Modeling and Machine Learning
+
+------------------------------------------------------------------------
+
+# Prerequisites
+
+This course assumes the following background knowledge. Students lacking prerequisites in any area should review the suggested resources before beginning.
+
+::: callout-important
+## Required Background
+
+**Mathematics**
+
+- High school algebra (solving equations, working with fractions and exponents)
+- Basic calculus (derivatives and integrals at the level of a first-year university course) — used in Chapters 2–3 for probability density functions
+- Linear algebra fundamentals (vectors, matrices, matrix multiplication) — used in Chapters 7, 10
+
+**Computing**
+
+- R installed (download from [https://www.r-project.org](https://www.r-project.org))
+- RStudio or Positron IDE recommended
+- Quarto installed for rendering this book ([https://quarto.org](https://quarto.org))
+- Familiarity with basic R syntax (`<-`, vectors, data frames, `library()`)
+
+**Statistics**
+
+- No prior statistics knowledge is assumed — this course starts from scratch.
+:::
+
+------------------------------------------------------------------------
+
+# Chapter Previews
+
+## Chapter 1: Descriptive Statistics
+
+Every data analysis begins here. Before fitting any model, a data scientist must develop an intimate understanding of the data — its center, spread, shape, and relationships. This chapter covers all major descriptive tools: measures of central tendency (mean, median, mode), measures of dispersion (range, IQR, variance, standard deviation, CV), measures of shape (skewness and kurtosis), and a complete toolkit of descriptive visualizations (histograms, boxplots, QQ plots, scatterplot matrices).
+
+A unifying theme: numerical summaries compress information and can mislead. Anscombe's Quartet demonstrates that four datasets with identical means, variances, and correlations can look completely different. **Always visualize.**
+
+## Chapter 2: Data Distribution and Probability
+
+Statistical inference is built on probability. This chapter introduces the mathematical language of uncertainty: sample spaces, events, conditional probability, and Bayes' theorem. The core of the chapter is a tour of the most important probability distributions — Binomial, Poisson, Normal, *t*, $\chi^2$, and F — with attention to when each arises in practice. The chapter closes with the Central Limit Theorem, arguably the most important result in statistics: the key that unlocks inference from sample data to population parameters.
+
+## Chapter 3: Hypothesis Testing
+
+The workhorse of inferential statistics. We formalize the logic of hypothesis testing — null and alternative hypotheses, test statistics, *p*-values, and critical regions — then apply it to one-sample and two-sample *z*-tests and *t*-tests. Special attention is paid to the concept of **statistical power**, Type I and Type II errors, and how to determine appropriate sample sizes. The chapter ends with a critical discussion of *p*-value misinterpretation, effect sizes, and confidence intervals as a more informative alternative.
+
+## Chapter 4: Test of Independence
+
+When variables are categorical, standard tests of means do not apply. This chapter covers the $\chi^2$ test of independence, Fisher's exact test for small samples, and Cramér's V for measuring association strength. We then extend hypothesis testing to compare means across more than two groups via **ANOVA**, including post-hoc multiple comparison procedures (Tukey's HSD) and the non-parametric Kruskal-Wallis alternative.
+
+## Chapter 5: Data Sampling
+
+How data is collected determines what conclusions can be drawn. This chapter covers the major probability sampling designs — simple random, stratified, cluster, and systematic — and the sources of bias that arise when sampling is not done carefully. We examine how to calculate required sample sizes for a desired margin of error and power, and introduce complex survey design using the `survey` package in R.
+
+## Chapter 6: Data Preprocessing
+
+Raw data is rarely analysis-ready. This chapter is a practical guide to the full preprocessing pipeline: diagnosing and imputing missing values, detecting and handling outliers, scaling and normalizing features, encoding categorical variables, engineering new features, and constructing reproducible train/test splits. We use the `recipes` package from the `tidymodels` ecosystem, which provides a principled, auditable workflow for all preprocessing steps.
+
+## Chapter 7: Dimension Reduction
+
+High-dimensional data is computationally expensive, statistically challenging, and difficult to visualize. **Principal Component Analysis (PCA)** addresses all three problems by finding a lower-dimensional representation that retains as much variance as possible. This chapter derives PCA from the eigendecomposition of the covariance matrix, then demonstrates interpretation via scree plots, biplots, and loadings. We discuss how many components to retain, when PCA is appropriate, and introduce factor analysis as a related approach.
+
+## Chapter 8: Data Clustering
+
+Clustering is **unsupervised learning**: finding structure in unlabeled data. We cover the three most important paradigms — **k-Means** (partition-based), **hierarchical clustering** (agglomerative and divisive), and **DBSCAN** (density-based) — along with methods for evaluating cluster quality (silhouette scores, elbow method, dendrogram inspection). A key theme: clustering algorithms always find clusters, even in random data. Rigorous evaluation is essential.
+
+## Chapter 9: Data Classification
+
+**Supervised learning** for categorical outcomes. This chapter introduces the classification pipeline — feature engineering, training, cross-validation, and evaluation — and applies it to three foundational classifiers: *k*-Nearest Neighbors (k-NN), Naive Bayes, and decision trees. Model performance is evaluated using the full toolkit: confusion matrix, accuracy, precision, recall, F1 score, and the ROC/AUC curve. The chapter emphasizes the **bias-variance tradeoff** and the danger of evaluating a model on the data it was trained on.
+
+## Chapter 10: Regression Analysis
+
+The capstone of the course. We develop **linear regression** in full — from simple regression with one predictor to multiple regression with many. We derive the Ordinary Least Squares (OLS) estimator, prove its optimality under the Gauss-Markov assumptions, and build a complete diagnostic toolkit: residual plots, leverage and influence measures, tests for heteroskedasticity and autocorrelation. The chapter closes with regularization (Ridge and Lasso), connecting regression to modern machine learning and the challenge of prediction in high dimensions.
+
+------------------------------------------------------------------------
+
+# A Note on Learning Statistics
+
+Statistics has a reputation for being abstract, dry, and disconnected from practice. This book takes the opposite view. Every formula in this course exists to solve a real problem — and understanding the problem makes the formula memorable.
+
+When you encounter a formula, ask: *What is this measuring? Why is it defined this way? What goes wrong if I use something simpler?* When you encounter a concept, ask: *Where would I see this in real data? How would I explain it to someone who has never seen a statistics textbook?*
+
+The R code in each chapter is not decoration. It is the primary vehicle for building intuition. Run every block, change the parameters, break things, and observe what happens. The most productive way to learn statistics in 2026 is to spend half your time computing and the other half thinking about what the numbers mean.
+
+::: callout-tip
+## Getting Help
+
+- **Course material:** All `.qmd` source files for this book are available on the accompanying GitHub repository.
+- **R help:** Use `?function_name` in the R console for documentation, or search [https://www.rdocumentation.org](https://www.rdocumentation.org).
+- **Quarto:** Official documentation at [https://quarto.org/docs](https://quarto.org/docs).
+- **Community:** [Stack Overflow](https://stackoverflow.com/questions/tagged/r) (tag: `r`), [Posit Community](https://community.rstudio.com), and [Cross Validated](https://stats.stackexchange.com) are excellent resources for R and statistics questions.
+:::
+
+------------------------------------------------------------------------
+
+*Begin with Chapter 1: Descriptive Statistics.*

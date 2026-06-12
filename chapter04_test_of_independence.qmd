@@ -1,0 +1,1415 @@
+# Chapter 4: Test of Independence of Variables
+
+```{r setup}
+# Load all libraries needed for this chapter
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(patchwork)
+library(vcd)          # association measures, mosaic plots
+library(corrplot)     # correlation matrix visualization
+library(ggcorrplot)   # ggplot2-based correlation plots
+library(rstatix)      # tidy correlation tests
+library(ppcor)        # partial correlation
+```
+
+---
+
+# Chapter Overview
+
+## Introduction
+
+One of the most fundamental questions in data analysis is whether two variables are **related** to each other, or whether they vary **independently**. Does a patient's smoking status relate to their disease outcome? Is a student's program of study associated with their level of satisfaction? Do income and education move together? Tests of independence answer these questions formally, across all combinations of variable types.
+
+This chapter covers:
+
+- **The Concept of Independence** — theoretical foundations linking back to probability
+- **Chi-Square Test of Independence** — testing association between two categorical variables
+- **Fisher's Exact Test** — a robust alternative for small or sparse contingency tables
+- **Cramér's V and Effect Size** — quantifying the strength of categorical association
+- **Correlation Tests** — Pearson and Spearman for continuous and ordinal variables
+- **Point-Biserial and Phi Coefficients** — association involving binary variables
+- **Partial Correlation** — measuring association while controlling for a third variable
+
+::: {.callout-note}
+## Learning Objectives
+By the end of this chapter, you will be able to:
+
+1. Distinguish statistical independence from dependence for different variable types.
+2. Conduct and interpret chi-square and Fisher's exact tests for categorical data.
+3. Compute and interpret Cramér's V as a measure of association strength.
+4. Test the significance of Pearson and Spearman correlations.
+5. Select the appropriate association measure based on variable types.
+6. Compute partial correlations to control for confounding variables.
+:::
+
+---
+
+# The Concept of Independence
+
+## Introduction
+
+In Chapter 2, we defined statistical independence in probability terms: two events $A$ and $B$ are independent if $P(A \cap B) = P(A) \cdot P(B)$. In data analysis, we extend this idea to variables: two variables are **statistically independent** if knowing the value of one provides no information about the value of the other. When they are not independent, we say they are **associated** or **dependent**.
+
+Testing for independence is not the same as proving causation. Association tells us that two variables move together — it says nothing about which causes which, or whether both are driven by a third variable. This distinction is critical in data science, where spurious correlations are common in large datasets.
+
+## Theory
+
+### Independence for Categorical Variables
+
+Two categorical variables $X$ and $Y$ are independent if, for all categories $i$ and $j$:
+
+$$P(X = i \cap Y = j) = P(X = i) \cdot P(Y = j)$$
+
+In a contingency table, this means every **observed cell frequency** should equal the corresponding **expected cell frequency** under independence:
+
+$$E_{ij} = \frac{(\text{Row } i \text{ total}) \times (\text{Column } j \text{ total})}{\text{Grand total}} = \frac{R_i \cdot C_j}{N}$$
+
+Any systematic departure of observed frequencies from expected frequencies is evidence of association.
+
+### Independence for Continuous Variables
+
+Two continuous variables $X$ and $Y$ are independent if their **joint distribution** equals the product of their marginal distributions:
+
+$$f(x, y) = f_X(x) \cdot f_Y(y)$$
+
+In practice, we test a weaker condition: **linear independence** (zero correlation). Note that zero correlation does not guarantee full independence — two variables can be nonlinearly related yet have zero Pearson correlation. This is why visualization always accompanies formal tests.
+
+### A Taxonomy of Association Measures
+
+The correct test and measure of association depend on the **types of variables** being compared:
+
+| Variable 1 | Variable 2 | Test | Effect Size |
+|-----------|-----------|------|------------|
+| Categorical | Categorical | Chi-square / Fisher's | Cramér's V |
+| Continuous | Continuous | Pearson / Spearman correlation test | $r$ / $\rho$ |
+| Binary | Continuous | Point-biserial correlation test | $r_{pb}$ |
+| Binary | Binary | Chi-square / Fisher's | Phi ($\phi$) |
+| Continuous (controlling for $Z$) | Continuous | Partial correlation | Partial $r$ |
+
+: Association measures by variable type {.striped}
+
+## Example: Identifying the Correct Test
+
+**Example 4.1.** A researcher collects data on university students. Identify the appropriate test for each pair of variables:
+
+| Variable 1 | Variable 2 | Appropriate Test |
+|-----------|-----------|----------------|
+| Faculty (Science, Arts, Business) | Pass/Fail status | Chi-square test |
+| Age (years) | GPA (0–4 scale) | Pearson or Spearman correlation |
+| Gender (Male/Female) | Exam score (continuous) | Point-biserial correlation |
+| Smoking (Yes/No) | Disease (Yes/No) | Chi-square or Fisher's exact |
+| Income | Happiness (controlling for age) | Partial correlation |
+
+: Example 4.1 — Test selection by variable type {.striped}
+
+## R Example: Exploring Variable Relationships
+
+```{r independence-intro}
+# --- Use the built-in mtcars and titanic-style datasets ---
+# Convert relevant mtcars variables to categorical
+data(mtcars)
+mtcars_cat <- mtcars |>
+  mutate(
+    transmission = factor(am, labels = c("Automatic", "Manual")),
+    cylinders    = factor(cyl),
+    efficiency   = factor(ifelse(mpg >= median(mpg), "High", "Low"),
+                          levels = c("Low", "High"))
+  )
+
+# Quick overview of variable types
+cat("=== Variable Type Overview ===\n")
+cat("Categorical × Categorical: transmission vs. efficiency\n")
+cat("Continuous × Continuous:   mpg vs. hp\n")
+cat("Binary × Continuous:       transmission vs. mpg\n\n")
+
+# Contingency table: transmission × efficiency
+tab <- table(mtcars_cat$transmission, mtcars_cat$efficiency)
+kable(addmargins(tab),
+      caption = "Contingency Table: Transmission × Fuel Efficiency") |>
+  kable_styling(bootstrap_options = c("striped","hover"), full_width = FALSE)
+```
+
+```{r independence-viz}
+# --- Visualize potential associations ---
+p1 <- ggplot(mtcars_cat,
+             aes(x = transmission, fill = efficiency)) +
+  geom_bar(position = "fill", color = "white") +
+  scale_fill_manual(values = c("Low" = "tomato", "High" = "steelblue")) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title    = "Transmission vs. Fuel Efficiency",
+       subtitle = "Stacked proportional bar — unequal proportions suggest association",
+       x        = "Transmission Type",
+       y        = "Proportion",
+       fill     = "Efficiency") +
+  theme_minimal(base_size = 12)
+
+p2 <- ggplot(mtcars, aes(x = hp, y = mpg)) +
+  geom_point(color = "steelblue", size = 2.5, alpha = 0.7) +
+  geom_smooth(method = "lm", color = "tomato",
+              se = TRUE, linewidth = 1) +
+  labs(title    = "Horsepower vs. Fuel Efficiency",
+       subtitle = "Scatterplot with linear fit — downward trend suggests negative correlation",
+       x        = "Horsepower (hp)",
+       y        = "Miles per Gallon (mpg)") +
+  theme_minimal(base_size = 12)
+
+p1 + p2
+```
+
+**Code explanation:**
+
+- `addmargins(table())` adds row and column totals to the contingency table — essential for computing expected frequencies by hand.
+- `geom_bar(position = "fill")` creates proportional stacked bars, making differences in conditional distributions visually obvious.
+- Visual inspection always precedes formal testing — if proportions look identical across groups, a significant test result warrants careful scrutiny.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 4.1
+For each of the following research questions, identify: (a) the variable types, (b) the appropriate test of independence, and (c) what a significant result would mean substantively.
+
+1. Do male and female students differ in their choice of academic major?
+2. Is there a relationship between study hours per week and final exam score?
+3. Does coffee consumption (cups/day) relate to reported anxiety level (1–10 scale)?
+4. Is being a first-generation student associated with dropout status (yes/no)?
+:::
+
+---
+
+# Chi-Square Test of Independence
+
+## Introduction
+
+The **chi-square test of independence** is the standard procedure for testing whether two categorical variables are associated. It compares the **observed** frequencies in a contingency table to the **expected** frequencies that would arise if the variables were truly independent. It is among the most widely used tests in social science, medical research, and data science — applicable whenever we want to know if two categorical groupings are related.
+
+## Theory
+
+### The Test Statistic
+
+Given a contingency table with $r$ rows and $c$ columns, the chi-square test statistic is:
+
+$$\chi^2 = \sum_{i=1}^{r} \sum_{j=1}^{c} \frac{(O_{ij} - E_{ij})^2}{E_{ij}}$$
+
+where $O_{ij}$ is the observed frequency and $E_{ij} = R_i C_j / N$ is the expected frequency in cell $(i,j)$.
+
+Under $H_0$ (independence), $\chi^2 \sim \chi^2((r-1)(c-1))$ approximately.
+
+**Hypotheses:**
+$$H_0: \text{The two variables are independent}$$
+$$H_1: \text{The two variables are associated}$$
+
+### Assumptions
+
+1. Observations are **independent** (each subject appears in exactly one cell).
+2. The data are **counts** (not percentages or proportions).
+3. **Expected cell frequencies** are sufficiently large:
+   - At least 80% of cells have $E_{ij} \geq 5$
+   - No cell has $E_{ij} < 1$
+
+When these conditions are violated — typically with small samples or rare categories — use **Fisher's Exact Test** (Section 3).
+
+### Yates' Continuity Correction
+
+For 2×2 tables, a continuity correction is sometimes applied to account for the fact that we are approximating a discrete distribution with a continuous one:
+
+$$\chi^2_{\text{Yates}} = \sum \frac{(|O_{ij} - E_{ij}| - 0.5)^2}{E_{ij}}$$
+
+Yates' correction is conservative (reduces test power) and is debated in the literature. Many statisticians prefer Fisher's Exact Test for 2×2 tables regardless of sample size.
+
+### Standardized Residuals
+
+A significant chi-square test tells us *that* association exists but not *where* it comes from. **Standardized residuals** identify which cells contribute most:
+
+$$r_{ij} = \frac{O_{ij} - E_{ij}}{\sqrt{E_{ij}}}$$
+
+Cells with $|r_{ij}| > 2$ are typically considered notably discrepant from independence.
+
+## Example: Chi-Square Test
+
+**Example 4.2.** A researcher investigates whether exercise frequency is associated with self-reported health status among 200 adults.
+
+|  | Poor Health | Good Health | Total |
+|--|------------|------------|-------|
+| Rarely exercises | 40 | 25 | 65 |
+| Sometimes exercises | 30 | 45 | 75 |
+| Regularly exercises | 15 | 45 | 60 |
+| **Total** | **85** | **115** | **200** |
+
+**Expected frequencies under $H_0$:**
+$$E_{11} = \frac{65 \times 85}{200} = 27.6, \quad E_{12} = \frac{65 \times 115}{200} = 37.4$$
+$$E_{21} = \frac{75 \times 85}{200} = 31.9, \quad E_{22} = \frac{75 \times 115}{200} = 43.1$$
+$$E_{31} = \frac{60 \times 85}{200} = 25.5, \quad E_{32} = \frac{60 \times 115}{200} = 34.5$$
+
+**Test statistic:**
+$$\chi^2 = \frac{(40-27.6)^2}{27.6} + \frac{(25-37.4)^2}{37.4} + \cdots = 5.58 + 4.12 + 0.11 + 0.08 + 4.33 + 3.20 = 17.42$$
+
+**df** $= (3-1)(2-1) = 2$, **p-value** $= P(\chi^2_2 > 17.42) < 0.001$
+
+**Decision:** Reject $H_0$ — exercise frequency and health status are significantly associated ($\chi^2(2) = 17.42$, $p < 0.001$).
+
+**Standardized residuals** reveal the pattern: "Rarely exercises / Poor Health" is notably higher than expected ($r = +2.36$), while "Regularly exercises / Poor Health" is notably lower ($r = -2.08$) — people who exercise regularly are less likely to report poor health.
+
+## R Example: Chi-Square Test of Independence
+
+```{r chisq}
+# --- Build the exercise × health contingency table ---
+exercise_health <- matrix(
+  c(40, 25, 30, 45, 15, 45),
+  nrow   = 3, byrow  = TRUE,
+  dimnames = list(
+    Exercise = c("Rarely", "Sometimes", "Regularly"),
+    Health   = c("Poor", "Good")
+  )
+)
+
+# Display observed table with margins
+kable(addmargins(exercise_health),
+      caption = "Observed Frequencies: Exercise × Health Status") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+```{r chisq-test}
+# --- Chi-square test ---
+chi_result <- chisq.test(exercise_health, correct = FALSE)
+print(chi_result)
+
+# --- Expected frequencies ---
+kable(round(chi_result$expected, 2),
+      caption = "Expected Frequencies Under H₀ (Independence)") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+
+# --- Standardized residuals ---
+kable(round(chi_result$stdres, 3),
+      caption = "Standardized Residuals (|r| > 2 = notable departure)") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(2:3,
+              color = ifelse(
+                abs(chi_result$stdres) > 2, "tomato", "black"
+              ))
+```
+
+```{r chisq-plot}
+# --- Mosaic plot and association plot ---
+# Convert to data frame for ggplot
+eh_df <- as.table(exercise_health) |>
+  as.data.frame(responseName = "Count")
+
+# Proportional stacked bar
+ggplot(eh_df, aes(x = Exercise, y = Count, fill = Health)) +
+  geom_bar(stat = "identity", position = "fill", color = "white") +
+  geom_hline(yintercept = 85/200, linetype = "dashed",
+             color = "gray30", linewidth = 0.8) +
+  annotate("text", x = 0.6, y = 85/200 + 0.03,
+           label = "Overall poor health rate (42.5%)",
+           color = "gray30", size = 3.5, hjust = 0) +
+  scale_fill_manual(values = c("Poor" = "tomato", "Good" = "steelblue")) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title    = "Exercise Frequency vs. Health Status",
+       subtitle = paste0("Chi-square test: χ²(2) = ",
+                         round(chi_result$statistic, 2),
+                         ", p < 0.001"),
+       x        = "Exercise Frequency",
+       y        = "Proportion",
+       fill     = "Health Status") +
+  theme_minimal(base_size = 13)
+```
+
+**Code explanation:**
+
+- `chisq.test(table, correct = FALSE)` runs the chi-square test without Yates' correction. Set `correct = TRUE` for Yates' correction on 2×2 tables.
+- The result object stores `$expected` (expected frequencies), `$stdres` (standardized residuals), and `$p.value`.
+- The dashed horizontal line marks the overall "poor health" rate — bars above it indicate excess poor health relative to the population average, making deviations from independence visually clear.
+
+**Try modifying:** Check `all(chi_result$expected >= 5)` to verify the minimum expected frequency assumption is met.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 4.2
+Use the `HairEyeColor` dataset built into R (hair color × eye color × sex for 592 statistics students).
+
+(a) Collapse across sex: `margin.table(HairEyeColor, c(1,2))` to get a Hair × Eye contingency table.
+(b) Run a chi-square test. Are hair and eye color independent?
+(c) Compute and display standardized residuals. Which hair-eye combinations are most over- or under-represented?
+(d) Produce a proportional stacked bar chart and interpret the pattern.
+:::
+
+::: {.callout-tip}
+## Exercise 4.3
+A clinical study records treatment type (Drug A, Drug B, Placebo) and recovery outcome (Recovered, Not Recovered) for 150 patients.
+
+(a) Create the contingency table in R with `matrix()`.
+(b) Verify the minimum expected frequency assumption. If violated, what alternative test should you use?
+(c) Run the chi-square test and report results in APA format: $\chi^2(df) = X.XX$, $p = .XXX$.
+:::
+
+---
+
+# Fisher's Exact Test
+
+## Introduction
+
+The chi-square test relies on a large-sample approximation — when expected cell frequencies are small (below 5), the $\chi^2$ approximation becomes unreliable and p-values are inaccurate. **Fisher's Exact Test** solves this problem by computing the **exact** probability of observing the table, or one more extreme, under $H_0$ of independence. It was originally designed for 2×2 tables but extends to larger tables. In data science and biomedical research, small samples and rare events are common — Fisher's test is an essential tool.
+
+## Theory
+
+### The Hypergeometric Distribution
+
+Fisher's test is based on the **hypergeometric distribution** — the exact probability of a specific 2×2 table with fixed marginal totals $(R_1, R_2, C_1, C_2)$:
+
+$$P\left(\begin{bmatrix} a & b \\ c & d \end{bmatrix}\right) = \frac{\binom{R_1}{a}\binom{R_2}{c}}{\binom{N}{C_1}} = \frac{(R_1)!(R_2)!(C_1)!(C_2)!}{N! \cdot a! \cdot b! \cdot c! \cdot d!}$$
+
+The p-value is the sum of probabilities for all tables as extreme as, or more extreme than, the observed table — while keeping marginal totals fixed.
+
+### Two-Sided Fisher's Test
+
+For two-sided tests, "more extreme" is defined as tables with probability **less than or equal to** the probability of the observed table. R's `fisher.test()` implements this by default.
+
+### When to Use Fisher's Exact Test
+
+| Situation | Recommendation |
+|-----------|---------------|
+| Any cell has $E_{ij} < 5$ | Use Fisher's |
+| Total $N < 20$ | Use Fisher's |
+| 2×2 table, any sample size | Fisher's is always valid (some prefer it over chi-square) |
+| Large $r \times c$ table, large $N$ | Chi-square is adequate |
+
+: Fisher's Exact Test usage guidelines {.striped}
+
+## Example: Fisher's Exact Test
+
+**Example 4.3.** A rare disease study examines whether a genetic marker is associated with disease status. Only 14 subjects are available.
+
+|  | Disease | No Disease | Total |
+|--|---------|-----------|-------|
+| Marker Present | 5 | 2 | 7 |
+| Marker Absent | 1 | 6 | 7 |
+| **Total** | **6** | **8** | **14** |
+
+**Expected frequencies:** $E_{11} = 6 \times 7/14 = 3.0$ — below 5, so chi-square is inappropriate.
+
+**Fisher's exact p-value (two-sided):** $p = 0.103$
+
+**Decision:** Fail to reject $H_0$ at $\alpha = 0.05$. Despite the apparent pattern, there is insufficient evidence to conclude the marker is associated with disease — likely due to the very small sample size.
+
+**Interpretation note:** This example illustrates an important limitation. The study is severely **underpowered** — a larger study might well find significance. Fisher's test is honest about uncertainty; it does not manufacture significance from sparse data.
+
+## R Example: Fisher's Exact Test
+
+```{r fisher}
+# --- Genetic marker × disease status ---
+marker_disease <- matrix(
+  c(5, 2, 1, 6),
+  nrow     = 2, byrow    = TRUE,
+  dimnames = list(
+    Marker  = c("Present", "Absent"),
+    Disease = c("Disease", "No Disease")
+  )
+)
+
+kable(addmargins(marker_disease),
+      caption = "Observed: Genetic Marker × Disease Status") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+
+# --- Check expected frequencies ---
+chi_check <- chisq.test(marker_disease, correct = FALSE)
+cat("Expected frequencies:\n")
+print(round(chi_check$expected, 2))
+cat("\nMinimum expected frequency:",
+    round(min(chi_check$expected), 2),
+    "— chi-square assumption violated!\n\n")
+
+# --- Fisher's Exact Test ---
+fisher_result <- fisher.test(marker_disease, alternative = "two.sided")
+print(fisher_result)
+```
+
+```{r fisher-compare}
+# --- Compare Fisher's vs Chi-square on same data ---
+comparison <- data.frame(
+  Test      = c("Chi-Square (no correction)",
+                "Chi-Square (Yates' correction)",
+                "Fisher's Exact Test"),
+  Statistic = c(round(chisq.test(marker_disease,
+                                  correct=FALSE)$statistic, 3),
+                round(chisq.test(marker_disease,
+                                  correct=TRUE)$statistic, 3),
+                "—"),
+  p_value   = c(round(chisq.test(marker_disease,
+                                   correct=FALSE)$p.value, 4),
+                round(chisq.test(marker_disease,
+                                   correct=TRUE)$p.value, 4),
+                round(fisher_result$p.value, 4)),
+  Appropriate = c("No (E < 5)", "No (E < 5)", "Yes ✓")
+)
+
+kable(comparison,
+      caption   = "Test Comparison: Small Sample Scenario",
+      col.names = c("Test", "Statistic", "p-value", "Appropriate?")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(4, bold = TRUE,
+              color = c("tomato","tomato","darkgreen"))
+```
+
+```{r fisher-plot}
+# --- Visualize with balloon plot ---
+marker_df <- as.table(marker_disease) |>
+  as.data.frame(responseName = "Count") 
+
+ggplot(marker_df, aes(x = Disease, y = Marker)) +
+  geom_point(aes(size = Count, color = Count),
+             shape = 16, alpha = 0.8) +
+  geom_text(aes(label = Count), color = "white",
+            fontface = "bold", size = 5) +
+  scale_size_continuous(range = c(8, 25)) +
+  scale_color_gradient(low = "steelblue", high = "tomato") +
+  labs(title    = "Balloon Plot: Marker × Disease",
+       subtitle = paste0("Fisher's Exact Test: p = ",
+                         round(fisher_result$p.value, 3)),
+       x        = "Disease Status",
+       y        = "Marker Status") +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "none")
+```
+
+**Code explanation:**
+
+- `fisher.test(table, alternative)` computes the exact p-value. For 2×2 tables it also returns an **odds ratio** with a confidence interval — a useful effect measure.
+- The comparison table illustrates how chi-square p-values are unreliable with small expected frequencies — they differ substantially from Fisher's exact result.
+- The balloon plot is an intuitive alternative to a contingency table for small tables: bubble area represents cell count, making the pattern immediately visible.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 4.4
+A new teaching intervention is tested in two small classrooms. Results:
+
+|  | Passed | Failed |
+|--|--------|--------|
+| Intervention | 8 | 2 |
+| Control | 4 | 6 |
+
+(a) Check whether chi-square assumptions are met.
+(b) Run Fisher's Exact Test. What is the p-value and odds ratio?
+(c) Interpret the odds ratio in plain language.
+(d) What would a larger study need to show to confirm this result?
+:::
+
+---
+
+# Cramér's V and Effect Size for Categorical Association
+
+## Introduction
+
+A significant chi-square test only tells us that an association **exists** — it does not say how **strong** it is. With large samples, even trivially weak associations become statistically significant. **Effect size measures** for categorical variables answer the practical question: *How strongly are these two variables related?* The most versatile measure is **Cramér's V**, which standardizes chi-square to a 0–1 scale regardless of table dimensions.
+
+## Theory
+
+### Cramér's V
+
+Cramér's V is derived from the chi-square statistic, normalized to fall between 0 and 1:
+
+$$V = \sqrt{\frac{\chi^2 / N}{\min(r-1, c-1)}}$$
+
+where $N$ is the total sample size, $r$ is the number of rows, and $c$ is the number of columns.
+
+- $V = 0$: Perfect independence (no association)
+- $V = 1$: Perfect association
+
+**Interpretation benchmarks** (Cohen, 1988), adjusted for table size:
+
+| Table Size | Small | Medium | Large |
+|-----------|-------|--------|-------|
+| 2×2 | 0.10 | 0.30 | 0.50 |
+| 3×3 | 0.07 | 0.21 | 0.35 |
+| 4×4 | 0.06 | 0.17 | 0.29 |
+
+: Cramér's V interpretation by table dimensions {.striped}
+
+### The Phi Coefficient
+
+For 2×2 tables specifically, the **phi coefficient** $\phi$ is a simpler equivalent:
+
+$$\phi = \sqrt{\frac{\chi^2}{N}} = \frac{ad - bc}{\sqrt{(a+b)(c+d)(a+c)(b+d)}}$$
+
+$\phi$ ranges from $-1$ to $+1$ for 2×2 tables (with sign indicating direction) and equals Cramér's V when $\min(r-1, c-1) = 1$.
+
+### Goodman and Kruskal's Lambda
+
+An alternative measure of association is **Lambda** ($\lambda$), which measures the **proportional reduction in prediction error** — how much better we can predict one variable knowing the other:
+
+$$\lambda = \frac{\sum_j \max_i f_{ij} - \max_i R_i}{N - \max_i R_i}$$
+
+$\lambda = 0$ means knowing $X$ does not help predict $Y$; $\lambda = 1$ means perfect prediction.
+
+## Example: Cramér's V
+
+**Example 4.4.** Returning to the exercise × health study (Example 4.2): $\chi^2 = 17.42$, $N = 200$, table is 3×2.
+
+$$V = \sqrt{\frac{17.42/200}{\min(3-1, 2-1)}} = \sqrt{\frac{0.0871}{1}} = \sqrt{0.0871} \approx 0.295$$
+
+For a table with $\min(r-1, c-1) = 1$, benchmarks are 0.10/0.30/0.50 (small/medium/large). $V = 0.295$ is close to a **medium effect** — the association between exercise and health is statistically significant and of moderate practical importance.
+
+## R Example: Cramér's V and Association Measures
+
+```{r cramers-v}
+# --- Cramér's V for exercise × health ---
+exercise_health <- matrix(
+  c(40, 25, 30, 45, 15, 45),
+  nrow = 3, byrow = TRUE,
+  dimnames = list(
+    Exercise = c("Rarely", "Sometimes", "Regularly"),
+    Health   = c("Poor", "Good")
+  )
+)
+
+chi_result  <- chisq.test(exercise_health, correct = FALSE)
+N           <- sum(exercise_health)
+min_dim     <- min(nrow(exercise_health)-1, ncol(exercise_health)-1)
+cramers_v   <- sqrt(chi_result$statistic / (N * min_dim))
+
+cat("Chi-square statistic:", round(chi_result$statistic, 3), "\n")
+cat("N:", N, "\n")
+cat("min(r-1, c-1):", min_dim, "\n")
+cat("Cramér's V:", round(cramers_v, 4), "\n")
+cat("Interpretation: Medium effect (benchmark ~0.30 for this table size)\n\n")
+
+# --- Using vcd package for association measures ---
+assoc_stats <- vcd::assocstats(exercise_health)
+print(assoc_stats)
+```
+
+```{r cramers-heatmap}
+# --- Visualize standardized residuals as heatmap ---
+stdres <- chi_result$stdres
+stdres_df <- as.data.frame(as.table(stdres)) |>
+  rename(Exercise = Exercise, Health = Health, Residual = Freq)
+
+ggplot(stdres_df, aes(x = Health, y = Exercise, fill = Residual)) +
+  geom_tile(color = "white", linewidth = 1.5) +
+  geom_text(aes(label = round(Residual, 2)),
+            size = 5, fontface = "bold",
+            color = ifelse(abs(stdres_df$Residual) > 2,
+                           "white", "black")) +
+  scale_fill_gradient2(low  = "steelblue", mid = "white",
+                       high = "tomato",    midpoint = 0,
+                       limits = c(-3, 3)) +
+  labs(title    = "Standardized Residuals Heatmap",
+       subtitle = paste0("Cramér's V = ", round(cramers_v, 3),
+                         " (medium effect) | Red = more than expected, Blue = less"),
+       x        = "Health Status",
+       y        = "Exercise Frequency",
+       fill     = "Std. Residual") +
+  theme_minimal(base_size = 13)
+```
+
+**Code explanation:**
+
+- Cramér's V is computed manually here to show the formula clearly; `vcd::assocstats()` computes it (and phi, contingency coefficient) in one call.
+- The heatmap of standardized residuals is more informative than a standard mosaic plot for larger tables — color immediately draws the eye to cells with the strongest departures from independence.
+- `scale_fill_gradient2()` creates a diverging color scale centered at zero, perfect for signed residuals.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 4.5
+Using the `HairEyeColor` chi-square result from Exercise 4.2:
+
+(a) Compute Cramér's V manually from the $\chi^2$ statistic.
+(b) Use `vcd::assocstats()` to verify.
+(c) Interpret the effect size using the appropriate benchmark for the table dimensions.
+(d) Produce a standardized residuals heatmap and describe which hair-eye combinations drive the association.
+:::
+
+---
+
+# Correlation Tests
+
+## Introduction
+
+When both variables are continuous (or at least ordinal with many levels), **correlation** quantifies the strength and direction of their linear relationship. But a sample correlation $r$ could arise by chance even when the true population correlation $\rho = 0$. A **correlation test** determines whether the observed correlation is statistically distinguishable from zero. In this section we cover the two most important correlation measures: **Pearson's $r$** for linear relationships between normally distributed variables, and **Spearman's $\rho$** for monotone relationships with no normality requirement.
+
+## Theory
+
+### Pearson Correlation Test
+
+**Hypotheses:** $H_0: \rho = 0$ vs. $H_1: \rho \neq 0$ (or one-sided)
+
+Given sample correlation $r$ from $n$ pairs, the test statistic is:
+
+$$t = \frac{r\sqrt{n-2}}{\sqrt{1-r^2}} \sim t(n-2) \text{ under } H_0$$
+
+**Assumptions:**
+
+1. Both variables are continuous.
+2. The relationship is **linear**.
+3. Both variables are approximately **normally distributed** (bivariate normality).
+4. Observations are independent.
+5. No extreme outliers (Pearson's $r$ is sensitive to outliers).
+
+**Confidence interval for $\rho$:** Use Fisher's z-transformation:
+$$z = \frac{1}{2}\ln\!\left(\frac{1+r}{1-r}\right), \quad \text{SE}(z) = \frac{1}{\sqrt{n-3}}$$
+
+Then transform back to the correlation scale.
+
+### Spearman Rank Correlation Test
+
+**Spearman's $\rho$** replaces raw values with **ranks** and computes Pearson's $r$ on the ranks. This makes it robust to:
+
+- Non-normality
+- Outliers
+- Monotone but non-linear relationships
+- Ordinal variables
+
+$$\rho_s = 1 - \frac{6\sum d_i^2}{n(n^2-1)}$$
+
+where $d_i$ is the difference in ranks for pair $i$. For large samples, a t-approximation is used for hypothesis testing.
+
+### Interpreting Correlation
+
+| $|r|$ or $|\rho|$ | Strength |
+|-------------------|----------|
+| 0.00 – 0.19 | Negligible |
+| 0.20 – 0.39 | Weak |
+| 0.40 – 0.59 | Moderate |
+| 0.60 – 0.79 | Strong |
+| 0.80 – 1.00 | Very strong |
+
+: Correlation strength benchmarks {.striped}
+
+::: {.callout-warning}
+## Critical Reminder: Correlation ≠ Causation
+A significant correlation between $X$ and $Y$ does not imply that $X$ causes $Y$, nor that $Y$ causes $X$. Both could be driven by a third variable $Z$ (confounding), or the association could be spurious. Always consider alternative explanations and visualize the scatterplot alongside the correlation coefficient.
+:::
+
+## Example: Pearson and Spearman Correlation Tests
+
+**Example 4.5.** A researcher examines the relationship between hours of sleep per night ($X$) and cognitive performance score ($Y$) in 40 participants.
+
+Results: $r = 0.61$, $t_{38} = 4.73$, $p < 0.001$, 95% CI: $(0.37, 0.78)$.
+
+**Interpretation:** There is a statistically significant, strong positive linear correlation between sleep duration and cognitive performance ($r = 0.61$, $p < 0.001$). The 95% CI $(0.37, 0.78)$ excludes zero, confirming the association. However, this is an observational study — we cannot conclude that more sleep **causes** better performance.
+
+## R Example: Pearson and Spearman Correlation Tests
+
+```{r correlation}
+# --- Use mtcars: test correlation between hp and mpg ---
+data(mtcars)
+
+# Pearson correlation test
+pearson_result <- cor.test(mtcars$hp, mtcars$mpg,
+                            method      = "pearson",
+                            alternative = "two.sided")
+
+# Spearman correlation test
+spearman_result <- cor.test(mtcars$hp, mtcars$mpg,
+                             method      = "spearman",
+                             alternative = "two.sided",
+                             exact       = FALSE)
+
+# Summary table
+cor_summary <- data.frame(
+  Method    = c("Pearson", "Spearman"),
+  r_or_rho  = round(c(pearson_result$estimate,
+                       spearman_result$estimate), 4),
+  Statistic = round(c(pearson_result$statistic,
+                       spearman_result$statistic), 3),
+  df        = c(pearson_result$parameter, "—"),
+  p_value   = round(c(pearson_result$p.value,
+                       spearman_result$p.value), 6),
+  CI_lower  = c(round(pearson_result$conf.int[1], 3), "—"),
+  CI_upper  = c(round(pearson_result$conf.int[2], 3), "—")
+)
+
+kable(cor_summary,
+      caption   = "Correlation Test Results: Horsepower vs. MPG",
+      col.names = c("Method", "r / ρ", "t / S",
+                    "df", "p-value", "95% CI Lower", "95% CI Upper")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+```{r correlation-plot}
+# --- Scatterplot with correlation annotation ---
+r_val <- round(pearson_result$estimate, 3)
+p_val <- round(pearson_result$p.value, 4)
+
+p1 <- ggplot(mtcars, aes(x = hp, y = mpg)) +
+  geom_point(color = "steelblue", size = 2.5, alpha = 0.8) +
+  geom_smooth(method = "lm", color = "tomato",
+              se = TRUE, linewidth = 1.1) +
+  annotate("text", x = 280, y = 30,
+           label = paste0("r = ", r_val,
+                          "\np = ", p_val),
+           color = "tomato", fontface = "bold",
+           size = 4, hjust = 1) +
+  labs(title    = "Horsepower vs. Fuel Efficiency",
+       subtitle = "Pearson correlation with 95% confidence band",
+       x        = "Horsepower (hp)",
+       y        = "Miles per Gallon (mpg)") +
+  theme_minimal(base_size = 12)
+
+# --- Full correlation matrix for mtcars ---
+cont_vars <- mtcars[, c("mpg","cyl","disp","hp","wt","qsec")]
+cor_mat   <- cor(cont_vars, method = "pearson")
+
+p2 <- ggcorrplot(cor_mat,
+                 method    = "circle",
+                 type      = "upper",
+                 lab       = TRUE,
+                 lab_size  = 3.5,
+                 colors    = c("tomato","white","steelblue"),
+                 title     = "Correlation Matrix — mtcars",
+                 ggtheme   = theme_minimal(base_size = 11))
+
+p1 + p2
+```
+
+**Code explanation:**
+
+- `cor.test(x, y, method, alternative)` tests both Pearson (`"pearson"`) and Spearman (`"spearman"`) correlations. Pearson returns a CI; Spearman does not (due to the rank-based nature).
+- `exact = FALSE` in Spearman uses a normal approximation — necessary when ties are present in the data.
+- `ggcorrplot()` produces a publication-ready correlation matrix. `type = "upper"` shows only the upper triangle to avoid redundancy.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 4.6
+Using the `iris` dataset, test the correlation between `Sepal.Length` and `Petal.Length`.
+
+(a) Produce a scatterplot. Does the relationship appear linear?
+(b) Check normality of both variables (Shapiro-Wilk). Which correlation method is more appropriate?
+(c) Run both Pearson and Spearman tests. Compare and explain any differences.
+(d) Compute the full 4×4 correlation matrix for all numeric variables and visualize with `ggcorrplot()`.
+:::
+
+::: {.callout-tip}
+## Exercise 4.7
+The `anscombe` dataset contains four pairs of variables with nearly identical correlations but very different scatterplot shapes.
+
+(a) Compute Pearson's $r$ for all four pairs (x1/y1, x2/y2, x3/y3, x4/y4).
+(b) Plot all four scatterplots in a 2×2 grid.
+(c) For which pairs is Pearson's $r$ a misleading summary? What would be more appropriate?
+:::
+
+---
+
+# Point-Biserial and Phi Coefficients
+
+## Introduction
+
+Not all association problems involve two continuous or two categorical variables. In data science, binary variables are ubiquitous — pass/fail, churn/retain, click/no-click, disease/healthy. When one or both variables in a pair are binary, specialized correlation measures maintain interpretability while remaining mathematically consistent with the general correlation framework. The **point-biserial correlation** handles the binary-continuous case; the **phi coefficient** handles the binary-binary case.
+
+## Theory
+
+### Point-Biserial Correlation ($r_{pb}$)
+
+The **point-biserial correlation** measures the association between a **naturally binary variable** (coded 0/1) and a **continuous variable**. It is mathematically equivalent to Pearson's $r$ computed between the 0/1 binary variable and the continuous variable:
+
+$$r_{pb} = \frac{\bar{Y}_1 - \bar{Y}_0}{s_Y}\sqrt{\frac{n_1 n_0}{n^2}}$$
+
+where $\bar{Y}_1$ and $\bar{Y}_0$ are the means of the continuous variable in the two groups, $s_Y$ is the overall standard deviation, and $n_1$, $n_0$ are the group sizes.
+
+**Significance testing:** Because $r_{pb}$ is algebraically equivalent to Pearson's $r$, the same t-test applies:
+
+$$t = \frac{r_{pb}\sqrt{n-2}}{\sqrt{1-r_{pb}^2}} \sim t(n-2)$$
+
+This is equivalent to running an **independent samples t-test** comparing the two groups — the same information, expressed differently.
+
+**Assumptions:** The continuous variable should be approximately normally distributed within each group (same as the independent samples t-test).
+
+### Phi Coefficient ($\phi$)
+
+The **phi coefficient** measures association between **two binary variables**. It is Pearson's $r$ applied to two 0/1 variables:
+
+$$\phi = \frac{ad - bc}{\sqrt{(a+b)(c+d)(a+c)(b+d)}}$$
+
+where $a, b, c, d$ are the four cells of a 2×2 contingency table. $\phi$ ranges from $-1$ to $+1$ and equals Cramér's V for 2×2 tables.
+
+**Interpretation benchmarks** (same as Pearson's $r$):
+
+- $|\phi| < 0.10$: Negligible
+- $0.10 \leq |\phi| < 0.30$: Weak
+- $0.30 \leq |\phi| < 0.50$: Moderate
+- $|\phi| \geq 0.50$: Strong
+
+### Biserial vs. Point-Biserial
+
+A subtle distinction: the **point-biserial** is used when the binary variable is *truly* dichotomous (e.g., sex, treatment assignment). The **biserial correlation** is used when the binary variable is an artificially dichotomized continuous variable (e.g., pass/fail from a continuous score). The biserial correlation is larger in magnitude and corrects for the information lost by dichotomization.
+
+## Example: Point-Biserial Correlation
+
+**Example 4.6.** A study records whether students passed a preparatory course (0 = No, 1 = Yes) and their final exam score. Results: $r_{pb} = 0.48$, $t_{58} = 4.19$, $p < 0.001$.
+
+**Interpretation:** Students who passed the preparatory course scored significantly higher on the final exam ($r_{pb} = 0.48$, $p < 0.001$). This is a moderate-to-strong effect, indicating the preparatory course is associated with better exam performance. Note that this is equivalent to a two-sample t-test comparing exam scores between the two groups.
+
+## R Example: Point-Biserial and Phi Coefficients
+
+```{r point-biserial}
+# --- Point-biserial: transmission (binary) vs. mpg (continuous) ---
+# am: 0 = automatic, 1 = manual
+data(mtcars)
+
+# Method 1: cor.test (Pearson on binary × continuous)
+pb_result <- cor.test(mtcars$am, mtcars$mpg,
+                       method = "pearson")
+
+cat("=== Point-Biserial Correlation ===\n")
+cat("r_pb:", round(pb_result$estimate, 4), "\n")
+cat("t:   ", round(pb_result$statistic, 3), "\n")
+cat("df:  ", pb_result$parameter, "\n")
+cat("p:   ", round(pb_result$p.value, 4), "\n")
+cat("95% CI: [", round(pb_result$conf.int[1],3),
+    ",", round(pb_result$conf.int[2],3), "]\n\n")
+
+# Equivalence to t-test
+t_equiv <- t.test(mpg ~ am, data = mtcars, var.equal = FALSE)
+cat("Equivalent Welch's t-test p-value:",
+    round(t_equiv$p.value, 4), "(same conclusion)\n")
+```
+
+```{r phi-coeff}
+# --- Phi coefficient: am (auto/manual) × efficiency (high/low) ---
+mtcars_bin <- mtcars |>
+  mutate(
+    transmission = factor(am, labels = c("Auto","Manual")),
+    efficiency   = factor(ifelse(mpg >= median(mpg),
+                                  "High","Low"),
+                           levels = c("Low","High"))
+  )
+
+tab_2x2 <- table(mtcars_bin$transmission,
+                  mtcars_bin$efficiency)
+
+# Phi coefficient
+chi_2x2 <- chisq.test(tab_2x2, correct = FALSE)
+phi_val  <- sqrt(chi_2x2$statistic / sum(tab_2x2))
+
+cat("=== Phi Coefficient ===\n")
+kable(addmargins(tab_2x2),
+      caption = "Transmission × Efficiency (2×2 Table)") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+
+cat("Phi coefficient:", round(phi_val, 4), "\n")
+cat("Chi-square p-value:", round(chi_2x2$p.value, 4), "\n")
+cat("Interpretation: Moderate-to-strong association\n")
+```
+
+```{r pb-plot}
+# --- Visualize point-biserial ---
+p1 <- ggplot(mtcars_bin, aes(x = transmission,
+                              y = mpg, fill = transmission)) +
+  geom_violin(alpha = 0.5, trim = FALSE) +
+  geom_boxplot(width = 0.12, fill = "white") +
+  scale_fill_manual(values = c("Auto" = "steelblue",
+                                "Manual" = "tomato")) +
+  annotate("text", x = 1.5, y = 35,
+           label = paste0("r_pb = ",
+                           round(pb_result$estimate, 3),
+                           "\np = ", round(pb_result$p.value, 4)),
+           size = 4, fontface = "bold", color = "gray20") +
+  labs(title = "A. Point-Biserial: Transmission vs. MPG",
+       x = "Transmission", y = "MPG") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+
+# --- Visualize phi ---
+p2 <- as.data.frame(tab_2x2) |>
+  rename(Transmission = Var1, Efficiency = Var2) |>
+  ggplot(aes(x = Efficiency, y = Transmission,
+             fill = Freq)) +
+  geom_tile(color = "white", linewidth = 1.5) +
+  geom_text(aes(label = Freq), size = 6, fontface = "bold") +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  annotate("text", x = 1.5, y = 2.45,
+           label = paste0("φ = ", round(phi_val, 3)),
+           size  = 4.5, fontface = "bold") +
+  labs(title = "B. Phi Coefficient: Transmission × Efficiency",
+       x = "Efficiency", y = "Transmission") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+
+p1 + p2
+```
+
+**Code explanation:**
+
+- `cor.test(binary, continuous, method = "pearson")` correctly computes the point-biserial correlation — no special function is needed since it is mathematically Pearson's $r$.
+- Phi is computed as $\sqrt{\chi^2/N}$ — identical to Cramér's V for 2×2 tables.
+- The equivalence between point-biserial and the independent samples t-test is shown explicitly — both tests use the same information and yield the same p-value (up to the choice of equal/unequal variances).
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 4.8
+Using the `mtcars` dataset:
+
+(a) Compute the point-biserial correlation between `vs` (engine shape: 0 = V-shaped, 1 = straight) and `qsec` (quarter-mile time).
+(b) Verify this equals the Pearson correlation between the two variables.
+(c) Is there a significant association? Report in full.
+(d) Compute the phi coefficient between `vs` and `am` (both binary). What is the strength of this association?
+:::
+
+---
+
+# Partial Correlation
+
+## Introduction
+
+Simple bivariate correlation measures the relationship between two variables, but in real datasets variables are rarely isolated — many are influenced by common underlying factors. **Partial correlation** measures the association between two variables $X$ and $Y$ **after removing the influence of one or more control variables $Z$**. It answers: *Is the relationship between $X$ and $Y$ real, or is it merely a reflection of both being related to $Z$?* This is a crucial step in distinguishing genuine associations from spurious ones, and a natural bridge toward multiple regression (Chapter 10).
+
+## Theory
+
+### First-Order Partial Correlation
+
+The **first-order partial correlation** between $X$ and $Y$ controlling for $Z$ is:
+
+$$r_{XY \cdot Z} = \frac{r_{XY} - r_{XZ} \cdot r_{YZ}}{\sqrt{(1-r_{XZ}^2)(1-r_{YZ}^2)}}$$
+
+where $r_{XY}$, $r_{XZ}$, $r_{YZ}$ are the zero-order (simple) Pearson correlations.
+
+**Interpretation:** $r_{XY \cdot Z}$ is the correlation between the **residuals** of regressing $X$ on $Z$ and the **residuals** of regressing $Y$ on $Z$ — it is the "pure" relationship between $X$ and $Y$ once the linear effect of $Z$ is removed from both.
+
+### Significance Testing
+
+The partial correlation is tested using a t-distribution with $n - 2 - k$ degrees of freedom, where $k$ is the number of control variables:
+
+$$t = \frac{r_{XY \cdot Z}\sqrt{n-2-k}}{\sqrt{1-r_{XY \cdot Z}^2}} \sim t(n-2-k)$$
+
+### Partial vs. Semi-Partial Correlation
+
+A related concept is the **semi-partial (part) correlation** $r_{X(Y \cdot Z)}$: the correlation between $X$ and the part of $Y$ that is **unique** (not shared with $Z$). It measures the unique contribution of $Y$ to $X$, which is central to multiple regression (it is the square root of the $\Delta R^2$ when $Y$ is added to a regression already containing $Z$).
+
+### Spurious Correlation
+
+A **spurious correlation** occurs when $X$ and $Y$ are correlated only because both are caused by a third variable $Z$. After partialling out $Z$, the partial correlation drops to (near) zero. Classic example: ice cream sales and drowning rates are positively correlated — both are caused by hot weather (the confounder). The partial correlation controlling for temperature would be near zero.
+
+## Example: Partial Correlation
+
+**Example 4.7.** In the `mtcars` dataset, `mpg` and `hp` are strongly negatively correlated ($r = -0.78$). But both are also related to car weight (`wt`): heavier cars tend to have more horsepower and worse fuel economy. Is the `mpg`-`hp` correlation "real" or partly a reflection of their shared relationship with `wt`?
+
+- $r_{\text{mpg,hp}} = -0.78$
+- $r_{\text{mpg,wt}} = -0.87$
+- $r_{\text{hp,wt}} = +0.66$
+
+**Partial correlation controlling for `wt`:**
+
+$$r_{\text{mpg,hp} \cdot \text{wt}} = \frac{-0.78 - (-0.87)(0.66)}{\sqrt{(1-0.87^2)(1-0.66^2)}} = \frac{-0.78 + 0.574}{\sqrt{0.243 \times 0.564}} = \frac{-0.206}{0.370} \approx -0.557$$
+
+The partial correlation ($-0.56$) is notably weaker than the zero-order correlation ($-0.78$), suggesting that part of the `mpg`-`hp` relationship is mediated through vehicle weight. However, a meaningful negative relationship remains even after controlling for weight.
+
+## R Example: Partial Correlation
+
+```{r partial-corr}
+# --- Partial correlations in mtcars ---
+data(mtcars)
+
+# Zero-order correlations (for context)
+cat("=== Zero-Order Correlations ===\n")
+cor_mat <- cor(mtcars[, c("mpg","hp","wt","disp")])
+round(cor_mat, 3)
+```
+
+```{r partial-corr2}
+# --- Partial correlation: mpg ~ hp controlling for wt ---
+library(ppcor)
+
+# First-order partial correlation (controlling for one variable)
+partial_result <- pcor.test(mtcars$mpg, mtcars$hp, mtcars$wt)
+
+cat("=== Partial Correlation: mpg & hp | wt ===\n")
+cat("Zero-order r(mpg, hp):     ",
+    round(cor(mtcars$mpg, mtcars$hp), 4), "\n")
+cat("Partial r(mpg, hp | wt):   ",
+    round(partial_result$estimate, 4), "\n")
+cat("t-statistic:               ",
+    round(partial_result$statistic, 3), "\n")
+cat("df:                        ", partial_result$n - 2 - 1, "\n")
+cat("p-value:                   ",
+    round(partial_result$p.value, 4), "\n\n")
+
+# Full partial correlation matrix (controlling for wt)
+pcor_matrix <- pcor(mtcars[, c("mpg","hp","disp","qsec")],
+                    method = "pearson")
+
+cat("=== Partial Correlation Matrix (all pairs, no controls) ===\n")
+round(pcor_matrix$estimate, 3)
+```
+
+```{r partial-plot}
+# --- Compare zero-order vs partial correlation visually ---
+# Compute residuals of mpg and hp after removing wt's influence
+resid_mpg <- residuals(lm(mpg ~ wt, data = mtcars))
+resid_hp  <- residuals(lm(hp  ~ wt, data = mtcars))
+
+p1 <- ggplot(mtcars, aes(x = hp, y = mpg)) +
+  geom_point(color = "steelblue", size = 2.5, alpha = 0.8) +
+  geom_smooth(method = "lm", color = "tomato",
+              se = FALSE, linewidth = 1) +
+  annotate("text", x = 280, y = 31,
+           label = paste0("r = ",
+                           round(cor(mtcars$hp, mtcars$mpg), 3)),
+           color = "tomato", fontface = "bold", size = 4) +
+  labs(title    = "A. Zero-Order Correlation",
+       subtitle = "mpg vs. hp (no control)",
+       x = "Horsepower (hp)", y = "MPG") +
+  theme_minimal(base_size = 12)
+
+p2 <- ggplot(data.frame(res_hp  = resid_hp,
+                         res_mpg = resid_mpg),
+             aes(x = res_hp, y = res_mpg)) +
+  geom_point(color = "seagreen", size = 2.5, alpha = 0.8) +
+  geom_smooth(method = "lm", color = "tomato",
+              se = FALSE, linewidth = 1) +
+  annotate("text", x = 100, y = 4,
+           label = paste0("r = ",
+                           round(cor(resid_hp, resid_mpg), 3)),
+           color = "tomato", fontface = "bold", size = 4) +
+  labs(title    = "B. Partial Correlation",
+       subtitle = "mpg vs. hp (after removing wt influence)",
+       x = "hp Residual (after wt)",
+       y = "mpg Residual (after wt)") +
+  theme_minimal(base_size = 12)
+
+p1 + p2
+```
+
+**Code explanation:**
+
+- `pcor.test(x, y, z)` from `ppcor` computes the first-order partial correlation between `x` and `y` controlling for `z`, with a significance test.
+- `pcor(data_frame)` computes the full partial correlation matrix (each pair controlled for all others) — analogous to `cor()` for zero-order correlations.
+- Panels A and B illustrate the concept geometrically: Panel B shows the scatterplot of **residuals** — the pure association between `mpg` and `hp` after both have been "de-weighted" by `wt`.
+
+**Try modifying:** Control for both `wt` and `disp` simultaneously using `pcor.test(mpg, hp, cbind(wt, disp))`. Does the partial correlation weaken further?
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 4.9
+Using the `iris` dataset, `Sepal.Length` and `Petal.Length` are strongly correlated ($r \approx 0.87$). Species is a potential confounder.
+
+(a) Compute the zero-order Pearson correlation between `Sepal.Length` and `Petal.Length`.
+(b) Encode `Species` as a numeric variable (1, 2, 3) and compute the partial correlation controlling for it using `pcor.test()`.
+(c) Does the partial correlation differ substantially from the zero-order correlation? What does this suggest?
+(d) Visualize both zero-order and partial relationships as scatterplots (color points by species in panel A).
+:::
+
+::: {.callout-tip}
+## Exercise 4.10 (Challenge)
+Using `mtcars`, construct a full analysis comparing zero-order and partial correlations for the variable pair (`wt`, `mpg`), controlling for `cyl` (number of cylinders).
+
+(a) Compute zero-order $r$(wt, mpg) and partial $r$(wt, mpg | cyl).
+(b) Do the correlations differ? What does this tell us about the role of engine size?
+(c) Produce a 2-panel residual scatterplot similar to the chapter example.
+(d) Write a 150-word research summary reporting both correlations in APA format.
+:::
+
+---
+
+# Chapter Lab Activity: Exploring Independence with the `titanic` and `mtcars` Datasets
+
+## Objectives
+
+In this lab you will apply the full spectrum of independence tests to real data — choosing the correct test based on variable types, checking assumptions, reporting effect sizes, and visualizing associations. You will work with the built-in `Titanic` dataset (categorical variables) and `mtcars` (mixed variable types).
+
+## The Datasets
+
+```{r lab-intro}
+# --- Titanic dataset (built-in) ---
+titanic_df <- as.data.frame(Titanic)
+titanic_expanded <- titanic_df[rep(seq_len(nrow(titanic_df)),
+                                    titanic_df$Freq), -5]
+rownames(titanic_expanded) <- NULL
+
+kable(head(titanic_expanded, 10),
+      caption = "Titanic Dataset (first 10 rows)") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                font_size = 11)
+
+cat("Total passengers:", nrow(titanic_expanded), "\n")
+cat("Variables:", names(titanic_expanded), "\n")
+```
+
+## Lab Task 1: Survival × Class — Chi-Square Test
+
+```{r lab-task1}
+# Contingency table: Class × Survived
+class_surv <- table(titanic_expanded$Class,
+                     titanic_expanded$Survived)
+
+kable(addmargins(class_surv),
+      caption = "Passenger Class × Survival Status") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+
+# Chi-square test
+chi_titanic <- chisq.test(class_surv, correct = FALSE)
+cat("\nChi-Square Test Results:\n")
+cat("χ²(", chi_titanic$parameter, ") =",
+    round(chi_titanic$statistic, 2), "\n")
+cat("p-value:", round(chi_titanic$p.value, 6), "\n")
+cat("All expected ≥ 5:", all(chi_titanic$expected >= 5), "\n")
+
+# Cramér's V
+N_t     <- sum(class_surv)
+min_dim <- min(nrow(class_surv)-1, ncol(class_surv)-1)
+v_t     <- sqrt(chi_titanic$statistic / (N_t * min_dim))
+cat("Cramér's V:", round(v_t, 4), "\n")
+```
+
+## Lab Task 2: Survival × Sex — Fisher's Exact Test
+
+```{r lab-task2}
+# Sex × Survived (2×2 table)
+sex_surv <- table(titanic_expanded$Sex,
+                   titanic_expanded$Survived)
+
+kable(addmargins(sex_surv),
+      caption = "Sex × Survival Status") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+
+# Both chi-square and Fisher's for comparison
+chi_sex    <- chisq.test(sex_surv, correct = FALSE)
+fisher_sex <- fisher.test(sex_surv)
+
+phi_sex <- sqrt(chi_sex$statistic / sum(sex_surv))
+
+cat("Chi-Square: χ²(1) =", round(chi_sex$statistic, 2),
+    ", p =", round(chi_sex$p.value, 6), "\n")
+cat("Fisher's Exact: p =", round(fisher_sex$p.value, 6), "\n")
+cat("Odds Ratio:", round(fisher_sex$estimate, 3),
+    "  95% CI: [",
+    round(fisher_sex$conf.int[1], 3), ",",
+    round(fisher_sex$conf.int[2], 3), "]\n")
+cat("Phi coefficient:", round(phi_sex, 4), "\n")
+```
+
+## Lab Task 3: Correlation Analysis — mtcars
+
+```{r lab-task3}
+# Full correlation matrix with significance tests
+data(mtcars)
+cont_vars <- mtcars[, c("mpg","hp","wt","disp","qsec")]
+
+# Correlation matrix
+cor_mat  <- cor(cont_vars)
+#p_mat    <- cor_pmat(cont_vars)   # p-value matrix from ggcorrplot
+ggcorrplot(cor_mat,
+           method    = "circle",
+           type      = "upper",
+           lab       = TRUE,
+           sig.level = 0.05,
+           lab_size  = 3.5,
+           insig     = "blank",
+           colors    = c("tomato","white","steelblue"),
+           title     = "Correlation Matrix: mtcars\n(blanked = not significant at α=0.05)",
+           ggtheme   = theme_minimal(base_size = 11))
+
+```
+
+## Lab Task 4: Partial Correlation — Controlling for Weight
+
+```{r lab-task4}
+# Compare zero-order vs partial correlations
+pairs_to_test <- list(
+  c("mpg", "hp"),
+  c("mpg", "disp"),
+  c("hp",  "disp")
+)
+
+partial_summary <- map_dfr(pairs_to_test, function(pair) {
+  x <- mtcars[[pair[1]]]
+  y <- mtcars[[pair[2]]]
+  z <- mtcars$wt
+
+  r0  <- cor(x, y)
+  res <- pcor.test(x, y, z)
+
+  data.frame(
+    Pair           = paste(pair[1], "~", pair[2]),
+    Zero_order_r   = round(r0, 4),
+    Partial_r_wt   = round(res$estimate, 4),
+    p_value        = round(res$p.value, 4),
+    Change         = round(res$estimate - r0, 4)
+  )
+})
+
+kable(partial_summary,
+      caption   = "Zero-Order vs. Partial Correlations (controlling for wt)",
+      col.names = c("Variable Pair", "Zero-Order r",
+                    "Partial r | wt", "p-value",
+                    "Change in r")) |>
+  kable_styling(bootstrap_options = c("striped","hover")) |>
+  column_spec(5, bold = TRUE,
+              color = ifelse(abs(partial_summary$Change) > 0.1,
+                             "tomato", "gray40"))
+```
+
+## Lab Task 5: Comprehensive Visualization
+
+```{r lab-task5, fig.height=8}
+# Panel A: Survival rates by class (Titanic)
+p1 <- as.data.frame(class_surv) |>
+  rename(Class = Var1, Survived = Var2) |>
+  group_by(Class) |>
+  mutate(pct = Freq / sum(Freq)) |>
+  ggplot(aes(x = Class, y = pct, fill = Survived)) +
+  geom_col(color = "white") +
+  scale_fill_manual(values = c("No" = "tomato",
+                                "Yes" = "steelblue")) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "A. Survival Rate by Passenger Class",
+       subtitle = paste0("Cramér's V = ", round(v_t, 3)),
+       x = "Class", y = "Proportion") +
+  theme_minimal(base_size = 11)
+
+# Panel B: Survival by sex
+p2 <- as.data.frame(sex_surv) |>
+  rename(Sex = Var1, Survived = Var2) |>
+  group_by(Sex) |>
+  mutate(pct = Freq / sum(Freq)) |>
+  ggplot(aes(x = Sex, y = pct, fill = Survived)) +
+  geom_col(color = "white") +
+  scale_fill_manual(values = c("No" = "tomato",
+                                "Yes" = "steelblue")) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "B. Survival Rate by Sex",
+       subtitle = paste0("φ = ", round(phi_sex, 3),
+                         " | OR = ",
+                         round(fisher_sex$estimate, 2)),
+       x = "Sex", y = "Proportion") +
+  theme_minimal(base_size = 11)
+
+# Panel C: Standardized residuals heatmap (Class × Survived)
+stdres_df <- as.data.frame(chi_titanic$stdres) |>
+  rename(Class = Var1, Survived = Var2, Residual = Freq)
+
+p3 <- ggplot(stdres_df,
+             aes(x = Survived, y = Class, fill = Residual)) +
+  geom_tile(color = "white", linewidth = 1.2) +
+  geom_text(aes(label = round(Residual, 2)),
+            fontface = "bold", size = 4.5,
+            color = ifelse(abs(stdres_df$Residual) > 2,
+                           "white", "black")) +
+  scale_fill_gradient2(low  = "steelblue", mid = "white",
+                       high = "tomato",    midpoint = 0) +
+  labs(title = "C. Standardized Residuals",
+       subtitle = "Class × Survived",
+       x = "Survived", y = "Class") +
+  theme_minimal(base_size = 11)
+
+# Panel D: Partial vs zero-order (hp vs mpg)
+resid_mpg <- residuals(lm(mpg ~ wt, data = mtcars))
+resid_hp  <- residuals(lm(hp  ~ wt, data = mtcars))
+
+p4 <- ggplot(data.frame(res_hp  = resid_hp,
+                         res_mpg = resid_mpg),
+             aes(x = res_hp, y = res_mpg)) +
+  geom_point(color = "seagreen", size = 2.5, alpha = 0.8) +
+  geom_smooth(method = "lm", color = "tomato",
+              se = FALSE, linewidth = 1) +
+  labs(title    = "D. Partial Correlation: mpg & hp | wt",
+       subtitle = paste0("Partial r = ",
+                          round(pcor.test(mtcars$mpg,
+                                          mtcars$hp,
+                                          mtcars$wt)$estimate,3)),
+       x = "hp Residual", y = "mpg Residual") +
+  theme_minimal(base_size = 11)
+
+(p1 + p2) / (p3 + p4)
+```
+
+## Lab Discussion Questions
+
+Answer the following in writing:
+
+1. **Test Selection:** In Lab Task 2, both chi-square and Fisher's exact test give nearly identical p-values. Why? Does the very large sample size ($N = 2201$) affect which test is preferable?
+
+2. **Effect Size vs. Significance:** The chi-square test for Class × Survival is highly significant ($p < 0.001$). Interpret Cramér's V = `r round(v_t, 3)`. Is this a practically important association? How would you communicate this to a non-statistician?
+
+3. **Odds Ratio Interpretation:** Fisher's test for Sex × Survival gives an odds ratio. Interpret this in plain language: what does the odds ratio tell us about the relationship between being female and surviving?
+
+4. **Partial Correlation:** After controlling for weight (`wt`), the correlation between `mpg` and `hp` weakens. Does this mean weight fully "explains" the mpg-hp relationship? What other variables might also act as confounders?
+
+5. **Spurious Correlation:** Can you identify a potential spurious correlation in the `mtcars` dataset? Propose which third variable might be the confounder and describe how you would test this using partial correlation.
+
+---
+
+# Chapter Summary
+
+## Summary
+
+This chapter built a comprehensive toolkit for testing independence and measuring association across all combinations of variable types:
+
+- **The concept of independence** — two variables are independent if knowing one provides no information about the other; this must be tested formally, not assumed.
+- **Chi-square test** — the standard test for two categorical variables; based on comparing observed to expected frequencies in a contingency table.
+- **Fisher's Exact Test** — the correct alternative when expected cell frequencies are small; computes exact probabilities rather than relying on asymptotic approximations.
+- **Cramér's V** — standardizes chi-square to a 0–1 scale, enabling interpretation of association strength independently of sample size and table dimensions.
+- **Pearson and Spearman correlation tests** — test whether linear (Pearson) or monotone (Spearman) relationships between continuous or ordinal variables are significantly different from zero.
+- **Point-biserial and phi coefficients** — extend the correlation framework to binary variables, maintaining mathematical consistency with Pearson's $r$.
+- **Partial correlation** — isolates the "pure" relationship between two variables after removing the influence of one or more control variables, helping distinguish real associations from spurious ones.
+
+::: {.callout-important}
+## Key Formulas to Know
+
+**Chi-Square Statistic:**
+$$\chi^2 = \sum_{i,j} \frac{(O_{ij} - E_{ij})^2}{E_{ij}}, \quad E_{ij} = \frac{R_i C_j}{N}$$
+
+**Cramér's V:**
+$$V = \sqrt{\frac{\chi^2/N}{\min(r-1,\, c-1)}}$$
+
+**Pearson Correlation t-test:**
+$$t = \frac{r\sqrt{n-2}}{\sqrt{1-r^2}} \sim t(n-2)$$
+
+**First-Order Partial Correlation:**
+$$r_{XY \cdot Z} = \frac{r_{XY} - r_{XZ} \cdot r_{YZ}}{\sqrt{(1-r_{XZ}^2)(1-r_{YZ}^2)}}$$
+
+**Phi Coefficient (2×2):**
+$$\phi = \frac{ad - bc}{\sqrt{(a+b)(c+d)(a+c)(b+d)}}$$
+:::
+
+## References
+
+Anderson, E. (1935). The irises of the Gaspé Peninsula. *Bulletin of the American Iris Society*, *59*, 2–5.
+
+Cohen, J. (1988). *Statistical power analysis for the behavioral sciences* (2nd ed.). Lawrence Erlbaum Associates.
+
+Fox, J., & Weisberg, S. (2019). *An R companion to applied regression* (3rd ed.). SAGE.
+
+Henderson, H. V., & Velleman, P. F. (1981). Building multiple regression models interactively. *Biometrics*, *37*(2), 391–411.
+
+Kassambara, A. (2023). *rstatix: Pipe-friendly framework for basic statistical tests* (R package version 0.7.2). https://CRAN.R-project.org/package=rstatix
+
+Kim Larsen. (2015). *ppcor: An R package for a fast calculation to semi-partial correlation coefficients* (R package version 1.1). https://CRAN.R-project.org/package=ppcor
+
+Meyer, D., Zeileis, A., & Hornik, K. (2023). *vcd: Visualizing categorical data* (R package version 1.4-11). https://CRAN.R-project.org/package=vcd
+
+Pedersen, T. L. (2022). *patchwork: The composer of plots* (R package version 1.1.2). https://CRAN.R-project.org/package=patchwork
+
+R Core Team. (2024). *R: A language and environment for statistical computing*. R Foundation for Statistical Computing. https://www.R-project.org/
+
+Shapiro, S. S., & Wilk, M. B. (1965). An analysis of variance test for normality. *Biometrika*, *52*(3/4), 591–611.
+
+Sievert, C., & others. (2023). *ggcorrplot: Visualization of a correlation matrix using ggplot2* (R package version 0.1.4). https://CRAN.R-project.org/package=ggcorrplot
+
+Spearman, C. (1904). "General intelligence," objectively determined and measured. *American Journal of Psychology*, *15*(2), 201–292.
+
+Wei, T., & Simko, V. (2021). *corrplot: Visualization of a correlation matrix* (R package version 0.92). https://CRAN.R-project.org/package=corrplot
+
+Wickham, H. (2016). *ggplot2: Elegant graphics for data analysis*. Springer.
+
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. *Journal of Open Source Software*, *4*(43), 1686.
+
+Xie, Y. (2015). *Dynamic documents with R and knitr* (2nd ed.). CRC Press.
+
+---
+
+*End of Chapter 4. Proceed to Chapter 5: Data Sampling Techniques.*

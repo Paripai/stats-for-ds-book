@@ -1,0 +1,1540 @@
+# Chapter 10: Regression Analysis
+
+```{r setup}
+# Load all libraries needed for this chapter
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(patchwork)
+library(car)           # regression diagnostics
+library(lmtest)        # Breusch-Pagan, Durbin-Watson
+library(glmnet)        # Ridge and Lasso
+library(mgcv)          # GAM
+library(MASS)          # stepwise selection, datasets
+library(broom)         # tidy model output
+library(ggfortify)     # autoplot for lm diagnostics
+library(corrplot)      # correlation visualization
+library(moments)       # skewness
+```
+
+---
+
+# Chapter Overview
+
+## Introduction
+
+**Regression analysis** is the statistical method for modeling the relationship between a continuous outcome variable and one or more predictor variables. It is arguably the most widely used technique in quantitative research — estimating the effect of education on wages, predicting house prices from property characteristics, quantifying how temperature affects crop yields. Regression bridges descriptive and inferential statistics: it summarizes relationships, tests hypotheses about effects, and makes predictions about new observations.
+
+This chapter covers:
+
+- **Simple Linear Regression** — the foundational one-predictor model
+- **Multiple Linear Regression** — extending to many predictors, interpretation, and inference
+- **Regression Diagnostics** — verifying model assumptions and identifying problems
+- **Variable Selection** — choosing the right predictors systematically
+- **Regularized Regression** — Ridge and Lasso for high-dimensional data
+- **Non-Linear Regression** — polynomial, spline, and generalized additive models
+- **Regression for Count and Categorical Outcomes** — Poisson and logistic regression extensions
+
+::: {.callout-note}
+## Learning Objectives
+By the end of this chapter, you will be able to:
+
+1. Fit and interpret simple and multiple linear regression models.
+2. Conduct and report hypothesis tests for regression coefficients.
+3. Perform systematic regression diagnostics and address violations.
+4. Apply variable selection methods including stepwise and information criteria.
+5. Fit regularized regression models (Ridge, Lasso) and tune $\lambda$.
+6. Recognize non-linearity and fit polynomial and spline regression models.
+7. Select the appropriate regression model for count and categorical outcomes.
+:::
+
+---
+
+# Simple Linear Regression
+
+## Introduction
+
+**Simple linear regression** models the linear relationship between a single predictor $X$ and a continuous outcome $Y$. It is simultaneously the simplest and most foundational regression model — and despite its simplicity, it remains the first tool a data scientist should reach for when exploring a bivariate relationship. Understanding it deeply prepares the ground for all extensions covered in this chapter.
+
+## Theory
+
+### The Simple Linear Regression Model
+
+$$Y_i = \beta_0 + \beta_1 X_i + \varepsilon_i, \qquad \varepsilon_i \sim N(0, \sigma^2)$$
+
+where:
+- $\beta_0$ is the **intercept** — the expected value of $Y$ when $X = 0$
+- $\beta_1$ is the **slope** — the expected change in $Y$ for a one-unit increase in $X$
+- $\varepsilon_i$ are independent, normally distributed errors with constant variance $\sigma^2$
+
+### Ordinary Least Squares (OLS) Estimation
+
+The OLS estimators minimize the **residual sum of squares (RSS)**:
+
+$$\text{RSS} = \sum_{i=1}^{n}(y_i - \hat{y}_i)^2 = \sum_{i=1}^{n}(y_i - \hat{\beta}_0 - \hat{\beta}_1 x_i)^2$$
+
+The closed-form solutions are:
+
+$$\hat{\beta}_1 = \frac{\sum_{i=1}^{n}(x_i - \bar{x})(y_i - \bar{y})}{\sum_{i=1}^{n}(x_i - \bar{x})^2} = \frac{S_{XY}}{S_{XX}}, \qquad \hat{\beta}_0 = \bar{y} - \hat{\beta}_1\bar{x}$$
+
+The **Gauss-Markov theorem** guarantees that OLS is the Best Linear Unbiased Estimator (BLUE) when the classical assumptions hold.
+
+### Inference for Regression Coefficients
+
+The standard error of $\hat{\beta}_1$ is:
+
+$$\text{SE}(\hat{\beta}_1) = \frac{s}{\sqrt{S_{XX}}}, \qquad s = \sqrt{\frac{\text{RSS}}{n-2}}$$
+
+where $s$ is the **residual standard error** (estimated $\sigma$). The t-test for $H_0: \beta_1 = 0$:
+
+$$t = \frac{\hat{\beta}_1}{\text{SE}(\hat{\beta}_1)} \sim t(n-2) \text{ under } H_0$$
+
+### The Coefficient of Determination $R^2$
+
+$R^2$ measures the proportion of total variance in $Y$ explained by $X$:
+
+$$R^2 = 1 - \frac{\text{RSS}}{\text{TSS}} = 1 - \frac{\sum(y_i - \hat{y}_i)^2}{\sum(y_i - \bar{y})^2}$$
+
+$R^2 \in [0, 1]$; higher values indicate better fit. For simple linear regression, $R^2 = r_{XY}^2$ — the square of the Pearson correlation coefficient.
+
+### Prediction vs. Confidence Intervals
+
+- **Confidence interval for the mean response** at $x_0$: Interval for $E[Y \mid X = x_0]$ — uncertainty about the population mean.
+- **Prediction interval** for a new observation at $x_0$: Wider interval accounting for both mean uncertainty and individual-level variability ($\sigma^2$).
+
+$$\text{PI} = \hat{y}_0 \pm t^*_{n-2} \cdot s\sqrt{1 + \frac{1}{n} + \frac{(x_0 - \bar{x})^2}{S_{XX}}}$$
+
+## Example: Simple Linear Regression
+
+**Example 10.1.** The relationship between car weight (`wt`, in 1000 lbs) and fuel efficiency (`mpg`) in the `mtcars` dataset.
+
+Fitted model: $\hat{\text{mpg}} = 37.29 - 5.34 \times \text{wt}$
+
+**Interpretation:**
+- Intercept: A car weighing 0 lbs would have an expected mpg of 37.29 — extrapolation beyond the data range; not meaningful.
+- Slope: Each additional 1,000 lbs of weight is associated with a decrease of 5.34 mpg, on average.
+- $R^2 = 0.753$: Weight explains 75.3% of the variance in fuel efficiency.
+- $t = -9.56$, $p < 0.001$: The slope is highly significantly different from zero.
+
+## R Example: Simple Linear Regression
+
+```{r slr}
+# --- Simple linear regression: mpg ~ wt ---
+data(mtcars)
+slr_model <- lm(mpg ~ wt, data = mtcars)
+summary(slr_model)
+```
+
+```{r slr-tidy}
+# --- Tidy output ---
+tidy_slr <- broom::tidy(slr_model, conf.int = TRUE)
+
+tidy_slr$term <- sub("^\\(Intercept\\)$", "Intercept", tidy_slr$term)
+
+tidy_slr[, -c(1)] |>
+  round(4) |>
+  # Add the column while it's still a data frame/tibble
+  add_column(Term = tidy_slr$term, .before = 1) |> 
+  # Now turn it into a kable
+  kable(caption   = "Simple Linear Regression: mpg ~ wt",
+        col.names = c("Term", "Estimate", "SE", "t", "p-value", 
+                      "CI Lower", "CI Upper"),
+        row.names = FALSE) |>
+  kable_styling(bootstrap_options = c("striped", "hover"),
+                full_width = FALSE)
+```
+
+```{r slr-plot}
+# --- Regression plot with CI and PI ---
+pred_df <- data.frame(wt = seq(min(mtcars$wt),
+                                 max(mtcars$wt),
+                                 length.out = 100))
+ci_band <- predict(slr_model, pred_df,
+                    interval = "confidence")
+pi_band <- predict(slr_model, pred_df,
+                    interval = "prediction")
+
+plot_df <- bind_cols(pred_df,
+                      as.data.frame(ci_band),
+                      as.data.frame(pi_band) |>
+                        rename(pi_lwr = lwr,
+                               pi_upr = upr,
+                               pi_fit = fit))
+
+p1 <- ggplot(mtcars, aes(x = wt, y = mpg)) +
+  geom_ribbon(data = plot_df,
+              aes(x = wt, ymin = pi_lwr,
+                  ymax = pi_upr, y = fit),
+              fill = "steelblue", alpha = 0.12) +
+  geom_ribbon(data = plot_df,
+              aes(x = wt, ymin = lwr,
+                  ymax = upr, y = fit),
+              fill = "steelblue", alpha = 0.28) +
+  geom_line(data  = plot_df,
+            aes(x = wt, y = fit),
+            color = "steelblue", linewidth = 1.3) +
+  geom_point(color = "gray30", size = 2.5,
+             alpha = 0.8) +
+  annotate("text", x = 4.5, y = 32,
+           label = paste0("ŷ = 37.29 − 5.34·wt\n",
+                           "R² = 0.753"),
+           hjust = 1, size = 4, color = "steelblue",
+           fontface = "bold") +
+  labs(title    = "Simple Linear Regression: mpg ~ wt",
+       subtitle = "Dark band = 95% CI for mean; Light band = 95% PI for new obs.",
+       x        = "Weight (1000 lbs)",
+       y        = "Miles per Gallon") +
+  theme_minimal(base_size = 13)
+
+p1
+```
+
+**Code explanation:**
+
+- `broom::tidy(model, conf.int = TRUE)` produces a clean data frame of coefficients, SEs, t-values, p-values, and confidence intervals.
+- `predict(model, newdata, interval = "confidence")` gives the CI for the mean; `interval = "prediction"` gives the wider PI for a new observation.
+- The plot shows both bands simultaneously — the darker inner band is the CI (uncertainty about the mean), the lighter outer band is the PI (uncertainty for an individual prediction).
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 10.1
+Using the `airquality` dataset (complete cases only):
+
+(a) Fit a simple linear regression of `Ozone` on `Temp`. Interpret $\hat{\beta}_0$, $\hat{\beta}_1$, and $R^2$.
+(b) Test $H_0: \beta_1 = 0$. Report the t-statistic, p-value, and conclusion.
+(c) Construct a 95% prediction interval for `Ozone` when `Temp = 90°F`.
+(d) Plot the regression line with CI and PI bands. Does the linear model appear adequate?
+:::
+
+---
+
+# Multiple Linear Regression
+
+## Introduction
+
+In practice, outcomes are rarely determined by a single predictor. **Multiple linear regression** extends the simple model to include $p$ predictors simultaneously. This serves two purposes: improving prediction accuracy by including relevant information, and **controlling for confounders** — isolating the effect of one predictor while holding others constant. The ability to control for confounders is what makes regression a tool for causal inference (under strong assumptions), not just prediction.
+
+## Theory
+
+### The Multiple Regression Model
+
+$$Y_i = \beta_0 + \beta_1 X_{i1} + \beta_2 X_{i2} + \cdots + \beta_p X_{ip} + \varepsilon_i$$
+
+In matrix notation: $\mathbf{Y} = \mathbf{X}\boldsymbol{\beta} + \boldsymbol{\varepsilon}$, where $\mathbf{X}$ is the $n \times (p+1)$ design matrix (including a column of ones for the intercept).
+
+### OLS in Matrix Form
+
+$$\hat{\boldsymbol{\beta}} = (\mathbf{X}^T\mathbf{X})^{-1}\mathbf{X}^T\mathbf{Y}$$
+
+This requires $\mathbf{X}^T\mathbf{X}$ to be invertible — violated when predictors are perfectly collinear (see multicollinearity below).
+
+### Interpretation of Coefficients
+
+$\beta_j$ is the expected change in $Y$ for a one-unit increase in $X_j$, **holding all other predictors constant**. This partial effect interpretation is the key advantage of multiple regression over bivariate analysis.
+
+### Adjusted $R^2$
+
+Adding more predictors always increases $R^2$, even if they are noise. **Adjusted $R^2$** penalizes for the number of predictors:
+
+$$\bar{R}^2 = 1 - \frac{\text{RSS}/(n-p-1)}{\text{TSS}/(n-1)} = 1 - (1-R^2)\frac{n-1}{n-p-1}$$
+
+Use $\bar{R}^2$ (not $R^2$) to compare models with different numbers of predictors.
+
+### The F-Test for Overall Significance
+
+Tests whether at least one predictor has a non-zero coefficient:
+
+$$H_0: \beta_1 = \beta_2 = \cdots = \beta_p = 0$$
+
+$$F = \frac{(TSS - RSS)/p}{RSS/(n-p-1)} = \frac{MS_{\text{Reg}}}{MS_{\text{Res}}} \sim F(p, n-p-1) \text{ under } H_0$$
+
+### Multicollinearity
+
+When predictors are highly correlated, coefficient estimates become unstable and standard errors inflate. The **Variance Inflation Factor (VIF)** measures how much the variance of $\hat{\beta}_j$ is inflated by collinearity:
+
+$$\text{VIF}_j = \frac{1}{1 - R_j^2}$$
+
+where $R_j^2$ is the $R^2$ from regressing $X_j$ on all other predictors.
+
+**Rules of thumb:** VIF > 5 is concerning; VIF > 10 indicates serious multicollinearity.
+
+**Remedies:** Remove one of the correlated predictors, combine them (e.g., PCA, Chapter 7), or use regularized regression (Section 5).
+
+### Classical Regression Assumptions (LINE)
+
+| Assumption | Description | Violation Effect |
+|-----------|-------------|-----------------|
+| **L**inearity | $E[Y\|X] = \mathbf{X}\boldsymbol{\beta}$ | Biased predictions |
+| **I**ndependence | Errors are independent | Invalid SE and inference |
+| **N**ormality | $\varepsilon_i \sim N(0, \sigma^2)$ | Invalid small-sample inference |
+| **E**qual variance | $\text{Var}(\varepsilon_i) = \sigma^2$ (homoscedasticity) | Inefficient; invalid SE |
+
+: The LINE assumptions of linear regression {.striped}
+
+## Example: Multiple Regression
+
+**Example 10.2.** Predicting `mpg` from `wt`, `hp`, and `am` (transmission) in `mtcars`:
+
+$$\hat{\text{mpg}} = 34.00 - 2.88 \cdot \text{wt} - 0.037 \cdot \text{hp} + 2.08 \cdot \text{am}$$
+
+**Interpretation:**
+- Each 1,000 lbs increase in weight decreases mpg by 2.88, **holding hp and am constant**.
+- Each additional horsepower decreases mpg by 0.037, holding wt and am constant.
+- Manual transmission (am = 1) increases mpg by 2.08 compared to automatic, holding wt and hp constant.
+- $\bar{R}^2 = 0.826$: The model explains 82.6% of variance after adjusting for the 3 predictors.
+
+## R Example: Multiple Linear Regression
+
+```{r mlr}
+# --- Multiple regression: mpg ~ wt + hp + am ---
+mlr_model <- lm(mpg ~ wt + hp + am, data = mtcars)
+summary(mlr_model)
+```
+
+```{r mlr-anova}
+# --- ANOVA table ---
+kable(anova(mlr_model),
+      caption = "ANOVA Table: Multiple Regression",
+      digits  = 4) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+```{r mlr-vif}
+# --- Variance Inflation Factors ---
+vif_vals <- car::vif(mlr_model)
+vif_df   <- data.frame(
+  Variable = names(vif_vals),
+  VIF      = round(vif_vals, 3),
+  Status   = ifelse(vif_vals > 5, "Concern", "OK")
+)
+
+kable(vif_df,
+      caption = "Variance Inflation Factors") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(3, bold = TRUE,
+              color = ifelse(vif_df$Status == "Concern",
+                             "tomato","darkgreen"))
+```
+
+```{r mlr-compare}
+# --- Compare models ---
+slr_wt    <- lm(mpg ~ wt, data = mtcars)
+mlr_full  <- lm(mpg ~ wt + hp + am + disp + cyl,
+                 data = mtcars)
+
+model_comp <- data.frame(
+  Model         = c("SLR (wt only)",
+                     "MLR (wt + hp + am)",
+                     "MLR (5 predictors)"),
+  R2            = round(c(summary(slr_wt)$r.squared,
+                           summary(mlr_model)$r.squared,
+                           summary(mlr_full)$r.squared), 4),
+  Adj_R2        = round(c(summary(slr_wt)$adj.r.squared,
+                           summary(mlr_model)$adj.r.squared,
+                           summary(mlr_full)$adj.r.squared), 4),
+  AIC           = round(c(AIC(slr_wt),
+                           AIC(mlr_model),
+                           AIC(mlr_full)), 2),
+  Residual_SE   = round(c(summary(slr_wt)$sigma,
+                           summary(mlr_model)$sigma,
+                           summary(mlr_full)$sigma), 4)
+)
+
+kable(model_comp,
+      caption   = "Model Comparison",
+      col.names = c("Model","R²","Adj. R²",
+                    "AIC","Residual SE")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+**Code explanation:**
+
+- `car::vif(model)` computes VIFs for all predictors — always check multicollinearity in multiple regression.
+- `broom::tidy()` and `broom::glance()` provide consistent data frame outputs from `lm` objects, facilitating comparison tables.
+- The model comparison table shows that adjusted $R^2$ peaks at 3 predictors — adding `disp` and `cyl` raises $R^2$ but lowers adjusted $R^2$ (and raises AIC), indicating those predictors add noise, not signal.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 10.2
+Using the `Boston` dataset from `MASS` (predict median house value `medv`):
+
+(a) Fit a multiple regression with all 13 predictors. Report $\bar{R}^2$ and the F-statistic.
+(b) Compute VIFs. Are any predictors highly collinear? Which ones?
+(c) Interpret the coefficient for `rm` (average rooms per dwelling).
+(d) Test whether `chas` (Charles River dummy) significantly improves the model using an F-test (`anova(model1, model2)`).
+:::
+
+---
+
+# Regression Diagnostics
+
+## Introduction
+
+Fitting a regression model is only half the job. The other half is checking whether the model assumptions are satisfied — and if they are not, understanding what that means for the validity of the inference. **Regression diagnostics** are the formal tools for this verification. Skipping this step is among the most common errors in applied regression analysis.
+
+## Theory
+
+### Residual Analysis
+
+The **residuals** $\hat{\varepsilon}_i = y_i - \hat{y}_i$ are the primary diagnostic tool. If the model is correctly specified and assumptions hold:
+
+- Residuals should have **mean zero** and **constant variance** (homoscedasticity)
+- Residuals should be **approximately normally distributed**
+- Residuals should show **no pattern** when plotted against fitted values or predictors
+
+### Four Diagnostic Plots
+
+**Plot 1 — Residuals vs. Fitted:** Tests linearity and homoscedasticity. A random horizontal band around zero is ideal; patterns indicate non-linearity; funnel shapes indicate heteroscedasticity.
+
+**Plot 2 — Normal Q-Q Plot:** Tests normality of residuals. Points should fall on the diagonal line; heavy tails or systematic curves indicate non-normality.
+
+**Plot 3 — Scale-Location (√|residuals| vs. Fitted):** Tests homoscedasticity more clearly. A flat horizontal line is ideal; an upward trend indicates variance increasing with fitted values.
+
+**Plot 4 — Residuals vs. Leverage:** Identifies **influential observations** — points that, if removed, would substantially change the fitted model.
+
+### Leverage and Influence
+
+**Leverage** $h_{ii}$ measures how far observation $i$ is from the mean of the predictor space:
+
+$$h_{ii} = [\mathbf{X}(\mathbf{X}^T\mathbf{X})^{-1}\mathbf{X}^T]_{ii}$$
+
+High leverage: $h_{ii} > 2(p+1)/n$. High leverage observations pull the regression line toward them.
+
+**Cook's Distance** combines leverage and residual size to measure overall influence:
+
+$$D_i = \frac{\hat{\varepsilon}_i^2}{(p+1)s^2} \cdot \frac{h_{ii}}{(1-h_{ii})^2}$$
+
+Observations with $D_i > 4/n$ or $D_i > 1$ are potentially influential.
+
+### Formal Tests for Assumption Violations
+
+| Test | Assumption | R Function |
+|------|-----------|-----------|
+| Shapiro-Wilk | Normality of residuals | `shapiro.test(residuals(model))` |
+| Breusch-Pagan | Homoscedasticity | `lmtest::bptest(model)` |
+| Durbin-Watson | Independence (autocorrelation) | `lmtest::dwtest(model)` |
+| RESET test | Linearity | `lmtest::resettest(model)` |
+| Goldfeld-Quandt | Homoscedasticity | `lmtest::gqtest(model)` |
+
+: Formal tests for regression assumption violations {.striped}
+
+### Remedies for Assumption Violations
+
+| Violation | Remedy |
+|-----------|--------|
+| Non-linearity | Transform $Y$ or $X$; add polynomial terms; use GAM |
+| Heteroscedasticity | Transform $Y$ (log); weighted least squares; robust SE |
+| Non-normality of residuals | Transform $Y$; use robust regression |
+| Autocorrelation | Add lag terms; time series models; use HAC standard errors |
+| Multicollinearity | Remove predictors; PCA; regularized regression |
+| Influential outliers | Investigate; robust regression; winsorize |
+
+: Remedies for regression assumption violations {.striped}
+
+## Example: Diagnosing a Regression Model
+
+**Example 10.3.** The simple regression of `Ozone ~ Temp` in `airquality` shows:
+
+- **Residuals vs. Fitted:** Curved pattern → non-linearity (log transformation of Ozone needed)
+- **QQ Plot:** Heavy right tail → non-normality (consistent with skewed ozone distribution)
+- **Scale-Location:** Upward trend → heteroscedasticity
+- **Cook's Distance:** Observation 117 has $D = 0.23 > 4/111 = 0.036$ — potentially influential
+
+Remedy: Log-transform Ozone, refit, and recheck diagnostics.
+
+## R Example: Regression Diagnostics
+
+```{r diagnostics}
+# --- Diagnose the Ozone ~ Temp model ---
+aq_cc     <- na.omit(airquality)
+diag_model <- lm(Ozone ~ Temp, data = aq_cc)
+
+# Four standard diagnostic plots
+par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
+plot(diag_model, which = 1:4,
+     col = "steelblue", pch = 19, cex = 0.7)
+```
+
+```{r diagnostics-formal}
+# --- Formal tests ---
+cat("=== Formal Assumption Tests ===\n\n")
+
+# Normality
+sw_test <- shapiro.test(residuals(diag_model))
+cat("Shapiro-Wilk (normality):\n")
+cat("  W =", round(sw_test$statistic, 4),
+    " p =", round(sw_test$p.value, 4), "\n\n")
+
+# Homoscedasticity
+bp_test <- lmtest::bptest(diag_model)
+cat("Breusch-Pagan (homoscedasticity):\n")
+cat("  BP =", round(bp_test$statistic, 4),
+    " p =", round(bp_test$p.value, 4), "\n\n")
+
+# Linearity
+reset_test <- lmtest::resettest(diag_model)
+cat("RESET test (linearity):\n")
+cat("  F =", round(reset_test$statistic, 4),
+    " p =", round(reset_test$p.value, 4), "\n")
+```
+
+```{r diagnostics-remedy}
+# --- Apply remedy: log-transform Ozone ---
+aq_cc$log_Ozone <- log(aq_cc$Ozone)
+model_log <- lm(log_Ozone ~ Temp, data = aq_cc)
+
+# Compare diagnostics
+diag_before <- data.frame(
+  Metric = c("Shapiro-Wilk p","Breusch-Pagan p",
+              "RESET p","Adj. R²"),
+  Before = round(c(
+    shapiro.test(residuals(diag_model))$p.value,
+    lmtest::bptest(diag_model)$p.value,
+    lmtest::resettest(diag_model)$p.value,
+    summary(diag_model)$adj.r.squared
+  ), 4),
+  After  = round(c(
+    shapiro.test(residuals(model_log))$p.value,
+    lmtest::bptest(model_log)$p.value,
+    lmtest::resettest(model_log)$p.value,
+    summary(model_log)$adj.r.squared
+  ), 4)
+)
+
+kable(diag_before,
+      caption = "Diagnostics: Before and After Log Transformation") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(3, bold = TRUE,
+              color = ifelse(
+                diag_before$After > diag_before$Before,
+                "darkgreen","steelblue"))
+```
+
+**Code explanation:**
+
+- `plot(lm_model, which = 1:4)` produces all four standard diagnostic plots. `par(mfrow = c(2,2))` arranges them in a 2×2 grid.
+- `lmtest::bptest()` runs the Breusch-Pagan test for heteroscedasticity — a significant result ($p < 0.05$) means variance is not constant.
+- `lmtest::resettest()` runs Ramsey's RESET test — a significant result indicates omitted non-linear terms.
+- Comparing diagnostic p-values before and after transformation quantifies the improvement — all p-values increase (less evidence of violation) after log-transforming Ozone.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 10.3
+Using the multiple regression from Exercise 10.2 (`Boston` dataset):
+
+(a) Produce the four standard diagnostic plots. Describe any violations you observe.
+(b) Run Shapiro-Wilk, Breusch-Pagan, and RESET tests. Which assumptions are violated?
+(c) Identify the most influential observation using Cook's distance.
+(d) Apply an appropriate remedy and refit. How do the diagnostics improve?
+:::
+
+---
+
+# Variable Selection
+
+## Introduction
+
+When $p$ potential predictors are available, choosing which to include in the final model requires balancing **goodness of fit** against **model complexity**. Including too many predictors leads to overfitting; too few causes underfitting. **Variable selection** methods provide systematic approaches to this problem, ranging from sequential stepwise algorithms to information-theoretic criteria.
+
+## Theory
+
+### Information Criteria
+
+**Akaike Information Criterion (AIC):**
+$$\text{AIC} = -2\ell(\hat{\boldsymbol{\beta}}) + 2p$$
+
+**Bayesian Information Criterion (BIC):**
+$$\text{BIC} = -2\ell(\hat{\boldsymbol{\beta}}) + p\log n$$
+
+Both penalize model complexity. BIC penalizes more heavily for large $n$ — it tends to select smaller models. **Lower is better** for both.
+
+**Adjusted $R^2$:** Equivalent to minimizing the residual variance estimate $s^2$ — a simpler alternative.
+
+### Stepwise Selection
+
+**Forward selection:** Start with no predictors; add the predictor that most improves AIC at each step.
+
+**Backward elimination:** Start with all predictors; remove the predictor whose removal most improves (or least worsens) AIC.
+
+**Bidirectional stepwise:** At each step, consider both adding and removing predictors.
+
+::: {.callout-warning}
+## Limitations of Stepwise Selection
+Stepwise selection has serious statistical problems: p-values are invalid (multiple testing), confidence intervals are too narrow, and the selected model is optimistic for its training data. It should be treated as an exploratory tool, not a definitive selection procedure. Cross-validation or regularization (Section 5) are more principled alternatives.
+:::
+
+::: {.content-hidden}
+### Best Subset Selection
+
+Evaluate all $2^p$ possible models and choose the best by AIC, BIC, or adjusted $R^2$. Feasible only for small $p$ (typically $p \leq 20$); the `leaps` package implements this efficiently.
+:::
+
+### Cross-Validation for Variable Selection
+
+The most principled approach: evaluate each candidate model by $K$-fold cross-validated MSE and select the model with the lowest CV error. This directly optimizes predictive performance rather than a penalized likelihood.
+
+## Example: Variable Selection for Housing Prices
+
+**Example 10.4.** Starting from 13 predictors in the `Boston` dataset, backward stepwise selection (AIC) retains 11 predictors, removing `indus` and `age`. BIC retains only 9 predictors, applying heavier penalization. Cross-validation selects 10 predictors. All methods agree that `lstat` (lower status population) and `rm` (average rooms) are the most important predictors.
+
+## R Example: Variable Selection
+
+```{r variable-selection}
+# --- Variable selection on Boston dataset ---
+data(Boston, package = "MASS")
+
+# Full model
+full_model <- lm(medv ~ ., data = Boston)
+
+# Backward stepwise (AIC)
+step_aic <- stepAIC(full_model,
+                     direction = "backward",
+                     trace     = FALSE)
+
+# Backward stepwise (BIC)
+n_boston  <- nrow(Boston)
+step_bic  <- stepAIC(full_model,
+                     direction = "backward",
+                     k         = log(n_boston),
+                     trace     = FALSE)
+
+# Compare models
+selection_comp <- data.frame(
+  Method     = c("Full Model",
+                  "Stepwise AIC",
+                  "Stepwise BIC"),
+  N_Vars     = c(length(coef(full_model))-1,
+                  length(coef(step_aic))-1,
+                  length(coef(step_bic))-1),
+  Adj_R2     = round(c(summary(full_model)$adj.r.squared,
+                        summary(step_aic)$adj.r.squared,
+                        summary(step_bic)$adj.r.squared), 4),
+  AIC        = round(c(AIC(full_model),
+                        AIC(step_aic),
+                        AIC(step_bic)), 2),
+  BIC        = round(c(BIC(full_model),
+                        BIC(step_aic),
+                        BIC(step_bic)), 2)
+)
+
+kable(selection_comp,
+      caption   = "Variable Selection Comparison",
+      col.names = c("Method","# Variables",
+                    "Adj. R²","AIC","BIC")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+```{r variable-selection-cv}
+# --- Cross-validated MSE for model comparison ---
+set.seed(42)
+cv_mse <- function(model_formula, data, k = 10) {
+  folds <- caret::createFolds(data$medv, k = k)
+  mse_vals <- sapply(folds, function(idx) {
+    fit  <- lm(model_formula,
+                data = data[-idx, ])
+    pred <- predict(fit, data[idx, ])
+    mean((data$medv[idx] - pred)^2)
+  })
+  mean(mse_vals)
+}
+
+cv_results <- data.frame(
+  Model    = c("Full (13 vars)",
+                "AIC selected",
+                "BIC selected"),
+  CV_MSE   = round(c(
+    cv_mse(medv ~ ., Boston),
+    cv_mse(formula(step_aic), Boston),
+    cv_mse(formula(step_bic), Boston)
+  ), 4)
+)
+
+kable(cv_results,
+      caption = "10-Fold CV MSE: Variable Selection") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(2, bold = TRUE,
+              color = ifelse(
+                cv_results$CV_MSE == min(cv_results$CV_MSE),
+                "darkgreen","steelblue"))
+```
+
+**Code explanation:**
+
+- `MASS::stepAIC(model, direction, k)` performs stepwise selection. `k = 2` uses AIC penalty; `k = log(n)` uses BIC penalty.
+- `formula(step_model)` extracts the selected formula for use in other functions — avoiding manual retyping.
+- The CV MSE comparison is the most honest performance comparison — it measures true predictive performance on held-out data, not training set fit.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 10.4
+Using the `mtcars` dataset (predict `mpg`):
+
+(a) Apply both forward and backward stepwise AIC. Do they select the same model?
+(b) Apply BIC-based stepwise. How does the selected model differ from AIC?
+(c) Implement 10-fold CV to compare all candidate models. Which minimizes CV MSE?
+(d) Reflect: why might the stepwise-selected model not be the best cross-validated model?
+:::
+
+---
+
+# Regularized Regression
+
+## Introduction
+
+When $p$ is large (many predictors) or predictors are highly correlated, OLS becomes unstable — coefficient estimates have high variance, and the model overfits. **Regularized regression** addresses this by adding a **penalty** on coefficient size to the OLS objective, shrinking coefficients toward zero. This introduces a small bias but dramatically reduces variance, improving generalization. Ridge and Lasso are the two principal regularization methods, each with distinct properties.
+
+## Theory
+
+### Ridge Regression (L2 Regularization)
+
+Ridge minimizes the penalized RSS:
+
+$$\text{RSS}_{\text{Ridge}} = \sum_{i=1}^{n}(y_i - \hat{y}_i)^2 + \lambda\sum_{j=1}^{p}\beta_j^2$$
+
+The L2 penalty shrinks all coefficients toward zero but **never exactly to zero**. Ridge is particularly effective when many predictors have small true effects (dense signal).
+
+**Closed-form solution:** $\hat{\boldsymbol{\beta}}_{\text{Ridge}} = (\mathbf{X}^T\mathbf{X} + \lambda\mathbf{I})^{-1}\mathbf{X}^T\mathbf{Y}$
+
+Ridge always has a solution (the added $\lambda\mathbf{I}$ ensures invertibility) even when $p > n$.
+
+### Lasso Regression (L1 Regularization)
+
+Lasso uses an L1 penalty:
+
+$$\text{RSS}_{\text{Lasso}} = \sum_{i=1}^{n}(y_i - \hat{y}_i)^2 + \lambda\sum_{j=1}^{p}|\beta_j|$$
+
+Unlike Ridge, the L1 penalty can **shrink coefficients exactly to zero** — performing automatic variable selection. Lasso is preferred when the true model is sparse (few predictors with large effects).
+
+::: {.content-hidden}
+### Elastic Net
+
+Elastic Net combines L1 and L2 penalties:
+
+$$\text{RSS}_{\text{EN}} = \text{RSS} + \lambda\left[\alpha\sum_{j}|\beta_j| + \frac{1-\alpha}{2}\sum_{j}\beta_j^2\right]$$
+
+where $\alpha \in [0,1]$ controls the L1/L2 mix ($\alpha = 1$: Lasso, $\alpha = 0$: Ridge). Elastic Net handles **grouped variables** better than Lasso and is preferred when predictors are correlated.
+:::
+
+### Choosing $\lambda$: Cross-Validation
+
+The regularization parameter $\lambda$ is a hyperparameter tuned by cross-validation. `cv.glmnet()` in R computes the CV error across a grid of $\lambda$ values and returns:
+
+- `lambda.min`: $\lambda$ that minimizes CV error
+- `lambda.1se`: Largest $\lambda$ within one SE of the minimum (more parsimonious model)
+
+**Important:** Always standardize predictors before regularization — the penalty treats all coefficients equally, so scale matters.
+
+::: {.content-hidden}
+### Bayesian Interpretation
+
+Ridge with Gaussian prior on $\boldsymbol{\beta}$: $\beta_j \sim N(0, \tau^2)$, $\lambda = \sigma^2/\tau^2$
+
+Lasso with Laplace prior on $\boldsymbol{\beta}$: $\beta_j \sim \text{Double Exponential}(0, 1/\lambda)$
+
+This confirms that regularization is MAP estimation with a prior on the coefficients (Chapter 2).
+:::
+
+## Example: Lasso for Variable Selection
+
+**Example 10.5.** Applying Lasso to the `Boston` dataset with $\lambda$ selected by 10-fold CV:
+
+- `lambda.min` retains all 13 predictors with shrunken coefficients.
+- `lambda.1se` sets `indus` and `age` to exactly zero — automatic selection.
+
+The selected predictors match the stepwise AIC result, but with the advantage that Lasso's selection is stable and cross-validated rather than dependent on the sequential testing procedure of stepwise.
+
+## R Example: Regularized Regression
+
+```{r regularized}
+# --- Ridge and Lasso on Boston ---
+data(Boston, package = "MASS")
+
+X_boston <- as.matrix(Boston[, -which(names(Boston) == "medv")])
+y_boston <- Boston$medv
+
+# Standardize (glmnet does this internally with standardize=TRUE)
+set.seed(42)
+
+# Ridge (alpha = 0)
+cv_ridge <- cv.glmnet(X_boston, y_boston,
+                       alpha  = 0,
+                       nfolds = 10)
+
+# Lasso (alpha = 1)
+cv_lasso <- cv.glmnet(X_boston, y_boston,
+                       alpha  = 1,
+                       nfolds = 10)
+
+cat("=== Optimal Lambda Values ===\n")
+cat("Ridge  lambda.min:", round(cv_ridge$lambda.min, 4), "\n")
+cat("Lasso  lambda.min:", round(cv_lasso$lambda.min, 4), "\n")
+```
+
+```{r regularized-coef}
+# --- Coefficient comparison ---
+ridge_coef <- coef(cv_ridge, s = "lambda.min")[-1]
+lasso_coef <- coef(cv_lasso, s = "lambda.min")[-1]
+ols_coef   <- coef(lm(medv ~ ., data = Boston))[-1]
+
+coef_comp <- data.frame(
+  Variable   = names(ols_coef),
+  OLS        = round(ols_coef, 4),
+  Ridge      = round(as.numeric(ridge_coef), 4),
+  Lasso      = round(as.numeric(lasso_coef), 4)
+)
+
+kable(coef_comp,
+      caption = "Coefficient Comparison: OLS vs. Regularized") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                font_size = 11) |>
+  column_spec(4, bold = TRUE,
+              color = ifelse(
+                coef_comp$Lasso == 0,"tomato","black"))
+```
+
+```{r regularized-plot}
+# --- Lasso coefficient path ---
+lasso_full <- glmnet(X_boston, y_boston, alpha = 1)
+
+p1 <- plot(cv_lasso,
+           main = "A. Lasso: CV Error vs. log(λ)")
+
+# Coefficient path
+coef_path <- as.matrix(lasso_full$beta)
+lambda_seq <- lasso_full$lambda
+path_df    <- as.data.frame(t(coef_path)) |>
+  mutate(log_lambda = log(lambda_seq)) |>
+  pivot_longer(-log_lambda,
+               names_to  = "Variable",
+               values_to = "Coefficient")
+
+ggplot(path_df,
+       aes(x = log_lambda, y = Coefficient,
+           color = Variable)) +
+  geom_line(linewidth = 0.8) +
+  geom_vline(xintercept = log(cv_lasso$lambda.min),
+             linetype = "dashed", color = "tomato") +
+  geom_vline(xintercept = log(cv_lasso$lambda.1se),
+             linetype = "dotted", color = "steelblue") +
+  labs(title    = "B. Lasso Coefficient Path",
+       subtitle = "Red dashed = λ.min; Blue dotted = λ.1se",
+       x        = "log(λ)",
+       y        = "Coefficient") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "right",
+        legend.text     = element_text(size = 8))
+```
+
+**Code explanation:**
+
+- `cv.glmnet(X, y, alpha, nfolds)` fits the regularized model with cross-validation. `alpha = 0` is Ridge, `alpha = 1` is Lasso.
+- `coef(cv_model, s = "lambda.min")` extracts coefficients at the optimal lambda. `[-1]` removes the intercept.
+- The coefficient path plot shows how each predictor's coefficient changes as $\lambda$ increases — variables entering/leaving the model from right to left as regularization decreases.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 10.5
+Using the `mtcars` dataset (all predictors for `mpg`):
+
+(a) Fit Ridge and Lasso using 10-fold CV.
+(b) Plot the coefficient paths for Lasso. At what $\lambda$ does each predictor enter the model?
+(c) Compare CV MSE for OLS, Ridge, and Lasso. Which generalizes best?
+(d) Which predictors does Lasso set to zero at `lambda.1se`? Is this consistent with stepwise selection?
+:::
+
+---
+
+# Non-Linear Regression
+
+## Introduction
+
+Linear regression assumes that the relationship between $Y$ and each predictor is linear — a strong and often unrealistic assumption. Many real relationships are curved: the effect of age on income follows an inverted U-shape; the response to drug dosage is often sigmoidal; temperature effects on crop yield are non-linear. **Non-linear regression** methods extend the linear model to capture these patterns while maintaining the interpretability and inference framework of regression.
+
+## Theory
+
+### Polynomial Regression
+
+Add powers of $X$ as additional predictors:
+
+$$Y = \beta_0 + \beta_1 X + \beta_2 X^2 + \cdots + \beta_d X^d + \varepsilon$$
+
+This is still a linear model in the coefficients — OLS estimation applies directly. The choice of degree $d$ involves a bias-variance tradeoff: higher degree fits more flexibly but overfits more easily. Cross-validation or AIC selects the optimal degree.
+
+**Caution:** Polynomial regression extrapolates poorly beyond the range of training data — avoid high-degree polynomials.
+
+### Regression Splines
+
+Splines divide the predictor range into intervals at **knot** locations and fit polynomial pieces within each interval, subject to smoothness constraints at the knots. **Natural cubic splines** additionally constrain the function to be linear beyond the boundary knots, reducing erratic extrapolation.
+
+A degree-$d$ spline with $K$ knots has $d + K$ degrees of freedom.
+
+::: {.content-hidden}
+### Smoothing Splines
+
+Fit a smooth function $f$ that minimizes the penalized RSS:
+
+$$\text{minimize}: \sum_{i=1}^{n}(y_i - f(x_i))^2 + \lambda\int f''(x)^2\, dx$$
+
+The penalty on the second derivative controls **wiggliness** — large $\lambda$ forces a nearly linear fit; $\lambda = 0$ interpolates the data. The optimal $\lambda$ is found by cross-validation or **generalized cross-validation (GCV)**.
+:::
+
+### Generalized Additive Models (GAM)
+
+GAMs extend multiple regression by allowing each predictor to have a **non-parametric smooth effect**:
+
+$$Y = \beta_0 + f_1(X_1) + f_2(X_2) + \cdots + f_p(X_p) + \varepsilon$$
+
+Each $f_j$ is a smooth function estimated from data (typically a spline). GAMs are interpretable — you can plot each $f_j$ separately — yet flexible enough to capture non-linear relationships. The `mgcv` package in R fits GAMs with automatic smoothness selection.
+
+## Example: Non-Linear Effects
+
+**Example 10.6.** Modeling the relationship between `age` and `wage` from the `Wage` dataset:
+
+- Linear model: $\bar{R}^2 = 0.074$ — poor fit; misses the curved relationship.
+- Polynomial (degree 4): $\bar{R}^2 = 0.096$ — better but extrapolates poorly.
+- Natural cubic spline (4 knots): $\bar{R}^2 = 0.097$ — similar fit, more stable.
+- GAM with smooth: $\bar{R}^2 = 0.097$ — similar fit with automatic smoothness selection.
+
+All non-linear methods agree: wages increase steeply in early career, plateau around age 40–50, then decline slightly.
+
+## R Example: Non-Linear Regression
+
+```{r nonlinear}
+# --- Polynomial and spline regression ---
+data(mtcars)
+
+# Fit models of increasing complexity for mpg ~ hp
+models_nl <- list(
+  Linear   = lm(mpg ~ hp,            data = mtcars),
+  Poly2    = lm(mpg ~ poly(hp, 2),   data = mtcars),
+  Poly3    = lm(mpg ~ poly(hp, 3),   data = mtcars),
+  Spline   = lm(mpg ~ splines::bs(hp, df = 5),
+                 data = mtcars)
+)
+
+# Compare AIC and Adj. R²
+nl_compare <- data.frame(
+  Model  = names(models_nl),
+  Adj_R2 = round(sapply(models_nl, function(m)
+    summary(m)$adj.r.squared), 4),
+  AIC    = round(sapply(models_nl, AIC), 2)
+)
+
+kable(nl_compare,
+      caption   = "Non-Linear Model Comparison: mpg ~ hp",
+      col.names = c("Model","Adj. R²","AIC")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(3, bold = TRUE,
+              color = ifelse(nl_compare$AIC ==
+                               min(nl_compare$AIC),
+                             "darkgreen","steelblue"))
+```
+
+```{r nonlinear-plot}
+# --- Visualize fitted curves ---
+hp_seq <- data.frame(hp = seq(min(mtcars$hp),
+                                max(mtcars$hp),
+                                length.out = 200))
+
+pred_nl <- map_dfr(names(models_nl), function(nm) {
+  data.frame(
+    hp    = hp_seq$hp,
+    mpg   = predict(models_nl[[nm]], hp_seq),
+    Model = nm
+  )
+})
+
+ggplot(mtcars, aes(x = hp, y = mpg)) +
+  geom_point(color = "gray40", size = 2.5,
+             alpha = 0.8) +
+  geom_line(data = pred_nl,
+            aes(color = Model),
+            linewidth = 1.1) +
+  scale_color_manual(
+    values = c("Linear"  = "steelblue",
+               "Poly2"   = "seagreen",
+               "Poly3"   = "darkorange",
+               "Spline"  = "tomato")) +
+  labs(title    = "Non-Linear Regression: mpg ~ hp",
+       subtitle = "Increasing flexibility captures curvature",
+       x        = "Horsepower (hp)",
+       y        = "Miles per Gallon (mpg)",
+       color    = "Model") +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "top")
+```
+
+```{r gam}
+# --- GAM for mpg with multiple smooth terms ---
+gam_model <- mgcv::gam(
+  mpg ~ s(wt) + s(hp) + am,
+  data   = mtcars,
+  method = "REML"
+)
+
+summary(gam_model)
+```
+
+```{r gam-plot}
+# --- Plot GAM smooth terms ---
+par(mfrow = c(1, 2), mar = c(4, 4, 3, 1))
+plot(gam_model, shade = TRUE,
+     shade.col = "steelblue",
+     col = "tomato",
+     seWithMean = TRUE,
+     pages = 1,
+     main = "GAM Smooth Terms: mpg")
+```
+
+**Code explanation:**
+
+- `poly(x, d)` creates orthogonal polynomial terms — preferred over `I(x^2)` for numerical stability.
+- `splines::bs(x, df)` creates a B-spline basis; `df` controls flexibility (more df = more knots = more flexible).
+- `mgcv::gam(formula, method = "REML")` fits a GAM with REML-based smoothness selection — automatic and principled.
+- `plot(gam_model, shade = TRUE)` visualizes each smooth term with confidence bands — the key interpretive output of a GAM.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 10.6
+Using the `airquality` dataset (complete cases):
+
+(a) Fit linear, polynomial (d=2,3), and spline regression of `log(Ozone)` on `Temp`. Compare AIC.
+(b) Fit a GAM: `log(Ozone) ~ s(Temp) + s(Wind) + s(Solar.R)`. Plot the smooth terms.
+(c) Compare the GAM to the best polynomial model by CV MSE. Does the GAM generalize better?
+:::
+
+---
+
+# Regression for Count and Categorical Outcomes
+
+## Introduction
+
+The linear regression model assumes a continuous, normally distributed outcome. Many real outcomes violate this — **counts** of events (number of hospital visits, number of defects) follow discrete, non-negative distributions; **proportions** are bounded between 0 and 1; **binary outcomes** are 0 or 1. **Generalized Linear Models (GLMs)** extend regression to handle these outcome types through a **link function** that connects the linear predictor to the expected outcome.
+
+## Theory
+
+### The Generalized Linear Model Framework
+
+A GLM has three components:
+
+1. **Random component:** The distribution of $Y$ from the exponential family ($Y \sim$ Normal, Binomial, Poisson, Gamma, etc.)
+2. **Systematic component:** The linear predictor $\eta_i = \boldsymbol{\beta}^T\mathbf{x}_i$
+3. **Link function:** $g(\mu_i) = \eta_i$, connecting the mean $\mu_i = E[Y_i]$ to the linear predictor
+
+| Outcome Type | Distribution | Link Function | Model |
+|-------------|-------------|--------------|-------|
+| Continuous | Normal | Identity: $\mu = \eta$ | Linear regression |
+| Binary | Binomial | Logit: $\log(\mu/(1-\mu)) = \eta$ | Logistic regression |
+| Count | Poisson | Log: $\log(\mu) = \eta$ | Poisson regression |
+| Rate | Poisson | Log with offset | Poisson with offset |
+| Overdispersed count | Negative Binomial | Log | NB regression |
+| Proportion | Beta | Logit | Beta regression |
+
+: Generalized Linear Models by outcome type {.striped}
+
+### Poisson Regression
+
+For count data $Y_i \sim \text{Poisson}(\mu_i)$:
+
+$$\log(\mu_i) = \beta_0 + \beta_1 X_{i1} + \cdots + \beta_p X_{ip}$$
+
+**Interpretation:** $e^{\beta_j}$ is the multiplicative change in the **rate** $\mu$ for a one-unit increase in $X_j$. A coefficient of $\beta_j = 0.3$ means the expected count multiplies by $e^{0.3} = 1.35$ — a 35% increase.
+
+**Offset:** When modeling rates (events per exposure), include $\log(\text{exposure})$ as an offset with coefficient fixed at 1:
+
+$$\log(\mu_i) = \log(n_i) + \beta_0 + \beta_1 X_{i1} + \cdots$$
+
+**Overdispersion:** Poisson assumes $\text{Var}(Y) = \mu$. If the observed variance exceeds the mean (common with count data), use **quasi-Poisson** or **Negative Binomial** regression.
+
+### Model Assessment for GLMs
+
+- **Deviance** replaces RSS: $D = -2[\ell(\hat{\boldsymbol{\mu}}) - \ell(\mathbf{y})]$
+- **Null deviance:** Deviance of intercept-only model
+- **Residual deviance:** Deviance of fitted model
+- **Pseudo-$R^2$:** $1 - D/D_0$ (not directly comparable to linear $R^2$)
+- **AIC:** $-2\ell + 2p$ (same formula, different likelihood)
+
+## Example: Poisson Regression
+
+**Example 10.7.** Hospital data records the number of emergency admissions (`count`) for 50 hospitals, along with hospital size (`beds`) and region (`region`). Poisson regression with offset for beds:
+
+$$\log(\text{admissions}) = \log(\text{beds}) + \beta_0 + \beta_1 \cdot \text{region}$$
+
+$e^{\beta_1} = 1.42$: Hospitals in Region 2 have 42% higher admission rates than Region 1, controlling for hospital size.
+
+## R Example: GLMs — Poisson and Extensions
+
+```{r poisson}
+# --- Poisson regression: warpbreaks dataset ---
+# Count of warp breaks by wool type and tension
+data(warpbreaks)
+
+cat("Outcome variable (breaks) summary:\n")
+cat("Mean:", mean(warpbreaks$breaks), "\n")
+cat("Variance:", var(warpbreaks$breaks), "\n")
+cat("Overdispersion ratio:",
+    round(var(warpbreaks$breaks) /
+            mean(warpbreaks$breaks), 2), "\n\n")
+
+# Poisson regression
+pois_model <- glm(breaks ~ wool + tension,
+                   data   = warpbreaks,
+                   family = poisson(link = "log"))
+summary(pois_model)
+```
+
+```{r poisson-irr}
+# --- Incidence Rate Ratios (IRR = exp(coef)) ---
+irr_df <- data.frame(
+  Term     = names(coef(pois_model))[-1],
+  IRR      = round(exp(coef(pois_model))[-1], 4),
+  CI_lower = round(exp(confint(pois_model))[-1, 1], 4),
+  CI_upper = round(exp(confint(pois_model))[-1, 2], 4),
+  p_value  = round(summary(pois_model)$coefficients[-1, 4], 4)
+)
+
+kable(irr_df,
+      caption   = "Poisson Regression: Incidence Rate Ratios",
+      col.names = c("Term","IRR",
+                    "95% CI Lower","95% CI Upper","p-value")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(2, bold = TRUE,
+              color = ifelse(irr_df$IRR > 1,
+                             "tomato","steelblue"))
+```
+
+```{r overdispersion}
+# --- Check and handle overdispersion ---
+# Quasi-Poisson (accounts for overdispersion)
+qpois_model <- glm(breaks ~ wool + tension,
+                    data   = warpbreaks,
+                    family = quasipoisson(link = "log"))
+
+# Negative Binomial
+nb_model <- MASS::glm.nb(breaks ~ wool + tension,
+                          data = warpbreaks)
+
+# Compare standard errors
+se_comparison <- data.frame(
+  Term     = names(coef(pois_model))[-1],
+  SE_Pois  = round(summary(pois_model)$coef[-1,"Std. Error"], 4),
+  SE_QPois = round(summary(qpois_model)$coef[-1,"Std. Error"], 4),
+  SE_NB    = round(summary(nb_model)$coef[-1,"Std. Error"], 4)
+)
+
+kable(se_comparison,
+      caption   = "Standard Error Comparison: Overdispersion Handling",
+      col.names = c("Term","Poisson SE",
+                    "Quasi-Poisson SE","NB SE")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(2, color = "tomato", bold = TRUE)
+```
+
+```{r glm-plot}
+# --- Visualize fitted counts ---
+warpbreaks$fitted_pois <- fitted(pois_model)
+warpbreaks$fitted_nb   <- fitted(nb_model)
+
+ggplot(warpbreaks, aes(x = interaction(wool, tension),
+                        y = breaks)) +
+  geom_boxplot(fill = "gray90", outlier.shape = NA) +
+  geom_jitter(aes(color = wool), width = 0.1,
+              size = 2.5, alpha = 0.7) +
+  geom_point(aes(y = fitted_pois),
+             shape = 18, size = 4,
+             color = "tomato") +
+  geom_point(aes(y = fitted_nb),
+             shape = 15, size = 3,
+             color = "steelblue") +
+  annotate("text", x = 5.5, y = 65,
+           label = "◆ Poisson fit",
+           color = "tomato", size = 3.5) +
+  annotate("text", x = 5.5, y = 60,
+           label = "■ NB fit",
+           color = "steelblue", size = 3.5) +
+  scale_color_manual(values = c("A" = "seagreen",
+                                 "B" = "darkorange")) +
+  labs(title    = "Warp Breaks: Observed vs. Fitted",
+       subtitle = "By wool type × tension combination",
+       x        = "Wool × Tension",
+       y        = "Number of Breaks") +
+  theme_minimal(base_size = 12)
+```
+
+**Code explanation:**
+
+- `glm(formula, family = poisson(link = "log"))` fits Poisson regression. `exp(coef())` converts to incidence rate ratios (IRRs).
+- `family = quasipoisson()` uses the same point estimates as Poisson but inflates standard errors by the **dispersion factor** — correcting for overdispersion without changing the model structure.
+- `MASS::glm.nb()` fits a Negative Binomial model — a more principled solution to overdispersion that estimates the dispersion parameter from the data.
+- Comparing SEs across models shows how overdispersion inflates uncertainty: Quasi-Poisson and NB SEs are larger than Poisson SEs, correcting the overconfidence of the basic Poisson model.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 10.7
+Using the `quine` dataset from `MASS` (days absent from school):
+
+(a) Examine the distribution of `Days`. Is it consistent with Poisson? Check mean vs. variance.
+(b) Fit a Poisson regression of `Days ~ Eth + Sex + Age + Lrn`.
+(c) Test for overdispersion. If present, fit quasi-Poisson and Negative Binomial models.
+(d) Compare AIC for Poisson and NB models. Which fits better? Interpret the key coefficients as IRRs.
+:::
+
+::: {.callout-tip}
+## Exercise 10.8 (Challenge)
+Build a complete regression pipeline for the `Boston` dataset:
+
+(a) Fit OLS, Ridge, Lasso, and a GAM (`medv ~ s(lstat) + s(rm) + ...`).
+(b) Evaluate all models by 10-fold CV MSE.
+(c) Perform full diagnostics on the OLS model. Address any violations.
+(d) Which model performs best? Write a 200-word comparison discussing predictive accuracy, interpretability, and assumption compliance.
+:::
+
+---
+
+# Chapter Lab Activity: Housing Price Regression with `Boston` Dataset
+
+## Objectives
+
+In this lab you will apply the complete regression pipeline — exploratory analysis, model building, diagnostics, variable selection, regularization, and non-linear extensions — to the classic `Boston` housing dataset. You will compare the full spectrum of regression approaches and make a principled recommendation.
+
+## The Dataset
+
+```{r lab-intro}
+data(Boston, package = "MASS")
+
+cat("Dimensions:", nrow(Boston), "×",
+    ncol(Boston), "\n\n")
+
+# Quick summary
+tibble::glimpse(Boston)
+```
+
+```{r lab-intro2}
+# Missing values
+cat("Missing values:", sum(is.na(Boston)), "\n\n")
+
+# Distribution of outcome
+p1 <- ggplot(Boston, aes(x = medv)) +
+  geom_histogram(bins = 30, fill = "steelblue",
+                 color = "white", alpha = 0.8) +
+  labs(title = "Outcome: Median Home Value (medv)",
+       x = "medv ($1000s)", y = "Count") +
+  theme_minimal(base_size = 12)
+
+p2 <- ggplot(Boston, aes(x = log(medv))) +
+  geom_histogram(bins = 30, fill = "seagreen",
+                 color = "white", alpha = 0.8) +
+  labs(title = "log(medv)",
+       x = "log(medv)", y = "Count") +
+  theme_minimal(base_size = 12)
+
+p1 + p2
+```
+
+## Lab Task 1: Exploratory Regression Analysis
+
+```{r lab-task1}
+# Correlation of each predictor with medv
+cor_medv <- sort(cor(Boston)[,"medv"], decreasing = TRUE)
+cor_df   <- data.frame(
+  Variable    = names(cor_medv),
+  Correlation = round(cor_medv, 4)
+) |> filter(Variable != "medv")
+
+kable(cor_df,
+      caption = "Predictor Correlations with medv") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(2, bold = TRUE,
+              color = ifelse(abs(cor_df$Correlation) > 0.5,
+                             "tomato","steelblue"))
+```
+
+## Lab Task 2: OLS and Diagnostics
+
+```{r lab-task2}
+# Fit OLS
+ols_boston <- lm(medv ~ ., data = Boston)
+cat("OLS Model Summary:\n")
+cat("Adj. R²:", round(summary(ols_boston)$adj.r.squared, 4), "\n")
+cat("Residual SE:", round(summary(ols_boston)$sigma, 4), "\n\n")
+
+# Diagnostics
+par(mfrow = c(2, 2), mar = c(4, 4, 3, 1))
+plot(ols_boston, which = 1:4,
+     col = "steelblue", pch = 19, cex = 0.6)
+```
+
+```{r lab-task2b}
+# Formal tests
+diag_results <- data.frame(
+  Test    = c("Shapiro-Wilk (normality)",
+               "Breusch-Pagan (homoscedasticity)",
+               "RESET (linearity)"),
+  p_value = round(c(
+    shapiro.test(residuals(ols_boston))$p.value,
+    lmtest::bptest(ols_boston)$p.value,
+    lmtest::resettest(ols_boston)$p.value
+  ), 4),
+  Decision = NA
+)
+diag_results$Decision <- ifelse(
+  diag_results$p_value < 0.05,
+  "Violated ✗", "Satisfied ✓")
+
+kable(diag_results,
+      caption = "Regression Diagnostic Tests") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(3, bold = TRUE,
+              color = ifelse(
+                diag_results$Decision == "Satisfied ✓",
+                "darkgreen","tomato"))
+```
+
+## Lab Task 3: Model Comparison
+
+```{r lab-task3}
+# Variable selection
+step_boston <- stepAIC(ols_boston, direction = "both",
+                        trace = FALSE)
+
+# Regularization
+X_b <- as.matrix(Boston[,-which(names(Boston)=="medv")])
+y_b <- Boston$medv
+set.seed(42)
+cv_l <- cv.glmnet(X_b, y_b, alpha = 1, nfolds = 10)
+cv_r <- cv.glmnet(X_b, y_b, alpha = 0, nfolds = 10)
+
+# GAM
+gam_boston <- mgcv::gam(
+  medv ~ s(lstat) + s(rm) + s(dis) + s(nox) +
+    chas + s(age) + s(rad, k = 5) + s(tax) +  # Reduced k for rad
+    s(ptratio) + s(black) + s(crim) + s(zn) + s(indus),
+  data   = Boston,
+  method = "REML"
+)
+
+# 10-fold CV MSE for all models
+set.seed(42)
+folds_b <- caret::createFolds(Boston$medv, k = 10)
+
+cv_mse_model <- function(model_obj, data_df) {
+  mse_vals <- sapply(folds_b, function(idx) {
+    pred <- predict(model_obj,
+                    newdata = data_df[idx,])
+    mean((data_df$medv[idx] - pred)^2)
+  })
+  mean(mse_vals)
+}
+
+# Lasso predictions
+lasso_preds <- predict(cv_l, X_b,
+                        s = "lambda.min")[,1]
+lasso_cv_mse <- mean(sapply(folds_b, function(idx) {
+  fit  <- glmnet(X_b[-idx,], y_b[-idx],
+                  alpha = 1,
+                  lambda = cv_l$lambda.min)
+  pred <- predict(fit, X_b[idx,])[,1]
+  mean((y_b[idx] - pred)^2)
+}))
+
+final_comparison <- data.frame(
+  Model    = c("OLS (full)","Stepwise AIC",
+                "Lasso","Ridge","GAM"),
+  N_Params = c(length(coef(ols_boston))-1,
+                length(coef(step_boston))-1,
+                sum(coef(cv_l,
+                         s="lambda.min") != 0)-1,
+                length(coef(cv_r,
+                         s="lambda.min"))-1,
+                length(coef(gam_boston))-1),
+  CV_MSE   = round(c(
+    cv_mse_model(ols_boston, Boston),
+    cv_mse_model(step_boston, Boston),
+    lasso_cv_mse,
+    mean(sapply(folds_b, function(idx) {
+      fit  <- glmnet(X_b[-idx,], y_b[-idx],
+                      alpha = 0,
+                      lambda = cv_r$lambda.min)
+      pred <- predict(fit, X_b[idx,])[,1]
+      mean((y_b[idx] - pred)^2)
+    })),
+    cv_mse_model(gam_boston, Boston)
+  ), 3)
+)
+
+kable(final_comparison |> arrange(CV_MSE),
+      caption   = "Final Model Comparison: 10-Fold CV MSE",
+      col.names = c("Model","# Parameters","CV MSE")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  row_spec(1, bold = TRUE, background = "#EEF2FF")
+```
+
+## Lab Task 4: GAM Visualization
+
+```{r lab-task4}
+# Plot GAM smooth terms for key predictors
+par(mfrow = c(2, 3), mar = c(4, 4, 3, 1))
+
+# Loop through the first 6 smooth terms
+for(i in 1:6) {
+  plot(gam_boston, select = i, 
+       shade = TRUE, shade.col = "lightblue", 
+       col = "tomato", seWithMean = TRUE)
+}
+```
+
+## Lab Discussion Questions
+
+Answer the following in writing:
+
+1. **Assumption Violations:** The diagnostic tests in Lab Task 2 reveal violations of homoscedasticity and linearity. What are the practical consequences for inference (confidence intervals and p-values) from the OLS model? How does the GAM address the linearity violation?
+
+2. **Regularization vs. Selection:** Lasso performs variable selection automatically, while stepwise AIC uses sequential testing. Compare their CV MSEs. Which approach is more principled from a statistical perspective, and why?
+
+3. **GAM Interpretation:** From the smooth term plots in Lab Task 4, describe the relationship between `lstat` (lower status population) and `medv`. Is it linear? At what values of `lstat` does the effect of additional lower-status population appear largest?
+
+4. **Model Recommendation:** Based on the full comparison table, which model would you recommend for (a) a real estate valuation company that needs accurate predictions, and (b) a city planner who needs to understand which neighborhood characteristics drive housing prices?
+
+5. **The Bias-Variance Perspective:** The GAM is the most flexible model but not necessarily the best by CV MSE. Explain this in terms of the bias-variance tradeoff. Under what conditions would the OLS model outperform the GAM in out-of-sample prediction?
+
+---
+
+# Chapter Summary
+
+## Summary
+
+This final chapter completed the regression toolkit from foundations to advanced methods:
+
+- **Simple linear regression** — OLS estimation, slope interpretation, $R^2$, confidence vs. prediction intervals; the Gauss-Markov theorem justifies OLS under the LINE assumptions.
+- **Multiple regression** — partial effects, adjusted $R^2$, F-test, multicollinearity (VIF), and the importance of controlling for confounders in observational data.
+- **Regression diagnostics** — the four diagnostic plots, formal tests (Shapiro-Wilk, Breusch-Pagan, RESET), Cook's distance; transformations and robust SE as remedies.
+- **Variable selection** — AIC, BIC, stepwise methods, and cross-validation; stepwise has known statistical problems; CV is more principled.
+- **Regularized regression** — Ridge (L2) shrinks all coefficients; Lasso (L1) performs selection; $\lambda$ tuned by CV.
+- **Non-linear regression** — polynomial, spline, and GAM flexibly capture curved relationships while maintaining interpretability; GAM smooth plots are the key diagnostic output.
+- **GLMs for count and categorical outcomes** — Poisson regression for counts, with quasi-Poisson or Negative Binomial for overdispersion; link functions connect the linear predictor to the outcome scale.
+
+::: {.callout-important}
+## Key Formulas to Know
+
+**OLS Estimator:**
+$$\hat{\boldsymbol{\beta}} = (\mathbf{X}^T\mathbf{X})^{-1}\mathbf{X}^T\mathbf{Y}$$
+
+**Adjusted $R^2$:**
+$$\bar{R}^2 = 1 - \frac{\text{RSS}/(n-p-1)}{\text{TSS}/(n-1)}$$
+
+**Ridge Objective:**
+$$\text{RSS} + \lambda\sum_{j}\beta_j^2$$
+
+**Lasso Objective:**
+$$\text{RSS} + \lambda\sum_{j}|\beta_j|$$
+
+**VIF:**
+$$\text{VIF}_j = \frac{1}{1 - R_j^2}$$
+
+**Poisson Log-Link:**
+$$\log(\mu_i) = \beta_0 + \boldsymbol{\beta}^T\mathbf{x}_i, \quad \text{IRR} = e^{\beta_j}$$
+
+**GAM:**
+$$Y = \beta_0 + \sum_{j=1}^{p} f_j(X_j) + \varepsilon$$
+:::
+
+---
+
+# Textbook Epilogue
+
+Congratulations on completing *Statistics for Data Science*. Over ten chapters, you have built a comprehensive statistical toolkit — from describing and visualizing data (Chapters 1–2), through the formal machinery of inference (Chapters 3–4), to the practical realities of data collection and preparation (Chapters 5–6), and finally to the analytical methods that drive modern data science (Chapters 7–10).
+
+The journey from descriptive statistics to dimension reduction, clustering, classification, and regression reflects the actual workflow of a data scientist: understand your data, prepare it carefully, find structure within it, and build models that are both accurate and interpretable.
+
+Three principles have threaded through every chapter:
+
+1. **Assumptions matter.** Every method rests on assumptions. Violating them silently is not an option — it is a research integrity issue. Always check and report.
+
+2. **Effect size and practical significance are as important as p-values.** Statistical significance does not equal importance. Always accompany test results with measures of effect magnitude and uncertainty.
+
+3. **Generalization is the goal.** Training accuracy, $R^2$, and within-sample fit are not the end goal. Cross-validation, out-of-sample testing, and honest uncertainty quantification are.
+
+The field continues to evolve rapidly. The methods in this textbook are the stable, well-validated foundations — from here, you are equipped to engage with the research literature, implement new methods, and evaluate claims critically.
+
+*Good luck with your research and data science practice.*
+
+## References
+
+Box, G. E. P., & Cox, D. R. (1964). An analysis of transformations. *Journal of the Royal Statistical Society: Series B*, *26*(2), 211–243.
+
+Breusch, T. S., & Pagan, A. R. (1979). A simple test for heteroscedasticity and random coefficient variation. *Econometrica*, *47*(5), 1287–1294.
+
+Cook, R. D. (1977). Detection of influential observation in linear regression. *Technometrics*, *19*(1), 15–18.
+
+Durbin, J., & Watson, G. S. (1950). Testing for serial correlation in least squares regression, I. *Biometrika*, *37*(3/4), 409–428.
+
+Fisher, R. A. (1925). *Statistical methods for research workers*. Oliver and Boyd.
+
+Fox, J., & Weisberg, S. (2019). *An R companion to applied regression* (3rd ed.). SAGE.
+
+Friedman, J., Hastie, T., & Tibshirani, R. (2010). Regularization paths for generalized linear models via coordinate descent. *Journal of Statistical Software*, *33*(1), 1–22.
+
+Harrison, D., & Rubinfeld, D. L. (1978). Hedonic housing prices and the demand for clean air. *Journal of Environmental Economics and Management*, *5*(1), 81–102.
+
+Hastie, T., Tibshirani, R., & Friedman, J. (2009). *The elements of statistical learning* (2nd ed.). Springer. https://hastie.su.domains/ElemStatLearn/
+
+Henderson, H. V., & Velleman, P. F. (1981). Building multiple regression models interactively. *Biometrics*, *37*(2), 391–411.
+
+Hoerl, A. E., & Kennard, R. W. (1970). Ridge regression: Biased estimation for nonorthogonal problems. *Technometrics*, *12*(1), 55–67.
+
+James, G., Witten, D., Hastie, T., & Tibshirani, R. (2021). *An introduction to statistical learning with applications in R* (2nd ed.). Springer. https://www.statlearning.com
+
+McCullagh, P., & Nelder, J. A. (1989). *Generalized linear models* (2nd ed.). Chapman and Hall.
+
+New York State Department of Conservation. (1973). *Daily air quality measurements in New York, May–September 1973*.
+
+Pedersen, T. L. (2022). *patchwork: The composer of plots* (R package version 1.1.2). https://CRAN.R-project.org/package=patchwork
+
+R Core Team. (2024). *R: A language and environment for statistical computing*. R Foundation for Statistical Computing. https://www.R-project.org/
+
+Ramsey, J. B. (1969). Tests for specification errors in classical linear least squares regression analysis. *Journal of the Royal Statistical Society: Series B*, *31*(2), 350–371.
+
+Robinson, D., Hayes, A., & Couch, S. (2023). *broom: Convert statistical objects into tidy tibbles* (R package version 1.0.5). https://CRAN.R-project.org/package=broom
+
+Schwarz, G. (1978). Estimating the dimension of a model. *Annals of Statistics*, *6*(2), 461–464.
+
+Tibshirani, R. (1996). Regression shrinkage and selection via the Lasso. *Journal of the Royal Statistical Society: Series B*, *58*(1), 267–288.
+
+Venables, W. N., & Ripley, B. D. (2002). *Modern applied statistics with S* (4th ed.). Springer.
+
+Wickham, H. (2016). *ggplot2: Elegant graphics for data analysis*. Springer.
+
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. *Journal of Open Source Software*, *4*(43), 1686.
+
+Wood, S. N. (2011). Fast stable restricted maximum likelihood and marginal likelihood estimation of semiparametric generalized linear models. *Journal of the Royal Statistical Society: Series B*, *73*(1), 3–36.
+
+Wood, S. N. (2023). *mgcv: Mixed GAM computation vehicle* (R package version 1.9-0). https://CRAN.R-project.org/package=mgcv
+
+Xie, Y. (2015). *Dynamic documents with R and knitr* (2nd ed.). CRC Press.
+
+Zeileis, A., & Hothorn, T. (2002). Diagnostic checking in regression relationships. *R News*, *2*(3), 7–10.
+
+Zou, H., & Hastie, T. (2005). Regularization and variable selection via the elastic net. *Journal of the Royal Statistical Society: Series B*, *67*(2), 301–320.
+
+---
+
+*End of Chapter 10 and the Textbook.*

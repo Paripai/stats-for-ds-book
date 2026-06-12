@@ -1,0 +1,1566 @@
+# Chapter 6: Data Preprocessing
+
+```{r setup}
+# Load all libraries needed for this chapter
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(patchwork)
+library(mice)          # multiple imputation
+library(VIM)           # missing data visualization
+library(car)           # Box-Cox transformation
+library(MASS)          # boxcox()
+library(recipes)       # preprocessing pipelines
+library(naniar)        # missing data tools
+library(corrplot)      # correlation visualization
+```
+
+---
+
+# Chapter Overview
+
+## Introduction
+
+Raw data is almost never ready for analysis. In practice, data scientists spend the majority of their time — estimates range from 60% to 80% — cleaning, transforming, and preparing data before any modeling begins. This is not merely a technical chore: the decisions made during preprocessing directly shape the conclusions drawn from the analysis. A model trained on poorly preprocessed data is unreliable regardless of its algorithmic sophistication.
+
+This chapter covers:
+
+- **Why Preprocessing Matters** — the preprocessing pipeline and its role in data science
+- **Handling Missing Data** — types of missingness, deletion strategies, and imputation
+- **Outlier Detection and Treatment** — IQR, z-score, and multivariate methods
+- **Data Transformation** — log, Box-Cox, normalization, and standardization
+- **Encoding Categorical Variables** — dummy, one-hot, ordinal, and target encoding
+- **Feature Scaling** — min-max, z-score, and robust scaling
+- **Data Integration and Reshaping** — merging, pivoting, and tidy data principles
+
+::: {.callout-note}
+## Learning Objectives
+By the end of this chapter, you will be able to:
+
+1. Describe the role of preprocessing in the data science pipeline.
+2. Identify the type of missingness and apply appropriate handling strategies.
+3. Detect and treat outliers using univariate and multivariate methods.
+4. Apply appropriate transformations to correct distributional issues.
+5. Encode categorical variables correctly for statistical and machine learning models.
+6. Scale features appropriately for distance-based and gradient-based algorithms.
+7. Reshape and integrate data using tidyverse tools following tidy data principles.
+:::
+
+---
+
+# Why Preprocessing Matters
+
+## Introduction
+
+The phrase **"garbage in, garbage out"** (GIGO) captures a fundamental truth in data science: the quality of any analysis is bounded by the quality of its input data. Missing values, outliers, inconsistent formatting, wrong data types, and poorly scaled features can silently distort statistical estimates, inflate model error, and lead to conclusions that seem analytically sound but are empirically baseless. Preprocessing is the systematic process of transforming raw data into a form suitable for analysis.
+
+## Theory
+
+### The Data Preprocessing Pipeline
+
+A typical preprocessing pipeline consists of sequential steps applied before modeling:
+
+```
+Raw Data
+    ↓
+1. Data Inspection      — understand structure, types, missingness
+    ↓
+2. Missing Data         — identify, understand, and handle NAs
+    ↓
+3. Outlier Treatment    — detect and decide: remove, cap, or keep
+    ↓
+4. Transformation       — correct distributional shape
+    ↓
+5. Encoding             — convert categorical to numeric
+    ↓
+6. Scaling              — normalize feature magnitudes
+    ↓
+7. Integration          — merge sources, reshape to tidy format
+    ↓
+Clean Data → Analysis / Modeling
+```
+
+The order matters: outliers should be addressed before scaling; missing data should be handled before transformation; encoding precedes scaling for newly created numeric features.
+
+### Why Each Step Matters
+
+| Issue | Consequence if Ignored | Preprocessing Fix |
+|-------|----------------------|------------------|
+| Missing values | Biased estimates, model errors | Imputation or deletion |
+| Outliers | Inflated variance, distorted means | Detection + treatment |
+| Skewed distributions | Violated normality assumptions | Log/Box-Cox transformation |
+| Mixed scales | Distance-based models dominated by large-scale features | Standardization |
+| Raw categories | Most algorithms require numeric input | Encoding |
+| Inconsistent formats | Merge failures, incorrect grouping | Cleaning + reshaping |
+
+: Consequences of skipping preprocessing steps {.striped}
+
+### The Leakage Problem
+
+A critical principle in preprocessing: **all transformations must be fitted on training data only and then applied to test data**. Fitting a scaler or imputer on the full dataset before splitting allows test set information to "leak" into the training process, producing overly optimistic performance estimates. This is why preprocessing pipelines (like `recipes` in R or `sklearn.pipeline` in Python) are best practice — they enforce the correct order of operations and prevent leakage.
+
+## Example: The Cost of Skipping Preprocessing
+
+**Example 6.1.** A data scientist trains a regression model to predict hospital readmission risk. The dataset has:
+
+- 18% missing values in the key predictor "number of prior admissions" (not handled → model drops these rows, losing 18% of data and biasing toward patients with complete records)
+- One outlier patient with 47 prior admissions (not handled → inflates the regression slope)
+- Age in years and income in dollars (not scaled → income dominates distance calculations)
+- Insurance type as a string variable (not encoded → model crashes or silently drops it)
+
+Each issue independently degrades model performance. Together, they produce a model that is unreliable despite sophisticated methodology.
+
+## R Example: Initial Data Inspection
+
+```{r data-inspection}
+# --- Use airquality as a running example ---
+data(airquality)
+
+# Step 1: Structural overview
+cat("=== Dataset Structure ===\n")
+glimpse(airquality)
+```
+
+```{r data-inspection2}
+# Step 2: Missing value summary
+cat("\n=== Missing Values ===\n")
+miss_summary <- data.frame(
+  Variable    = names(airquality),
+  Type        = sapply(airquality, class),
+  N_Missing   = colSums(is.na(airquality)),
+  Pct_Missing = round(colMeans(is.na(airquality)) * 100, 1)
+)
+rownames(miss_summary) <- NULL
+
+kable(miss_summary,
+      caption   = "Variable Overview and Missing Data",
+      col.names = c("Variable","Type","N Missing","% Missing")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(4, bold = TRUE,
+              color = ifelse(miss_summary$Pct_Missing > 0,
+                             "tomato", "darkgreen"))
+```
+
+```{r data-inspection3}
+# Step 3: Basic descriptive statistics
+summary(airquality)
+```
+
+**Code explanation:**
+
+- `glimpse()` provides a compact structural overview: variable names, types, and first few values — always the first step.
+- Building a custom `miss_summary` data frame is more informative than `is.na()` alone — it quantifies the scale of the missing data problem per variable.
+- `summary()` gives a quick distributional picture including min, max, quartiles, and NA counts — useful for spotting impossible values and gross outliers.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 6.1
+Load the `mtcars` dataset and perform a full initial inspection:
+
+(a) Check variable types with `str()` and `glimpse()`. Which variables are stored incorrectly?
+(b) Create a missing value summary table. Are there any missing values?
+(c) Use `summary()` to identify any suspicious values (impossible ranges, extreme outliers).
+(d) Write a 100-word "data quality report" describing the state of the data before preprocessing.
+:::
+
+---
+
+# Handling Missing Data
+
+## Introduction
+
+Missing data is one of the most pervasive problems in real-world datasets. How missing values are handled has a profound effect on the validity of subsequent analysis — and the wrong strategy can introduce bias far worse than the original missingness. The first step is always to understand **why** data is missing, because the appropriate handling strategy depends on the mechanism of missingness.
+
+## Theory
+
+### Types of Missingness
+
+**Little and Rubin (1987)** established the canonical taxonomy of missing data mechanisms:
+
+**Missing Completely At Random (MCAR):** The probability of missingness is unrelated to any variable — observed or missing. The missing data is a random subsample of the complete data.
+
+$$P(\text{missing} \mid Y_{\text{obs}}, Y_{\text{mis}}) = P(\text{missing})$$
+
+*Example:* A sensor randomly malfunctions regardless of the measurement value. MCAR is the most benign mechanism — complete case analysis (listwise deletion) is unbiased, though it loses power.
+
+**Missing At Random (MAR):** The probability of missingness depends on **observed** variables but not on the missing values themselves — after conditioning on observed data.
+
+$$P(\text{missing} \mid Y_{\text{obs}}, Y_{\text{mis}}) = P(\text{missing} \mid Y_{\text{obs}})$$
+
+*Example:* Older patients are less likely to complete a digital survey (age is observed; the missing survey responses are not related to their content). MAR is the most common mechanism and supports valid imputation.
+
+**Missing Not At Random (MNAR):** The probability of missingness depends on the **missing values themselves** — even after conditioning on observed data.
+
+$$P(\text{missing} \mid Y_{\text{obs}}, Y_{\text{mis}}) \neq P(\text{missing} \mid Y_{\text{obs}})$$
+
+*Example:* People with very high incomes decline to report income. MNAR is the most problematic — no standard statistical method can fully correct for it without additional assumptions or external data.
+
+### Strategies for Handling Missing Data
+
+**1. Complete Case Analysis (Listwise Deletion)**
+
+Remove all rows containing any missing value. Simple and default in most software.
+
+- ✓ Valid and unbiased under MCAR
+- ✗ Loses power; biased under MAR or MNAR
+- ✗ Can lose substantial data if missingness is spread across many variables
+
+**2. Mean / Median / Mode Imputation**
+
+Replace missing values with the variable's mean (continuous), median (skewed/ordinal), or mode (categorical).
+
+- ✓ Simple and fast
+- ✗ Underestimates variance (artificially concentrates values at center)
+- ✗ Distorts correlations between variables
+- ✗ Valid only approximately under MCAR
+
+**3. Multiple Imputation (MI)**
+
+Generate $m$ complete datasets by imputing missing values $m$ times using a statistical model (typically a multivariate normal or predictive mean matching), analyze each, and combine results using **Rubin's rules**.
+
+$$\hat{\theta} = \frac{1}{m}\sum_{i=1}^{m}\hat{\theta}_i, \qquad \text{Var}(\hat{\theta}) = \bar{W} + \left(1 + \frac{1}{m}\right)B$$
+
+where $\bar{W}$ is the within-imputation variance and $B$ is the between-imputation variance.
+
+- ✓ Valid under MAR; gold standard for missing data handling
+- ✓ Correctly propagates uncertainty from missingness
+- ✗ More complex to implement and interpret
+
+**4. Model-Based Imputation**
+
+Use a regression model to predict missing values from other variables (K-nearest neighbors imputation, random forest imputation).
+
+- ✓ Preserves relationships between variables better than mean imputation
+- ✓ Works well for MAR data
+- ✗ Risk of overfitting if not cross-validated
+
+### Diagnosing the Missingness Mechanism
+
+| Test | Purpose |
+|------|---------|
+| Compare observed vs. missing on other variables | Check for MAR patterns |
+| Little's MCAR test | Formal test of MCAR assumption |
+| Missing data pattern visualization | Identify which variables co-occur in missingness |
+
+: Missingness diagnostics {.striped}
+
+## Example: Missing Data in a Clinical Study
+
+**Example 6.2.** A clinical dataset records blood pressure, cholesterol, age, and BMI for 500 patients. Cholesterol has 22% missing values. Investigation reveals: older patients (age > 65) are less likely to have cholesterol measured (they were referred to a different lab). Since age is observed and the missingness depends on age (not on the cholesterol value itself), this is **MAR** — multiple imputation using age and other observed variables as predictors is the appropriate strategy.
+
+If instead, patients with very high cholesterol avoided the test (fearing bad news), this would be **MNAR** — no standard imputation method can fully correct for this without external information.
+
+## R Example: Missing Data Analysis and Imputation
+
+```{r missing-viz}
+# --- Missing data visualization ---
+# airquality: Ozone (24 missing) and Solar.R (7 missing)
+
+# Pattern of missingness
+naniar::vis_miss(airquality) +
+  labs(title = "Missing Data Pattern: airquality Dataset") +
+  theme_minimal(base_size = 12)
+```
+
+```{r missing-explore}
+# --- Explore MAR: does missingness in Ozone relate to other vars? ---
+airquality <- airquality |>
+  mutate(ozone_missing = is.na(Ozone))
+
+# Compare Temp and Wind between missing and non-missing Ozone groups
+missing_comparison <- airquality |>
+  group_by(ozone_missing) |>
+  summarise(
+    n         = n(),
+    Mean_Temp = round(mean(Temp,  na.rm = TRUE), 2),
+    Mean_Wind = round(mean(Wind,  na.rm = TRUE), 2),
+    Mean_Solar = round(mean(Solar.R, na.rm = TRUE), 2),
+    .groups   = "drop"
+  )
+
+kable(missing_comparison,
+      caption   = "Variable Means by Ozone Missingness Status",
+      col.names = c("Ozone Missing?","n","Mean Temp",
+                    "Mean Wind","Mean Solar.R")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+```{r imputation-methods}
+# --- Compare imputation methods ---
+airquality_clean <- airquality |> dplyr::select(-ozone_missing)
+
+# Method 1: Complete case analysis
+cc_data <- na.omit(airquality_clean)
+cat("Complete cases:", nrow(cc_data),
+    "of", nrow(airquality_clean), "\n")
+
+# Method 2: Mean imputation
+mean_imputed <- airquality_clean |>
+  mutate(
+    Ozone    = ifelse(is.na(Ozone),
+                       mean(Ozone, na.rm = TRUE), Ozone),
+    Solar.R  = ifelse(is.na(Solar.R),
+                       mean(Solar.R, na.rm = TRUE), Solar.R)
+  )
+
+# Method 3: Multiple imputation via mice
+set.seed(42)
+mice_out  <- mice(airquality_clean, m = 5,
+                   method = "pmm", printFlag = FALSE)
+mi_data   <- complete(mice_out, 1)  # first imputed dataset
+
+# Compare distributions of imputed Ozone
+imp_compare <- data.frame(
+  Method = c("Complete Cases","Mean Imputation",
+             "Multiple Imputation (MI)"),
+  n      = c(nrow(cc_data), nrow(mean_imputed), nrow(mi_data)),
+  Mean_Ozone = round(c(mean(cc_data$Ozone),
+                        mean(mean_imputed$Ozone),
+                        mean(mi_data$Ozone)), 2),
+  SD_Ozone   = round(c(sd(cc_data$Ozone),
+                        sd(mean_imputed$Ozone),
+                        sd(mi_data$Ozone)), 2)
+)
+
+kable(imp_compare,
+      caption   = "Imputation Method Comparison: Ozone Variable",
+      col.names = c("Method","n","Mean Ozone","SD Ozone")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+```{r imputation-plot}
+# --- Visualize effect of imputation on distribution ---
+dist_df <- bind_rows(
+  data.frame(Ozone  = cc_data$Ozone,
+             Method = "Complete Cases"),
+  data.frame(Ozone  = mean_imputed$Ozone,
+             Method = "Mean Imputation"),
+  data.frame(Ozone  = mi_data$Ozone,
+             Method = "Multiple Imputation")
+)
+
+ggplot(dist_df, aes(x = Ozone, fill = Method)) +
+  geom_density(alpha = 0.5) +
+  scale_fill_manual(values = c("steelblue","tomato","seagreen")) +
+  labs(title    = "Ozone Distribution Under Different Imputation Methods",
+       subtitle = "Mean imputation artificially spikes at the mean; MI preserves shape",
+       x        = "Ozone (ppb)", y = "Density",
+       fill     = "Method") +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "top")
+```
+
+**Code explanation:**
+
+- `naniar::vis_miss()` produces a tile plot of missingness — each column is a variable, each row an observation, and missing values appear in a contrasting color.
+- `mice(data, m=5, method="pmm")` runs multiple imputation with predictive mean matching — the most robust method for continuous variables. `m=5` creates 5 imputed datasets.
+- The density plot reveals why mean imputation is problematic: it creates an artificial spike at the mean, underestimating variance and distorting the distribution.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 6.2
+Using the `airquality` dataset:
+
+(a) Test whether `Ozone` missingness is related to `Month` using a chi-square test or proportion comparison. What type of missingness does this suggest?
+(b) Implement KNN imputation using `VIM::kNN()`. Compare the distribution of imputed Ozone to mean imputation and MI.
+(c) After multiple imputation (m=5), pool results using `mice::pool()` for a linear regression of Ozone on Temp and Wind. Report the pooled coefficients.
+:::
+
+::: {.callout-tip}
+## Exercise 6.3
+Create a dataset with MNAR missingness: simulate 200 observations of income where values above 100,000 are set to NA (high earners hide income).
+
+(a) Apply mean imputation and MI. Compare estimates of the mean income to the true value.
+(b) Show that neither method recovers the true mean. What does this demonstrate about MNAR?
+:::
+
+---
+
+# Outlier Detection and Treatment
+
+## Introduction
+
+An **outlier** is an observation that deviates markedly from the general pattern of the data. Outliers arise from data entry errors, measurement failures, genuine extreme values, or population heterogeneity. The key question is always: *Is this outlier an error to be corrected, or a genuine extreme value to be retained?* Blindly removing outliers is as dangerous as blindly keeping them — context and domain knowledge are essential.
+
+## Theory
+
+### Univariate Methods
+
+**IQR Method (Tukey's Fences):**
+
+An observation is a potential outlier if it falls below the lower fence or above the upper fence:
+
+$$\text{Lower fence} = Q_1 - 1.5 \times \text{IQR}$$
+$$\text{Upper fence} = Q_3 + 1.5 \times \text{IQR}$$
+
+Using a multiplier of 3.0 instead of 1.5 defines **extreme outliers**. This method is robust — it uses quartiles rather than the mean, so it is not affected by the outliers it is trying to detect.
+
+**Z-Score Method:**
+
+An observation is an outlier if its standardized value exceeds a threshold (typically $|z| > 3$):
+
+$$z_i = \frac{x_i - \bar{x}}{s}$$
+
+This method is sensitive to the outliers themselves (since $\bar{x}$ and $s$ are both affected), making it less reliable than the IQR method for heavily contaminated data. The **modified z-score** using the median and MAD (median absolute deviation) is more robust:
+
+$$\tilde{z}_i = \frac{0.6745(x_i - \tilde{x})}{\text{MAD}}, \qquad \text{MAD} = \text{median}(|x_i - \tilde{x}|)$$
+
+Observations with $|\tilde{z}_i| > 3.5$ are flagged as outliers.
+
+### Multivariate Methods
+
+**Mahalanobis Distance:**
+
+For multivariate data, univariate methods miss outliers that are unusual in the joint distribution but not in any individual variable. The Mahalanobis distance measures how far an observation is from the multivariate centroid, accounting for correlations:
+
+$$D^2_i = (\mathbf{x}_i - \bar{\mathbf{x}})^T \mathbf{S}^{-1} (\mathbf{x}_i - \bar{\mathbf{x}})$$
+
+Under multivariate normality, $D^2_i \sim \chi^2(p)$ where $p$ is the number of variables. Observations with $D^2_i > \chi^2_{p, 0.975}$ are flagged.
+
+### Treatment Options
+
+| Treatment | When to Use |
+|-----------|------------|
+| **Remove** | Confirmed data entry errors or measurement failures |
+| **Cap (Winsorize)** | Genuine extreme values; replace with fence values |
+| **Transform** | Log or sqrt reduces the influence of large values |
+| **Keep** | Genuine extreme values that are part of the population |
+| **Robust methods** | Use median-based estimators instead of mean-based |
+
+: Outlier treatment options {.striped}
+
+::: {.callout-warning}
+## Never Remove Outliers Automatically
+Always investigate before removing. An outlier might be the most scientifically interesting observation. Document every removal decision with a justification.
+:::
+
+## Example: Outlier Detection
+
+**Example 6.3.** In a dataset of 100 monthly salaries (THB), the IQR method flags a salary of 850,000 THB as an outlier (all others are below 120,000). Investigation reveals this is the CEO — a genuine extreme value, not an error. The appropriate treatment is to **retain** it for descriptive analysis but **report separately** when computing "typical" employee salary, or to use the **median** as the summary statistic.
+
+## R Example: Outlier Detection and Treatment
+
+```{r outlier-detect}
+# --- Univariate outlier detection ---
+data(airquality)
+ozone <- na.omit(airquality$Ozone)
+
+# IQR method
+Q1  <- quantile(ozone, 0.25)
+Q3  <- quantile(ozone, 0.75)
+IQR_val <- Q3 - Q1
+lower   <- Q1 - 1.5 * IQR_val
+upper   <- Q3 + 1.5 * IQR_val
+
+# Z-score method
+z_scores <- abs(scale(ozone))
+
+# Modified z-score (robust)
+MAD_val  <- mad(ozone)
+mod_z    <- abs(0.6745 * (ozone - median(ozone)) / MAD_val)
+
+outlier_summary <- data.frame(
+  Method           = c("IQR (1.5×IQR)",
+                        "IQR (3.0×IQR — extreme)",
+                        "Z-score (|z|>3)",
+                        "Modified Z-score (|z̃|>3.5)"),
+  N_Flagged        = c(
+    sum(ozone < lower | ozone > upper),
+    sum(ozone < Q1 - 3*IQR_val | ozone > Q3 + 3*IQR_val),
+    sum(z_scores > 3),
+    sum(mod_z > 3.5)
+  ),
+  Values_Flagged   = c(
+    paste(sort(ozone[ozone < lower | ozone > upper]),
+          collapse = ", "),
+    paste(sort(ozone[ozone < Q1-3*IQR_val |
+                       ozone > Q3+3*IQR_val]),
+          collapse = ", "),
+    paste(sort(ozone[z_scores > 3]), collapse = ", "),
+    paste(sort(ozone[mod_z > 3.5]), collapse = ", ")
+  )
+)
+
+kable(outlier_summary,
+      caption   = "Outlier Detection: Ozone Variable",
+      col.names = c("Method","N Flagged","Values")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+```{r outlier-multivariate}
+# --- Multivariate outlier: Mahalanobis distance ---
+mtcars_cont <- mtcars[, c("mpg","hp","wt","disp")]
+
+maha_dist  <- mahalanobis(mtcars_cont,
+                            colMeans(mtcars_cont),
+                            cov(mtcars_cont))
+chi_crit   <- qchisq(0.975, df = ncol(mtcars_cont))
+
+outlier_flag <- maha_dist > chi_crit
+
+cat("Mahalanobis Distance Outliers (χ²₄, p=0.975 threshold =",
+    round(chi_crit, 2), "):\n")
+print(mtcars[outlier_flag,
+             c("mpg","hp","wt","disp")])
+```
+
+```{r outlier-treatment}
+# --- Winsorization (capping) ---
+winsorize <- function(x, lower_p = 0.05, upper_p = 0.95) {
+  lo <- quantile(x, lower_p, na.rm = TRUE)
+  hi <- quantile(x, upper_p, na.rm = TRUE)
+  pmin(pmax(x, lo), hi)
+}
+
+ozone_wins <- winsorize(ozone, 0.05, 0.95)
+
+cat("\nOzone before Winsorization: mean =",
+    round(mean(ozone), 2), " sd =", round(sd(ozone), 2), "\n")
+cat("Ozone after Winsorization:  mean =",
+    round(mean(ozone_wins), 2), " sd =",
+    round(sd(ozone_wins), 2), "\n")
+```
+
+```{r outlier-plot}
+# --- Visualize outliers ---
+ozone_df <- data.frame(
+  ozone  = ozone,
+  outlier = ozone > upper | ozone < lower
+)
+
+p1 <- ggplot(ozone_df, aes(x = "", y = ozone)) +
+  geom_boxplot(fill = "steelblue", alpha = 0.6,
+               outlier.shape = NA) +
+  geom_jitter(aes(color = outlier), width = 0.15,
+              size = 2.5, alpha = 0.8) +
+  geom_hline(yintercept = c(lower, upper),
+             color = "tomato", linetype = "dashed",
+             linewidth = 0.9) +
+  scale_color_manual(values = c("FALSE" = "steelblue",
+                                 "TRUE"  = "tomato")) +
+  labs(title    = "A. IQR Outlier Detection",
+       subtitle = paste0("Red dashed = fences [",
+                          round(lower,1), ", ",
+                          round(upper,1), "]"),
+       x = "", y = "Ozone (ppb)",
+       color = "Outlier") +
+  theme_minimal(base_size = 12)
+
+p2 <- ggplot(data.frame(car   = rownames(mtcars),
+                         maha  = maha_dist,
+                         flag  = outlier_flag),
+             aes(x = reorder(car, maha), y = maha,
+                 fill = flag)) +
+  geom_col(color = "white") +
+  geom_hline(yintercept = chi_crit, color = "tomato",
+             linetype = "dashed", linewidth = 1) +
+  scale_fill_manual(values = c("FALSE" = "steelblue",
+                                "TRUE"  = "tomato")) +
+  coord_flip() +
+  labs(title    = "B. Mahalanobis Distance (mtcars)",
+       subtitle = paste0("Red = exceeds χ²₄ threshold (",
+                          round(chi_crit,1), ")"),
+       x = "Car", y = "Mahalanobis Distance²",
+       fill = "Outlier") +
+  theme_minimal(base_size = 10) +
+  theme(legend.position = "none")
+
+p1 + p2
+```
+
+**Code explanation:**
+
+- `mahalanobis(x, center, cov)` computes squared Mahalanobis distances; `qchisq(0.975, df=p)` gives the critical value.
+- The `winsorize()` function clamps extreme values at specified percentiles — a common and principled alternative to deletion.
+- The bar chart of Mahalanobis distances (Panel B) makes it easy to rank observations by multivariate extremity and identify which cars are unusual across all dimensions simultaneously.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 6.4
+Using the `mtcars` dataset:
+
+(a) Apply IQR and modified z-score outlier detection to `hp`. Do both methods agree?
+(b) Compute Mahalanobis distances using `mpg`, `hp`, `wt`, and `qsec`. Which cars are multivariate outliers?
+(c) Compare the regression of `mpg ~ hp + wt` with and without the identified outliers. How much do the coefficients change?
+:::
+
+::: {.callout-tip}
+## Exercise 6.5
+For the `airquality` Ozone variable:
+
+(a) Winsorize at the 5th and 95th percentiles. Plot original vs. winsorized distributions.
+(b) Compare the mean and SD before and after winsorization.
+(c) Would you recommend winsorization or log transformation for this variable? Justify using skewness and normality tests.
+:::
+
+---
+
+# Data Transformation
+
+## Introduction
+
+Many statistical methods assume that variables are approximately normally distributed, have constant variance, or are measured on a linear scale. When these assumptions are violated — as they often are with real data — **transformations** can correct the distributional shape, stabilize variance, and linearize relationships. Transformations are applied to the variable itself, not to the model; after transformation, the standard methods can proceed validly.
+
+## Theory
+
+### Log Transformation
+
+The most common transformation for right-skewed, positive data:
+
+$$x' = \log(x) \quad \text{(natural log)} \qquad \text{or} \qquad x' = \log_{10}(x)$$
+
+**When to use:** Right-skewed distributions (income, reaction times, biological measurements, counts). Requires $x > 0$; use $\log(x + c)$ for data containing zeros, where $c$ is a small constant.
+
+**Effect:** Compresses large values more than small ones, pulling the right tail toward the center.
+
+### Square Root Transformation
+
+$$x' = \sqrt{x}$$
+
+**When to use:** Count data (Poisson-distributed), moderate right skew. Less aggressive than log; applicable when $x \geq 0$.
+
+### Box-Cox Transformation
+
+A flexible family of power transformations that includes log and square root as special cases:
+
+$$x'(\lambda) = \begin{cases} \frac{x^\lambda - 1}{\lambda} & \lambda \neq 0 \\ \log(x) & \lambda = 0 \end{cases}$$
+
+The optimal $\lambda$ is estimated by maximum likelihood to maximize normality. Common values: $\lambda = 1$ (no transformation), $\lambda = 0.5$ (square root), $\lambda = 0$ (log), $\lambda = -1$ (reciprocal).
+
+### Yeo-Johnson Transformation
+
+An extension of Box-Cox that handles **zero and negative values**:
+
+$$\psi(x, \lambda) = \begin{cases} [(x+1)^\lambda - 1]/\lambda & x \geq 0, \lambda \neq 0 \\ \log(x+1) & x \geq 0, \lambda = 0 \\ -[(-x+1)^{2-\lambda} - 1]/(2-\lambda) & x < 0, \lambda \neq 2 \\ -\log(-x+1) & x < 0, \lambda = 2 \end{cases}$$
+
+### Normalization vs. Standardization
+
+These are **scaling** operations, covered in detail in Section 6, but distinguished here from transformation:
+
+- **Transformation** changes the distributional **shape** (skewness, tail behavior).
+- **Scaling/Normalization** changes the **location and spread** without changing the shape.
+
+## Example: Choosing a Transformation
+
+**Example 6.4.** Household income data has skewness = 3.8, indicating severe right skew. Three transformations are compared:
+
+| Transformation | Skewness After | Shapiro-Wilk p |
+|---------------|---------------|----------------|
+| None | 3.8 | < 0.001 |
+| Square root | 1.9 | 0.008 |
+| Log | 0.4 | 0.21 |
+| Box-Cox ($\lambda = 0.12$) | 0.1 | 0.38 |
+
+Box-Cox achieves the best normalization, followed closely by log transformation. For most practical purposes, log transformation is preferred for its interpretability (log-income differences correspond to percentage differences).
+
+## R Example: Data Transformations
+
+```{r transformation}
+# --- Compare transformations on Ozone ---
+data(airquality)
+ozone <- na.omit(airquality$Ozone)
+
+# Compute skewness before and after
+transforms <- data.frame(
+  Transformation = c("None","Square Root",
+                      "Log","Box-Cox"),
+  Data           = list(
+    ozone,
+    sqrt(ozone),
+    log(ozone),
+    NA  # filled below
+  )
+)
+
+# Box-Cox optimal lambda
+bc <- MASS::boxcox(ozone ~ 1, lambda = seq(-2, 2, 0.1),
+                    plotit = FALSE)
+lambda_opt <- bc$x[which.max(bc$y)]
+cat("Optimal Box-Cox lambda:", round(lambda_opt, 3), "\n")
+ozone_bc <- (ozone^lambda_opt - 1) / lambda_opt
+
+# Summary table
+transform_summary <- data.frame(
+  Transformation = c("None","Square Root","Log",
+                      paste0("Box-Cox (λ=",
+                             round(lambda_opt,2), ")")),
+  Mean           = round(c(mean(ozone), mean(sqrt(ozone)),
+                            mean(log(ozone)), mean(ozone_bc)), 3),
+  SD             = round(c(sd(ozone), sd(sqrt(ozone)),
+                            sd(log(ozone)), sd(ozone_bc)), 3),
+  Skewness       = round(c(moments::skewness(ozone),
+                            moments::skewness(sqrt(ozone)),
+                            moments::skewness(log(ozone)),
+                            moments::skewness(ozone_bc)), 3),
+  SW_p           = round(c(shapiro.test(ozone)$p.value,
+                            shapiro.test(sqrt(ozone))$p.value,
+                            shapiro.test(log(ozone))$p.value,
+                            shapiro.test(ozone_bc)$p.value), 4)
+)
+
+kable(transform_summary,
+      caption   = "Transformation Comparison: Ozone Variable",
+      col.names = c("Transformation","Mean","SD",
+                    "Skewness","Shapiro-Wilk p")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(4, bold = TRUE,
+              color = ifelse(abs(transform_summary$Skewness) < 0.5,
+                             "darkgreen","tomato"))
+```
+
+```{r transformation-plot}
+# --- Visual comparison of transformations ---
+trans_df <- data.frame(
+  None         = ozone,
+  Square_Root  = sqrt(ozone),
+  Log          = log(ozone),
+  Box_Cox      = ozone_bc
+) |>
+  pivot_longer(everything(),
+               names_to  = "Transformation",
+               values_to = "Value") |>
+  mutate(Transformation = factor(
+    Transformation,
+    levels = c("None","Square_Root","Log","Box_Cox"),
+    labels = c("None","Square Root","Log",
+               paste0("Box-Cox (λ=",round(lambda_opt,2),")"))))
+
+ggplot(trans_df, aes(x = Value)) +
+  geom_histogram(aes(y = after_stat(density)),
+                 bins  = 25, fill  = "steelblue",
+                 color = "white", alpha = 0.8) +
+  geom_density(color = "tomato", linewidth = 1) +
+  facet_wrap(~Transformation, scales = "free", ncol = 2) +
+  labs(title    = "Effect of Transformations on Ozone Distribution",
+       subtitle = "Log and Box-Cox achieve approximate normality",
+       x = "Transformed Value", y = "Density") +
+  theme_minimal(base_size = 12)
+```
+
+**Code explanation:**
+
+- `MASS::boxcox(y ~ 1, lambda)` estimates the optimal $\lambda$ by maximum likelihood. The `plotit = FALSE` option suppresses the automatic plot so we can create our own.
+- `pivot_longer()` reshapes the wide data frame of transformed values into a long format suitable for `facet_wrap()`.
+- `facet_wrap(scales = "free")` allows each panel to have its own axis range — essential when the transformed scales differ dramatically.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 6.6
+Using the `mtcars` dataset:
+
+(a) Apply log, square root, and Box-Cox transformations to `hp`. Compare skewness and Shapiro-Wilk p-values.
+(b) Apply the Yeo-Johnson transformation using `bestNormalize::yeojohnson()`. Does it outperform Box-Cox?
+(c) For `mpg`, determine the optimal Box-Cox $\lambda$. Is a transformation needed?
+:::
+
+---
+
+# Encoding Categorical Variables
+
+## Introduction
+
+Most statistical models and machine learning algorithms operate on numeric data. **Encoding** converts categorical variables into numeric representations that preserve the relevant information while meeting the mathematical requirements of the algorithm. Choosing the wrong encoding can introduce artificial ordering, create near-singular matrices, or lose important information about category relationships.
+
+## Theory
+
+### Dummy Coding (Treatment Coding)
+
+For a categorical variable with $k$ levels, create $k-1$ binary (0/1) dummy variables, leaving one category as the **reference** (baseline):
+
+| Category | D1 (Arts) | D2 (Business) |
+|---------|----------|--------------|
+| Science (reference) | 0 | 0 |
+| Arts | 1 | 0 |
+| Business | 0 | 1 |
+
+The coefficient for each dummy variable represents the difference from the reference category. This is the standard encoding for **linear regression and ANOVA** — using $k$ dummies causes perfect multicollinearity (dummy variable trap).
+
+### One-Hot Encoding
+
+Create $k$ binary variables, one per category — each is 1 if the observation belongs to that category, 0 otherwise. Unlike dummy coding, **no reference category** is dropped.
+
+Used in **machine learning** algorithms (tree-based models, neural networks) that do not suffer from multicollinearity. Problematic for linear regression without regularization.
+
+### Ordinal Encoding
+
+Assign consecutive integers to ordered categories:
+
+$$\text{Low} \to 1, \quad \text{Medium} \to 2, \quad \text{High} \to 3$$
+
+Valid for **ordinal variables** where the ordering is meaningful and the assumption of equal spacing is reasonable. **Never** apply ordinal encoding to nominal variables — it imposes a spurious ordering.
+
+### Target Encoding (Mean Encoding)
+
+Replace each category with the **mean of the target variable** for that category:
+
+$$\text{Encoded value for category } c = \frac{1}{n_c}\sum_{i: x_i = c} y_i$$
+
+Powerful for high-cardinality categorical variables (many categories), but prone to **overfitting** — requires smoothing or cross-validation. Should never be applied using the full dataset; use out-of-fold means in a cross-validation framework.
+
+### Binary Encoding
+
+Convert the integer-encoded category to **binary representation** using log₂(k) bits. More compact than one-hot for high-cardinality variables.
+
+### Encoding Selection Guide
+
+| Variable Type | Recommended Encoding | Notes |
+|--------------|---------------------|-------|
+| Nominal, few levels ($k \leq 10$) | Dummy (regression) or One-hot (ML) | Drop reference for regression |
+| Nominal, many levels ($k > 10$) | Target or Binary encoding | Avoid one-hot explosion |
+| Ordinal, equal spacing | Ordinal integer | Verify spacing assumption |
+| Ordinal, unequal spacing | Dummy or contrast coding | Preserves non-linearity |
+| Binary | Keep as 0/1 | No encoding needed |
+
+: Categorical encoding selection guide {.striped}
+
+## Example: Encoding Faculty Variable
+
+**Example 6.5.** A dataset contains `faculty` (Science, Arts, Business) and outcome `satisfaction`. For a linear regression:
+
+- **Dummy coding** (reference = Science): Creates `Arts` (1/0) and `Business` (1/0). Coefficients represent mean satisfaction difference from Science.
+- **One-hot** (for a random forest): Creates `Science`, `Arts`, `Business` — all three binary columns.
+- **Ordinal** (inappropriate here): Would assign 1, 2, 3 — implying Arts is "twice" Science, which is meaningless.
+
+## R Example: Categorical Encoding
+
+```{r encoding}
+# --- Build example dataset ---
+set.seed(42)
+n <- 200
+student_data <- data.frame(
+  faculty      = sample(c("Science","Arts","Business"),
+                         n, replace = TRUE,
+                         prob = c(0.4, 0.35, 0.25)),
+  year         = sample(c("First","Second","Third","Fourth"),
+                         n, replace = TRUE),
+  satisfaction = NA
+)
+student_data$satisfaction <-
+  60 +
+  ifelse(student_data$faculty == "Science", 10,
+  ifelse(student_data$faculty == "Arts",    7, 0)) +
+  ifelse(student_data$year == "Fourth", 8,
+  ifelse(student_data$year == "Third",  5,
+  ifelse(student_data$year == "Second", 3, 0))) +
+  rnorm(n, 0, 8)
+
+cat("Original data (first 6 rows):\n")
+head(student_data)
+```
+
+```{r encoding-dummy}
+# === 1. DUMMY CODING (reference = Business) ===
+student_data$faculty <- factor(student_data$faculty,
+                                levels = c("Business",
+                                           "Science","Arts"))
+dummy_encoded <- model.matrix(~ faculty, data = student_data)
+cat("\nDummy coding (first 6 rows):\n")
+head(dummy_encoded)
+```
+
+```{r encoding-onehot}
+# === 2. ONE-HOT ENCODING ===
+onehot_encoded <- model.matrix(~ faculty - 1,
+                                data = student_data)
+cat("One-hot encoding (first 6 rows):\n")
+head(onehot_encoded)
+```
+
+```{r encoding-ordinal}
+# === 3. ORDINAL ENCODING ===
+student_data$year_ordinal <- as.integer(factor(
+  student_data$year,
+  levels  = c("First","Second","Third","Fourth"),
+  ordered = TRUE
+))
+
+cat("Ordinal encoding (year):\n")
+head(student_data[, c("year","year_ordinal")])
+```
+
+```{r encoding-target}
+# === 4. TARGET ENCODING ===
+faculty_means <- student_data |>
+  group_by(faculty) |>
+  summarise(target_enc = mean(satisfaction), .groups = "drop")
+
+student_data <- student_data |>
+  left_join(faculty_means, by = "faculty")
+
+cat("\nTarget encoding (faculty → mean satisfaction):\n")
+print(faculty_means)
+
+# Compare: dummy regression vs. target-encoded model
+model_dummy  <- lm(satisfaction ~ faculty,
+                    data = student_data)
+model_target <- lm(satisfaction ~ target_enc,
+                    data = student_data)
+
+cat("\nDummy model R²:  ",
+    round(summary(model_dummy)$r.squared, 4), "\n")
+cat("Target enc. R²: ",
+    round(summary(model_target)$r.squared, 4), "\n")
+```
+
+**Code explanation:**
+
+- `model.matrix(~ factor)` creates dummy-coded columns automatically, dropping the reference level. `model.matrix(~ factor - 1)` creates one-hot encoding (no reference dropped).
+- `factor(..., ordered = TRUE)` followed by `as.integer()` implements ordinal encoding, preserving the category order.
+- Target encoding is implemented via `group_by() |> summarise()` + `left_join()`. In production, this should be done within cross-validation folds to prevent data leakage.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 6.7
+Using the `iris` dataset:
+
+(a) Apply dummy coding to `Species` (reference = setosa). Verify with `model.matrix()`.
+(b) Apply one-hot encoding. Confirm you have 3 columns instead of 2.
+(c) Fit a linear regression of `Petal.Length ~ Species` using dummy encoding. Interpret each coefficient.
+(d) When would you prefer target encoding over one-hot for the `Species` variable?
+:::
+
+---
+
+# Feature Scaling
+
+## Introduction
+
+Many statistical and machine learning algorithms are sensitive to the **scale** of input features. K-nearest neighbors computes Euclidean distances — a variable measured in thousands will dominate one measured in single digits. Gradient descent converges faster when features are on similar scales. Principal Component Analysis (Chapter 7) is entirely scale-dependent. **Feature scaling** brings all features to a comparable range without changing their distributional shape.
+
+## Theory
+
+### Min-Max Normalization
+
+Scales each feature to the range $[0, 1]$:
+
+$$x'_i = \frac{x_i - x_{\min}}{x_{\max} - x_{\min}}$$
+
+**Properties:**
+- Preserves the shape of the original distribution
+- Sensitive to outliers (extreme values compress all others toward 0 or 1)
+- Appropriate for algorithms requiring bounded input (neural networks with sigmoid activation)
+
+### Z-Score Standardization
+
+Centers the variable at 0 and scales to unit variance:
+
+$$x'_i = \frac{x_i - \bar{x}}{s}$$
+
+**Properties:**
+- Transformed variable has mean = 0, SD = 1
+- Does not bound the range (values can exceed $\pm 3$)
+- Robust to different scales; appropriate for most algorithms
+- Assumes approximately normal distribution for optimal behavior
+
+### Robust Scaling
+
+Uses the **median** and **IQR** instead of mean and SD:
+
+$$x'_i = \frac{x_i - \tilde{x}}{\text{IQR}}$$
+
+**Properties:**
+- Robust to outliers (median and IQR are not affected by extremes)
+- Appropriate when data contains outliers that cannot be removed
+
+### MaxAbs Scaling
+
+Divides by the maximum absolute value, scaling to $[-1, 1]$:
+
+$$x'_i = \frac{x_i}{\max(|x|)}$$
+
+Useful for sparse data (preserves zero entries).
+
+### When to Scale
+
+| Algorithm | Scaling Needed? | Recommended Method |
+|-----------|---------------|-------------------|
+| Linear/logistic regression | Yes (for comparability) | Z-score |
+| K-nearest neighbors | Yes (essential) | Z-score or min-max |
+| PCA | Yes (essential) | Z-score |
+| Decision trees / Random forests | No | None |
+| Neural networks | Yes | Min-max or Z-score |
+| SVM | Yes (essential) | Z-score or min-max |
+| K-means clustering | Yes (essential) | Z-score |
+
+: Feature scaling requirements by algorithm {.striped}
+
+## Example: Effect of Scaling on KNN
+
+**Example 6.6.** A dataset contains age (range: 20–70 years) and income (range: 20,000–500,000 THB). Without scaling, the Euclidean distance between two observations is dominated entirely by income differences — a 1-year age difference (Δ = 1) is dwarfed by a 1,000 THB income difference. After Z-score standardization, both variables contribute equally to the distance metric.
+
+## R Example: Feature Scaling
+
+```{r scaling}
+# --- Compare scaling methods ---
+data(mtcars)
+vars_to_scale <- mtcars[, c("mpg","hp","wt","disp")]
+
+# Z-score standardization
+z_scaled <- scale(vars_to_scale)
+
+# Min-max normalization
+minmax_scale <- function(x) {
+  (x - min(x)) / (max(x) - min(x))
+}
+minmax_scaled <- apply(vars_to_scale, 2, minmax_scale)
+
+# Robust scaling
+robust_scale <- function(x) {
+  (x - median(x)) / IQR(x)
+}
+robust_scaled <- apply(vars_to_scale, 2, robust_scale)
+
+# Summary comparison
+scaling_summary <- function(mat, name) {
+  data.frame(
+    Method    = name,
+    Variable  = colnames(mat),
+    Mean      = round(colMeans(mat), 4),
+    SD        = round(apply(mat, 2, sd), 4),
+    Min       = round(apply(mat, 2, min), 4),
+    Max       = round(apply(mat, 2, max), 4)
+  )
+}
+
+bind_rows(
+  scaling_summary(as.data.frame(vars_to_scale), "Original"),
+  scaling_summary(as.data.frame(z_scaled),      "Z-Score"),
+  scaling_summary(as.data.frame(minmax_scaled),  "Min-Max"),
+  scaling_summary(as.data.frame(robust_scaled),  "Robust")
+) |>
+  filter(Variable == "hp") |>
+  kable(caption   = "Scaling Methods Comparison: hp variable",
+        col.names = c("Method","Variable","Mean",
+                      "SD","Min","Max")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+```{r scaling-plot}
+# --- Visualize effect of scaling on all variables ---
+orig_long <- as.data.frame(vars_to_scale) |>
+  mutate(Method = "Original") |>
+  pivot_longer(-Method, names_to = "Variable",
+               values_to = "Value")
+
+z_long <- as.data.frame(z_scaled) |>
+  mutate(Method = "Z-Score") |>
+  pivot_longer(-Method, names_to = "Variable",
+               values_to = "Value")
+
+mm_long <- as.data.frame(minmax_scaled) |>
+  mutate(Method = "Min-Max") |>
+  pivot_longer(-Method, names_to = "Variable",
+               values_to = "Value")
+
+all_scaled <- bind_rows(orig_long, z_long, mm_long)
+all_scaled$Method <- factor(all_scaled$Method,
+                              levels = c("Original",
+                                         "Z-Score","Min-Max"))
+
+ggplot(all_scaled, aes(x = Variable, y = Value,
+                        fill = Variable)) +
+  geom_boxplot(alpha = 0.7, outlier.size = 1) +
+  scale_fill_brewer(palette = "Set2") +
+  facet_wrap(~Method, scales = "free_y", ncol = 1) +
+  labs(title    = "Feature Scaling: Original vs. Z-Score vs. Min-Max",
+       subtitle = "Z-score centers at 0; min-max bounds to [0,1]",
+       x        = "Variable", y = "Value") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+```
+
+**Code explanation:**
+
+- `scale(data)` performs Z-score standardization for all columns simultaneously — the most concise method in R.
+- `apply(mat, 2, fun)` applies a function column-wise (`2` = columns, `1` = rows) — used to apply custom min-max and robust scaling functions.
+- The three-panel boxplot immediately shows why scaling is necessary: in the "Original" panel, `disp` and `hp` dwarf `mpg` and `wt` — after scaling, all variables are comparable.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 6.8
+Using the `iris` dataset (numeric variables only):
+
+(a) Apply Z-score, min-max, and robust scaling to all four variables.
+(b) For each scaling method, verify: (i) mean after Z-score ≈ 0, (ii) range after min-max ∈ [0,1].
+(c) Perform K-means clustering ($k = 3$) on unscaled vs. Z-scored data. Do the cluster assignments differ? Which matches the true species grouping better?
+:::
+
+---
+
+# Data Integration and Reshaping
+
+## Introduction
+
+Real-world data rarely arrives in a single, perfectly structured table. Data scientists routinely work with multiple source tables that must be merged, and with data that is organized in ways that do not match the format required for analysis. **Tidy data** principles define the target structure, and **reshaping** operations transform data between wide and long formats. Mastering these skills is essential for the practical data pipeline.
+
+## Theory
+
+### Tidy Data Principles
+
+**Tidy data** (Wickham, 2014) follows three rules:
+
+1. Each **variable** forms a column.
+2. Each **observation** forms a row.
+3. Each **observational unit** forms a table.
+
+Most raw data violates at least one of these rules — column headers are values (not variable names), multiple variables are stored in one column, or variables are stored in both rows and columns.
+
+### Pivoting: Wide ↔ Long
+
+**Wide format:** Each time point or category is a separate column. Common in spreadsheets and data entry.
+
+**Long format:** Each observation has its own row, with a column for the category identifier. Required by most R visualization and modeling functions.
+
+```
+Wide:                    Long:
+id | week1 | week2       id | week | score
+1  | 80    | 85          1  | 1    | 80
+2  | 72    | 78          1  | 2    | 85
+                         2  | 1    | 72
+                         2  | 2    | 78
+```
+
+### Joining Tables
+
+| Join Type | Result |
+|-----------|--------|
+| `inner_join` | Only rows with matches in both tables |
+| `left_join` | All rows from left table; NAs for non-matches from right |
+| `right_join` | All rows from right table; NAs for non-matches from left |
+| `full_join` | All rows from both; NAs where no match |
+| `anti_join` | Rows in left with NO match in right |
+
+: dplyr join types {.striped}
+
+### String and Date Handling
+
+Common integration tasks include:
+
+- Parsing dates with `lubridate::ymd()`, `dmy()`, `mdy()`
+- Cleaning strings with `stringr::str_trim()`, `str_to_lower()`, `str_replace()`
+- Splitting compound columns with `tidyr::separate()`
+- Uniting columns with `tidyr::unite()`
+
+## Example: Reshaping for Analysis
+
+**Example 6.7.** A student performance dataset is stored in wide format with columns `score_Q1`, `score_Q2`, `score_Q3`, `score_Q4`. For a repeated-measures analysis (Chapter 3) or a time series plot, we need long format with columns `quarter` and `score`. `pivot_longer()` achieves this in one step.
+
+## R Example: Data Integration and Reshaping
+
+```{r reshaping}
+# --- Create a wide-format dataset ---
+set.seed(42)
+student_wide <- data.frame(
+  student_id = 1:20,
+  faculty    = sample(c("Science","Arts","Business"),
+                       20, replace = TRUE),
+  score_Q1   = round(rnorm(20, 70, 10)),
+  score_Q2   = round(rnorm(20, 72, 9)),
+  score_Q3   = round(rnorm(20, 75, 8)),
+  score_Q4   = round(rnorm(20, 78, 7))
+)
+
+cat("Wide format (first 4 rows):\n")
+head(student_wide, 4)
+```
+
+```{r pivot-long}
+# --- Pivot to long format ---
+student_long <- student_wide |>
+  pivot_longer(
+    cols      = starts_with("score_"),
+    names_to  = "quarter",
+    values_to = "score"
+  ) |>
+  mutate(quarter = str_remove(quarter, "score_"))
+
+cat("\nLong format (first 8 rows):\n")
+head(student_long, 8)
+```
+
+```{r pivot-wide}
+# --- Pivot back to wide ---
+student_back_wide <- student_long |>
+  pivot_wider(
+    names_from  = quarter,
+    values_from = score,
+    names_prefix = "score_"
+  )
+cat("\nReturned to wide (first 4 rows):\n")
+head(student_back_wide, 4)
+```
+
+```{r joining}
+# --- Joining tables ---
+# Faculty information table
+faculty_info <- data.frame(
+  faculty     = c("Science","Arts","Business"),
+  dean        = c("Dr. Smith","Dr. Lee","Dr. Park"),
+  building    = c("Building A","Building B","Building C")
+)
+
+# Left join: keep all students, add faculty info
+student_full <- student_wide |>
+  left_join(faculty_info, by = "faculty")
+
+cat("\nAfter left join (first 4 rows):\n")
+head(student_full[, c("student_id","faculty",
+                        "dean","score_Q1")], 4)
+```
+
+```{r reshaping-plot}
+# --- Visualize trends in long format ---
+student_long |>
+  group_by(faculty, quarter) |>
+  summarise(mean_score = mean(score),
+            se         = sd(score)/sqrt(n()),
+            .groups    = "drop") |>
+  ggplot(aes(x = quarter, y = mean_score,
+             group = faculty, color = faculty)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  geom_errorbar(aes(ymin = mean_score - se,
+                     ymax = mean_score + se),
+                width = 0.1) +
+  scale_color_brewer(palette = "Set1") +
+  labs(title    = "Mean Score by Quarter and Faculty",
+       subtitle = "Long format enables grouped time-series visualization",
+       x        = "Quarter", y = "Mean Score",
+       color    = "Faculty") +
+  theme_minimal(base_size = 13)
+```
+
+**Code explanation:**
+
+- `pivot_longer(cols, names_to, values_to)` converts wide to long format. `starts_with("score_")` selects all score columns by prefix.
+- `str_remove(quarter, "score_")` cleans the quarter labels from "score_Q1" to "Q1" — a common post-pivot cleanup step.
+- `pivot_wider(names_from, values_from)` reverses the operation — useful for creating summary tables after analysis.
+- `left_join(y, by)` merges two tables on a key variable, preserving all rows from the left table.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 6.9
+The built-in `tidyr::who` dataset contains tuberculosis (TB) counts in wide format with many messy column names encoding country, year, age group, sex, and diagnosis method.
+
+(a) Use `pivot_longer()` to convert to long format.
+(b) Use `separate()` to split the messy column names into meaningful variables.
+(c) Filter to Thailand (`country == "Thailand"`) and plot TB counts over time by sex and age group.
+:::
+
+::: {.callout-tip}
+## Exercise 6.10
+Create two data frames: one with student demographics (id, name, program) and one with exam scores (id, exam, score). Simulate 5 students and 3 exams each.
+
+(a) Inner join the two tables and explain what happens if a student has no exam record.
+(b) Left join and full join — how do the results differ?
+(c) Pivot the joined data so each exam is a column. Compute the average score per student.
+:::
+
+---
+
+# Chapter Lab Activity: Full Preprocessing Pipeline with `msleep`
+
+## Objectives
+
+In this lab you will apply the complete preprocessing pipeline — from initial inspection through missing data handling, outlier treatment, transformation, encoding, scaling, and reshaping — to the `msleep` dataset (mammal sleep data from `ggplot2`). This mirrors a real data science workflow where raw data must be made analysis-ready before modeling.
+
+## The Dataset
+
+```{r lab-intro}
+# msleep: sleep patterns of 83 mammals
+data(msleep, package = "ggplot2")
+
+cat("Dimensions:", nrow(msleep), "rows ×",
+    ncol(msleep), "columns\n\n")
+
+# Overview
+glimpse(msleep)
+```
+
+```{r lab-intro2}
+# Missing value map
+miss_summary_lab <- data.frame(
+  Variable    = names(msleep),
+  Type        = sapply(msleep, class),
+  N_Missing   = colSums(is.na(msleep)),
+  Pct_Missing = round(colMeans(is.na(msleep)) * 100, 1)
+) |> filter(N_Missing > 0)
+rownames(miss_summary_lab) <- NULL
+
+kable(miss_summary_lab,
+      caption   = "Variables with Missing Data — msleep",
+      col.names = c("Variable","Type",
+                    "N Missing","% Missing")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(4, bold = TRUE, color = "tomato")
+```
+
+## Lab Task 1: Missing Data Handling
+
+```{r lab-task1}
+# Impute numeric missing values with median (simple approach)
+# Impute sleep_rem and brainwt using mice
+msleep_num <- msleep |>
+  dplyr::select(sleep_total, sleep_rem, sleep_cycle, awake, brainwt, bodywt)
+
+set.seed(42)
+mice_lab <- mice(msleep_num, m = 3,
+                  method = "pmm", printFlag = FALSE)
+msleep_imputed_num <- complete(mice_lab, 1)
+
+# Attach back with non-numeric columns
+msleep_proc <- msleep |>
+  dplyr::select(name, genus, vore, order, conservation) |>
+  bind_cols(msleep_imputed_num)
+
+cat("Missing values after imputation:\n")
+print(colSums(is.na(msleep_proc)))
+```
+
+## Lab Task 2: Outlier Detection
+
+```{r lab-task2}
+# IQR outlier detection for bodywt and brainwt
+detect_outliers_iqr <- function(x, var_name) {
+  Q1  <- quantile(x, 0.25, na.rm = TRUE)
+  Q3  <- quantile(x, 0.75, na.rm = TRUE)
+  IQR_v <- Q3 - Q1
+  flags <- x < Q1 - 1.5*IQR_v | x > Q3 + 1.5*IQR_v
+  data.frame(
+    Variable = var_name,
+    N_Outliers = sum(flags, na.rm = TRUE),
+    Outlier_Values = paste(
+      round(sort(x[flags]), 1), collapse = ", "
+    )
+  )
+}
+
+bind_rows(
+  detect_outliers_iqr(msleep_proc$bodywt,  "bodywt"),
+  detect_outliers_iqr(msleep_proc$brainwt, "brainwt"),
+  detect_outliers_iqr(msleep_proc$sleep_total, "sleep_total")
+) |>
+  kable(caption = "IQR Outlier Detection — msleep") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+## Lab Task 3: Transformation
+
+```{r lab-task3}
+# bodywt and brainwt are extremely right-skewed — apply log
+msleep_proc <- msleep_proc |>
+  mutate(
+    log_bodywt  = log(bodywt  + 1),
+    log_brainwt = log(brainwt + 1)
+  )
+
+transform_check <- data.frame(
+  Variable      = c("bodywt","log(bodywt+1)",
+                     "brainwt","log(brainwt+1)"),
+  Skewness      = round(c(
+    moments::skewness(msleep_proc$bodywt),
+    moments::skewness(msleep_proc$log_bodywt),
+    moments::skewness(msleep_proc$brainwt),
+    moments::skewness(msleep_proc$log_brainwt)
+  ), 3)
+)
+
+kable(transform_check,
+      caption = "Skewness Before and After Log Transformation") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(2, bold = TRUE,
+              color = ifelse(
+                abs(transform_check$Skewness) < 1,
+                "darkgreen","tomato"))
+```
+
+## Lab Task 4: Encoding and Scaling
+
+```{r lab-task4}
+# Encode vore (dietary classification) as dummy variables
+msleep_proc$vore <- factor(
+  msleep_proc$vore,
+  levels = c("herbi","carni","omni","insecti")
+)
+msleep_proc$vore[is.na(msleep_proc$vore)] <- "herbi"
+
+# Dummy encode (reference = herbi)
+vore_dummies <- model.matrix(~ vore, data = msleep_proc)
+
+# Z-score scale numeric features
+features_to_scale <- msleep_proc |>
+  dplyr::select(sleep_total, sleep_rem, awake,
+         log_bodywt, log_brainwt)
+
+scaled_features <- as.data.frame(scale(features_to_scale))
+names(scaled_features) <- paste0(names(scaled_features),
+                                   "_scaled")
+
+# Verify scaling
+kable(data.frame(
+  Variable = names(features_to_scale),
+  Mean_Before = round(colMeans(features_to_scale), 3),
+  SD_Before   = round(apply(features_to_scale, 2, sd), 3),
+  Mean_After  = round(colMeans(scaled_features), 3),
+  SD_After    = round(apply(scaled_features, 2, sd), 3)
+),
+caption   = "Z-Score Scaling Verification",
+col.names = c("Variable","Mean Before","SD Before",
+              "Mean After","SD After")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+## Lab Task 5: Final Clean Dataset and Visualization
+
+```{r lab-task5, fig.height=8}
+# Assemble final preprocessed dataset
+msleep_final <- bind_cols(
+  msleep_proc |> dplyr::select(name, vore, order),
+  scaled_features
+)
+
+cat("Final preprocessed dataset dimensions:",
+    nrow(msleep_final), "×", ncol(msleep_final), "\n\n")
+cat("No missing values:", sum(is.na(msleep_final)) == 0, "\n")
+
+# Visualize the full pipeline outcome
+p1 <- ggplot(msleep_proc, aes(x = bodywt)) +
+  geom_histogram(bins  = 20, fill  = "tomato",
+                 color = "white", alpha = 0.8) +
+  labs(title = "A. bodywt: Before (raw)", x = "bodywt") +
+  theme_minimal(base_size = 11)
+
+p2 <- ggplot(msleep_proc, aes(x = log_bodywt)) +
+  geom_histogram(bins  = 20, fill  = "seagreen",
+                 color = "white", alpha = 0.8) +
+  labs(title = "B. bodywt: After log transform",
+       x = "log(bodywt+1)") +
+  theme_minimal(base_size = 11)
+
+p3 <- ggplot(scaled_features,
+             aes(x = sleep_total_scaled)) +
+  geom_histogram(bins  = 20, fill  = "steelblue",
+                 color = "white", alpha = 0.8) +
+  labs(title = "C. sleep_total: After Z-scaling",
+       x = "sleep_total (scaled)") +
+  theme_minimal(base_size = 11)
+
+p4 <- msleep_proc |>
+  filter(!is.na(vore)) |>
+  ggplot(aes(x = vore, y = log_bodywt, fill = vore)) +
+  geom_boxplot(alpha = 0.7) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "D. log(bodywt) by Diet Type",
+       x = "Diet (vore)", y = "log(bodywt+1)") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "none")
+
+(p1 + p2) / (p3 + p4)
+```
+
+## Lab Discussion Questions
+
+Answer the following in writing:
+
+1. **Missing Data Strategy:** `brainwt` has 27% missing values. Is multiple imputation appropriate here, or would you recommend a different strategy? What type of missingness (MCAR/MAR/MNAR) do you suspect for brain weight in mammals?
+
+2. **Outlier Decision:** The elephant has extreme `bodywt` and `brainwt` values flagged as outliers. Should it be removed? What are the consequences of removal for a study of mammal sleep patterns?
+
+3. **Transformation Justification:** Why is log transformation more appropriate than square root for `bodywt`? Use the skewness values from Lab Task 3 to support your answer.
+
+4. **Encoding Choice:** `vore` has 4 levels including some NAs. Justify your reference category choice for dummy encoding. How would target encoding differ, and what leakage risk would it introduce?
+
+5. **Scaling and Algorithms:** If you were to cluster mammals by sleep patterns using K-means (Chapter 8), which preprocessing steps from this lab are essential, and which are optional? Justify each decision.
+
+---
+
+# Chapter Summary
+
+## Summary
+
+This chapter built a complete data preprocessing toolkit essential for any data science project:
+
+- **Why preprocessing matters** — the GIGO principle; each step in the pipeline has a distinct purpose and must be applied in the correct order; the leakage problem requires all fitting to occur on training data only.
+- **Missing data** — MCAR, MAR, and MNAR require different strategies; multiple imputation is the gold standard under MAR; no method fully corrects MNAR.
+- **Outlier detection** — IQR and modified z-score for univariate detection; Mahalanobis distance for multivariate; treatment depends on whether outliers are errors or genuine extreme values.
+- **Transformation** — log and Box-Cox correct right skew and stabilize variance; Yeo-Johnson handles negative values; transformation changes shape, not location or spread.
+- **Encoding** — dummy coding for regression (drop reference); one-hot for ML (no reference dropped); ordinal for ordered categories; target encoding for high cardinality with cross-validation.
+- **Feature scaling** — Z-score for most algorithms; min-max for bounded ranges; robust scaling when outliers are present; tree-based models do not require scaling.
+- **Data integration and reshaping** — tidy data principles; `pivot_longer/wider` for format conversion; `left/inner/full_join` for table merging.
+
+::: {.callout-important}
+## Key Formulas to Know
+
+**IQR Outlier Fences:**
+$$\text{Lower} = Q_1 - 1.5 \times \text{IQR}, \quad \text{Upper} = Q_3 + 1.5 \times \text{IQR}$$
+
+**Mahalanobis Distance:**
+$$D^2_i = (\mathbf{x}_i - \bar{\mathbf{x}})^T \mathbf{S}^{-1} (\mathbf{x}_i - \bar{\mathbf{x}}) \sim \chi^2(p)$$
+
+**Box-Cox Transformation:**
+$$x'(\lambda) = \begin{cases} (x^\lambda - 1)/\lambda & \lambda \neq 0 \\ \log(x) & \lambda = 0 \end{cases}$$
+
+**Z-Score Standardization:**
+$$x'_i = \frac{x_i - \bar{x}}{s}$$
+
+**Min-Max Normalization:**
+$$x'_i = \frac{x_i - x_{\min}}{x_{\max} - x_{\min}}$$
+
+**Post-Stratification Weight:**
+$$w_i = \frac{p_i^{\text{pop}}}{p_i^{\text{sample}}}$$
+:::
+
+## References
+
+Box, G. E. P., & Cox, D. R. (1964). An analysis of transformations. *Journal of the Royal Statistical Society: Series B*, *26*(2), 211–243.
+
+Henderson, H. V., & Velleman, P. F. (1981). Building multiple regression models interactively. *Biometrics*, *37*(2), 391–411.
+
+Little, R. J. A., & Rubin, D. B. (2002). *Statistical analysis with missing data* (2nd ed.). Wiley.
+
+New York State Department of Conservation. (1973). *Daily air quality measurements in New York, May–September 1973*.
+
+Pedersen, T. L. (2022). *patchwork: The composer of plots* (R package version 1.1.2). https://CRAN.R-project.org/package=patchwork
+
+R Core Team. (2024). *R: A language and environment for statistical computing*. R Foundation for Statistical Computing. https://www.R-project.org/
+
+Shapiro, S. S., & Wilk, M. B. (1965). An analysis of variance test for normality. *Biometrika*, *52*(3/4), 591–611.
+
+Templ, M., Alfons, A., Kowarik, A., & Prantner, B. (2023). *VIM: Visualization and imputation of missing values* (R package version 6.2.2). https://CRAN.R-project.org/package=VIM
+
+Tierney, N., & Cook, D. (2023). *naniar: Data structures, summaries, and visualisations for missing data* (R package version 1.0.0). https://CRAN.R-project.org/package=naniar
+
+Tukey, J. W. (1977). *Exploratory data analysis*. Addison-Wesley.
+
+van Buuren, S., & Groothuis-Oudshoorn, K. (2011). mice: Multivariate imputation by chained equations in R. *Journal of Statistical Software*, *45*(3), 1–67.
+
+Wickham, H. (2014). Tidy data. *Journal of Statistical Software*, *59*(10), 1–23.
+
+Wickham, H. (2016). *ggplot2: Elegant graphics for data analysis*. Springer.
+
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. *Journal of Open Source Software*, *4*(43), 1686.
+
+Xie, Y. (2015). *Dynamic documents with R and knitr* (2nd ed.). CRC Press.
+
+Yeo, I. K., & Johnson, R. A. (2000). A new family of power transformations to improve normality or symmetry. *Biometrika*, *87*(4), 954–959.
+
+---
+
+*End of Chapter 6. Proceed to Chapter 7: Data Dimension Reduction.*

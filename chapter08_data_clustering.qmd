@@ -1,0 +1,1536 @@
+# Chapter 8: Data Clustering
+
+```{r setup}
+# Load all libraries needed for this chapter
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(patchwork)
+library(cluster)       # silhouette, pam
+library(factoextra)    # cluster visualization
+library(dbscan)        # DBSCAN clustering
+library(mclust)        # Gaussian mixture models
+library(dendextend)    # enhanced dendrograms
+library(NbClust)       # multiple cluster validity indices
+library(fpc)           # cluster statistics
+```
+
+---
+
+# Chapter Overview
+
+## Introduction
+
+Clustering is one of the most fundamental tasks in unsupervised machine learning: given a collection of observations with no predefined labels, find natural groupings — **clusters** — such that observations within a group are more similar to each other than to observations in other groups. Clustering drives customer segmentation, anomaly detection, document organization, gene expression analysis, image compression, and countless other applications.
+
+Unlike classification (Chapter 9), clustering has no "correct" answer to compare against. Evaluating and interpreting clusters requires both statistical criteria and domain knowledge — making it as much an art as a science.
+
+This chapter covers:
+
+- **Introduction to Clustering** — concepts, types, and applications
+- **K-Means Clustering** — the workhorse algorithm with formal optimization
+- **Hierarchical Clustering** — agglomerative methods and dendrogram interpretation
+- **DBSCAN** — density-based clustering for irregular shapes and noise
+- **Cluster Validation** — internal and external validity measures
+- **Gaussian Mixture Models** — probabilistic soft clustering with model selection
+- **Practical Clustering Workflow** — end-to-end decision framework
+
+::: {.callout-note}
+## Learning Objectives
+By the end of this chapter, you will be able to:
+
+1. Distinguish between types of clustering algorithms and select appropriately.
+2. Implement and interpret K-means clustering including optimal $k$ selection.
+3. Construct and interpret hierarchical cluster dendrograms with different linkage methods.
+4. Apply DBSCAN and tune its parameters for density-based clustering.
+5. Evaluate clustering solutions using silhouette scores, Davies-Bouldin index, and other criteria.
+6. Fit Gaussian mixture models and use BIC for model selection.
+7. Apply a principled end-to-end clustering workflow to real data.
+:::
+
+---
+
+# Introduction to Clustering
+
+## Introduction
+
+**Clustering** is the task of partitioning a dataset into groups (clusters) such that observations within a cluster are more similar to each other than to observations in other clusters. It is an **unsupervised** method — no labels or outcome variables are used. The algorithm discovers structure entirely from the patterns in the feature space.
+
+Clustering appears across virtually every domain of data science:
+
+- **Marketing:** Customer segmentation for targeted campaigns
+- **Genomics:** Grouping genes by expression profiles
+- **Finance:** Portfolio construction based on asset correlation patterns
+- **NLP:** Document clustering and topic discovery
+- **Medicine:** Patient subtyping for precision medicine
+- **Anomaly detection:** Normal behavior clusters; anomalies fall outside
+
+## Theory
+
+### Types of Clustering Algorithms
+
+| Type | Description | Examples |
+|------|-------------|---------|
+| **Partitional** | Divides data into $k$ non-overlapping clusters | K-Means, K-Medoids |
+| **Hierarchical** | Builds a tree of nested clusters | Agglomerative, Divisive |
+| **Density-based** | Clusters are dense regions separated by sparse regions | DBSCAN, OPTICS |
+| **Model-based** | Assumes data generated from mixture of distributions | GMM |
+| **Fuzzy** | Each point has partial membership in multiple clusters | Fuzzy C-Means |
+
+: Types of clustering algorithms {.striped}
+
+### The Similarity/Distance Problem
+
+All clustering algorithms depend on a measure of **similarity** or **distance** between observations. The most common choices:
+
+**Euclidean distance** (most common for continuous data):
+$$d(x, y) = \sqrt{\sum_{j=1}^{p}(x_j - y_j)^2}$$
+
+**Manhattan distance** (robust to outliers):
+$$d(x, y) = \sum_{j=1}^{p}|x_j - y_j|$$
+
+**Cosine similarity** (for text and high-dimensional sparse data):
+$$\text{sim}(x, y) = \frac{x \cdot y}{\|x\|\|y\|}$$
+
+**Gower distance** (for mixed-type data):
+$$d_G(x, y) = \frac{\sum_{j=1}^{p} w_j d_j(x_j, y_j)}{\sum_{j=1}^{p} w_j}$$
+
+where $d_j$ is adapted to variable type (range-normalized for continuous, 0/1 for binary, etc.).
+
+### Key Challenges
+
+- **No ground truth:** Without labels, "correct" clustering cannot be verified directly.
+- **Scale sensitivity:** Most algorithms require standardization — see Chapter 6.
+- **Choosing $k$:** The number of clusters is rarely known in advance.
+- **Cluster shape:** K-Means assumes spherical clusters; DBSCAN handles arbitrary shapes.
+- **High dimensionality:** The curse of dimensionality (Chapter 7) affects distance-based clustering.
+- **Interpretation:** Statistical clusters may not align with meaningful domain categories.
+
+## Example: When Do Clusters Exist?
+
+**Example 8.1.** Three datasets each have 150 observations in 2D:
+
+- **Dataset A:** Three well-separated spherical groups → K-Means works perfectly.
+- **Dataset B:** Two concentric rings → K-Means fails (not spherical); DBSCAN succeeds.
+- **Dataset C:** Uniformly distributed points → No meaningful clusters exist; any algorithm will produce arbitrary groupings.
+
+This illustrates a critical principle: **clustering algorithms always find clusters** — even in random data. The challenge is determining whether the discovered clusters are real or artifacts.
+
+## R Example: Exploring Cluster Structure
+
+```{r cluster-intro}
+# --- Visualize different cluster structures ---
+set.seed(42)
+
+# Dataset A: well-separated spherical clusters
+n <- 150
+dA <- data.frame(
+  x = c(rnorm(50, 0, 0.5), rnorm(50, 3, 0.5),
+         rnorm(50, 1.5, 0.5)),
+  y = c(rnorm(50, 0, 0.5), rnorm(50, 0, 0.5),
+         rnorm(50, 2.5, 0.5)),
+  type = "A: Spherical"
+)
+
+# Dataset B: two rings (non-spherical)
+theta1 <- runif(75, 0, 2*pi)
+theta2 <- runif(75, 0, 2*pi)
+dB <- data.frame(
+  x    = c(cos(theta1) * 1 + rnorm(75, 0, 0.08),
+            cos(theta2) * 2.5 + rnorm(75, 0, 0.08)),
+  y    = c(sin(theta1) * 1 + rnorm(75, 0, 0.08),
+            sin(theta2) * 2.5 + rnorm(75, 0, 0.08)),
+  type = "B: Non-spherical"
+)
+
+# Dataset C: random noise
+dC <- data.frame(
+  x = runif(150, -3, 3),
+  y = runif(150, -3, 3),
+  type = "C: No structure"
+)
+
+all_data <- bind_rows(dA, dB, dC)
+
+ggplot(all_data, aes(x = x, y = y)) +
+  geom_point(color = "steelblue", size = 1.8,
+             alpha = 0.7) +
+  facet_wrap(~type, scales = "free", ncol = 3) +
+  labs(title    = "Three Datasets with Different Cluster Structures",
+       subtitle = "Algorithm choice must match the data geometry") +
+  theme_minimal(base_size = 12)
+```
+
+**Code explanation:**
+
+- Trigonometric functions `cos()` and `sin()` generate ring-shaped data — a classic test case for non-linear clustering methods.
+- `facet_wrap(scales = "free")` allows each panel its own axis range, preventing one dataset's scale from distorting the others.
+- Visual inspection is always the first step in clustering — before choosing an algorithm, look at the data (in 2D projections or PCA space).
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 8.1
+(a) Generate a dataset with 4 clusters of 50 points each, arranged in a 2×2 grid pattern (well-separated). Plot it.
+(b) Generate a dataset where two clusters overlap substantially. What challenges does this pose for clustering?
+(c) Apply `scale()` to the `iris` numeric variables and compute the Euclidean distance matrix using `dist()`. Inspect the first 6×6 block. Are setosa observations closer to each other than to versicolor?
+:::
+
+---
+
+# K-Means Clustering
+
+## Introduction
+
+**K-Means** is the most widely used clustering algorithm, valued for its simplicity, scalability, and intuitive interpretation. It partitions $n$ observations into exactly $k$ clusters by minimizing the total within-cluster variance — finding compact, spherical clusters in feature space.
+
+## Theory
+
+### The K-Means Objective
+
+K-Means minimizes the **total within-cluster sum of squares (WCSS)**:
+
+$$\text{WCSS} = \sum_{k=1}^{K} \sum_{i \in C_k} \|\mathbf{x}_i - \boldsymbol{\mu}_k\|^2$$
+
+where $\boldsymbol{\mu}_k$ is the centroid (mean) of cluster $k$ and $C_k$ is the set of observations assigned to cluster $k$.
+
+This is an NP-hard optimization problem in general. The **Lloyd algorithm** finds a local optimum:
+
+**Algorithm:**
+
+1. Initialize $K$ centroids (randomly or via K-Means++)
+2. **Assignment step:** Assign each observation to the nearest centroid:
+$$C_k = \{i : \|\mathbf{x}_i - \boldsymbol{\mu}_k\|^2 \leq \|\mathbf{x}_i - \boldsymbol{\mu}_j\|^2 \; \forall j\}$$
+3. **Update step:** Recompute centroids as cluster means:
+$$\boldsymbol{\mu}_k = \frac{1}{|C_k|}\sum_{i \in C_k}\mathbf{x}_i$$
+4. Repeat steps 2–3 until assignments do not change.
+
+**Convergence:** The WCSS decreases at every iteration and is bounded below by 0, guaranteeing convergence. However, convergence to the **global** optimum is not guaranteed — run with multiple random starts (`nstart` in R).
+
+### K-Means++ Initialization
+
+Random initialization can lead to poor solutions. **K-Means++** selects initial centroids with probability proportional to squared distance from existing centroids:
+
+$$P(\mathbf{x}_i \text{ chosen}) \propto \min_k \|\mathbf{x}_i - \boldsymbol{\mu}_k\|^2$$
+
+This spreads initial centroids apart, dramatically improving solution quality and speed of convergence. R's `kmeans()` uses K-Means++ by default with `algorithm = "Hartigan-Wong"`.
+
+### Choosing $K$: The Elbow Method
+
+Plot WCSS against $K$. The "elbow" — where WCSS begins to decrease slowly — suggests the optimal $K$. Beyond the elbow, adding clusters provides diminishing returns.
+
+### Choosing $K$: The Silhouette Method
+
+The **silhouette score** for observation $i$ measures how well it fits its assigned cluster relative to the next best cluster:
+
+$$s(i) = \frac{b(i) - a(i)}{\max(a(i), b(i))}$$
+
+where $a(i)$ is the mean distance to other points in the same cluster (cohesion) and $b(i)$ is the mean distance to points in the nearest other cluster (separation).
+
+- $s(i) \approx 1$: well-clustered
+- $s(i) \approx 0$: on the boundary between clusters
+- $s(i) < 0$: possibly misassigned
+
+The optimal $K$ maximizes the **average silhouette width**.
+
+### Limitations of K-Means
+
+- Assumes **spherical, equally-sized** clusters
+- Sensitive to **outliers** (centroids are means)
+- Requires specifying $K$ in advance
+- Non-deterministic — different runs may yield different solutions
+- Fails on **non-convex** cluster shapes
+
+## Example: K-Means on Customer Data
+
+**Example 8.2.** A retailer segments 200 customers by annual spending (THB) and visit frequency. K-Means with $K = 3$ identifies:
+
+- **Cluster 1:** High spending, high frequency — "loyal premium customers"
+- **Cluster 2:** Low spending, high frequency — "frequent budget shoppers"
+- **Cluster 3:** High spending, low frequency — "occasional big spenders"
+
+Each segment suggests a different marketing strategy — demonstrating how clustering translates to business action.
+
+## R Example: K-Means Clustering
+
+```{r kmeans}
+# --- K-Means on iris (4 features, known ground truth) ---
+data(iris)
+iris_scaled <- scale(iris[, 1:4])
+
+# Run K-Means with K=3, multiple starts
+set.seed(42)
+km_result <- kmeans(iris_scaled, centers = 3,
+                     nstart = 25, iter.max = 100)
+
+cat("K-Means Results (K=3):\n")
+cat("Cluster sizes:", km_result$size, "\n")
+cat("Total WCSS:   ", round(km_result$tot.withinss, 3), "\n")
+cat("Between-SS / Total SS:",
+    round(km_result$betweenss / km_result$totss * 100, 1),
+    "%\n\n")
+
+# Compare clusters to true species
+table(Cluster = km_result$cluster,
+      Species = iris$Species)
+```
+
+```{r kmeans-optimal-k}
+# --- Elbow and Silhouette plots for optimal K ---
+set.seed(42)
+k_range <- 2:8
+
+wcss_vals <- sapply(k_range, function(k) {
+  kmeans(iris_scaled, centers = k,
+         nstart = 25)$tot.withinss
+})
+
+sil_vals <- sapply(k_range, function(k) {
+  km  <- kmeans(iris_scaled, centers = k, nstart = 25)
+  sil <- silhouette(km$cluster, dist(iris_scaled))
+  mean(sil[, 3])
+})
+
+opt_df <- data.frame(k   = k_range,
+                      wcss = wcss_vals,
+                      sil  = sil_vals)
+
+p1 <- ggplot(opt_df, aes(x = k, y = wcss)) +
+  geom_line(color = "steelblue", linewidth = 1.2) +
+  geom_point(size = 3, color = "steelblue") +
+  geom_vline(xintercept = 3, color = "tomato",
+             linetype = "dashed", linewidth = 1) +
+  labs(title    = "A. Elbow Method",
+       subtitle = "Optimal K at the 'elbow'",
+       x = "Number of Clusters (K)",
+       y = "Total WCSS") +
+  theme_minimal(base_size = 12)
+
+p2 <- ggplot(opt_df, aes(x = k, y = sil)) +
+  geom_line(color = "seagreen", linewidth = 1.2) +
+  geom_point(size = 3, color = "seagreen") +
+  geom_vline(xintercept = k_range[which.max(sil_vals)],
+             color = "tomato", linetype = "dashed",
+             linewidth = 1) +
+  labs(title    = "B. Silhouette Method",
+       subtitle = "Optimal K maximizes average silhouette",
+       x = "Number of Clusters (K)",
+       y = "Average Silhouette Width") +
+  theme_minimal(base_size = 12)
+
+p1 + p2
+```
+
+```{r kmeans-viz}
+# --- Visualize clusters in PCA space ---
+pca_km  <- prcomp(iris_scaled)
+km_plot <- data.frame(pca_km$x[, 1:2],
+                       Cluster = factor(km_result$cluster),
+                       Species = iris$Species)
+
+p3 <- ggplot(km_plot, aes(x = PC1, y = PC2,
+                            color = Cluster,
+                            shape = Species)) +
+  geom_point(size = 2.8, alpha = 0.85) +
+  scale_color_brewer(palette = "Set1") +
+  labs(title    = "C. K-Means Clusters in PCA Space",
+       subtitle = "Cluster (color) vs. True Species (shape)") +
+  theme_minimal(base_size = 12)
+
+# Silhouette plot
+sil_km <- silhouette(km_result$cluster,
+                      dist(iris_scaled))
+p4 <- fviz_silhouette(sil_km) +
+  labs(title = "D. Silhouette Plot (K=3)") +
+  theme_minimal(base_size = 12)
+
+p3 + p4
+```
+
+**Code explanation:**
+
+- `kmeans(x, centers, nstart, iter.max)`: `nstart = 25` runs 25 random initializations and keeps the best — essential for avoiding poor local minima.
+- `silhouette(cluster, dist_matrix)` computes per-observation silhouette scores. `mean(sil[, 3])` extracts the average width.
+- `fviz_silhouette()` produces a publication-ready silhouette plot with per-cluster averages highlighted.
+- Plotting clusters in PCA space (Panel C) is the standard way to visualize high-dimensional clustering results in 2D.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 8.2
+Using the `USArrests` dataset:
+
+(a) Standardize the data and apply K-Means for $K = 2, 3, 4, 5$.
+(b) Use the elbow method and silhouette method to choose the optimal $K$.
+(c) For the optimal $K$, identify which states belong to each cluster. Interpret the clusters using cluster centroids.
+(d) Visualize clusters on a US map (use `ggplot2::map_data("state")`).
+:::
+
+::: {.callout-tip}
+## Exercise 8.3
+K-Means is sensitive to initialization. For the `iris` data with $K = 3$:
+
+(a) Run K-Means 10 times with `nstart = 1` and record the WCSS each time. How much does it vary?
+(b) Run once with `nstart = 50`. Does this reliably find the best solution?
+(c) Compare K-Means (Euclidean) to K-Medoids (`cluster::pam()`) on the same data. Which is more robust to the outlier you add: `iris[1, 1:4] <- c(10, 10, 10, 10)`?
+:::
+
+---
+
+# Hierarchical Clustering
+
+## Introduction
+
+**Hierarchical clustering** builds a tree-like structure of nested clusters — a **dendrogram** — that captures cluster relationships at every level of granularity simultaneously. Unlike K-Means, you do not need to specify $K$ in advance; instead, you choose the number of clusters by "cutting" the dendrogram at a chosen height. This makes hierarchical clustering particularly valuable for **exploratory analysis** and for data where the cluster hierarchy is itself scientifically meaningful (e.g., evolutionary trees, organizational hierarchies).
+
+## Theory
+
+### Agglomerative Clustering (Bottom-Up)
+
+The most common approach: start with each observation in its own cluster, then repeatedly merge the two most similar clusters until one cluster remains.
+
+**Algorithm:**
+
+1. Compute the $n \times n$ distance matrix $\mathbf{D}$.
+2. Find the pair of clusters $(C_i, C_j)$ with minimum inter-cluster distance.
+3. Merge $C_i$ and $C_j$ into a new cluster $C_{ij}$.
+4. Update $\mathbf{D}$ with distances from $C_{ij}$ to all other clusters.
+5. Repeat until one cluster remains.
+
+### Linkage Methods
+
+The choice of **linkage** defines how the distance between two clusters is computed from pairwise distances:
+
+| Linkage | Definition | Properties |
+|---------|-----------|-----------|
+| **Single** | Min distance between any pair of points | Chaining effect; finds elongated clusters |
+| **Complete** | Max distance between any pair of points | Compact, spherical clusters; sensitive to outliers |
+| **Average (UPGMA)** | Mean of all pairwise distances | Compromise; most widely recommended |
+| **Ward's** | Minimizes within-cluster variance increase | Most similar to K-Means; finds compact clusters |
+| **Centroid** | Distance between cluster centroids | Can produce inversions in dendrogram |
+
+: Linkage methods for hierarchical clustering {.striped}
+
+**Ward's linkage** is the most commonly recommended for general use as it produces compact, well-separated clusters and is consistent with the K-Means objective.
+
+### The Dendrogram
+
+A **dendrogram** displays the hierarchical cluster structure:
+
+- The **height** of each merge represents the distance at which two clusters joined.
+- **Cutting** the dendrogram at height $h$ produces clusters that were formed by merges at distances $\leq h$.
+- The **cophenetic correlation** measures how faithfully the dendrogram represents the original pairwise distances — a diagnostic of how well the hierarchical structure fits the data.
+
+### Divisive Clustering (Top-Down)
+
+**DIANA (DIvisive ANAlysis):** Starts with all observations in one cluster, then recursively splits the most heterogeneous cluster. Computationally expensive ($O(2^n)$ exact); rarely used in large datasets.
+
+## Example: Hierarchical Clustering of Countries
+
+**Example 8.3.** The `USArrests` dataset is clustered hierarchically with Ward's linkage. Cutting at $K = 4$ reveals:
+
+- **Cluster 1:** High crime states (e.g., Florida, California)
+- **Cluster 2:** Mid-high crime (e.g., Arizona, Colorado)
+- **Cluster 3:** Mid-low crime (e.g., Pennsylvania, Ohio)
+- **Cluster 4:** Low crime states (e.g., Vermont, Maine)
+
+The dendrogram shows that Clusters 3 and 4 merge before merging with Clusters 1 and 2 — low and mid-low crime states are more similar to each other than to high-crime states.
+
+## R Example: Hierarchical Clustering
+
+```{r hierarchical}
+# --- Hierarchical clustering on USArrests ---
+data(USArrests)
+arrests_scaled <- scale(USArrests)
+
+# Compute distance matrix
+dist_mat <- dist(arrests_scaled, method = "euclidean")
+
+# Four linkage methods
+linkages <- c("single","complete","average","ward.D2")
+
+hc_list <- lapply(linkages, function(lnk) {
+  hclust(dist_mat, method = lnk)
+})
+names(hc_list) <- linkages
+
+# Cophenetic correlation for each
+coph_cor <- sapply(hc_list, function(hc) {
+  round(cor(dist_mat, cophenetic(hc)), 4)
+})
+
+data.frame(Linkage = linkages,
+           Cophenetic_r = coph_cor) |>
+  kable(caption   = "Cophenetic Correlation by Linkage Method",
+        col.names = c("Linkage","Cophenetic r")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  column_spec(2, bold = TRUE,
+              color = ifelse(coph_cor == max(coph_cor),
+                             "darkgreen","steelblue"))
+```
+
+```{r dendrogram}
+# --- Enhanced dendrogram (Ward's linkage) ---
+hc_ward <- hc_list[["ward.D2"]]
+dend    <- as.dendrogram(hc_ward)
+
+# Color 4 clusters
+dend_colored <- color_branches(dend, k = 4)
+
+par(mar = c(4, 2, 3, 1))
+plot(dend_colored,
+     main   = "Hierarchical Clustering: USArrests (Ward's Linkage)",
+     ylab   = "Height",
+     cex    = 0.75)
+abline(h = 3.5, col = "tomato",
+       lty = 2, lwd = 2)
+```
+
+```{r hierarchical-compare}
+# --- Cut tree at K=4 and compare linkage methods ---
+k_cut <- 4
+
+clusters_comparison <- sapply(hc_list, function(hc) {
+  cutree(hc, k = k_cut)
+})
+
+# Show cluster assignments for Ward's
+ward_clusters <- cutree(hc_ward, k = k_cut)
+
+cluster_summary <- USArrests |>
+  mutate(Cluster = ward_clusters) |>
+  group_by(Cluster) |>
+  summarise(
+    n        = n(),
+    Murder   = round(mean(Murder), 2),
+    Assault  = round(mean(Assault), 2),
+    UrbanPop = round(mean(UrbanPop), 2),
+    Rape     = round(mean(Rape), 2),
+    .groups  = "drop"
+  )
+
+kable(cluster_summary,
+      caption = "Cluster Profiles: USArrests (Ward's, K=4)") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+```{r hierarchical-viz}
+# --- Visualize clusters in PCA space ---
+pca_arrests <- prcomp(arrests_scaled)
+hc_plot_df  <- data.frame(
+  pca_arrests$x[, 1:2],
+  Cluster = factor(ward_clusters),
+  State   = rownames(USArrests)
+)
+
+ggplot(hc_plot_df, aes(x = PC1, y = PC2,
+                        color = Cluster,
+                        label = State)) +
+  geom_point(size = 3, alpha = 0.8) +
+  ggrepel::geom_text_repel(size = 2.8,
+                             show.legend = FALSE) +
+  scale_color_brewer(palette = "Set1") +
+  labs(title    = "Hierarchical Clusters in PCA Space",
+       subtitle = "Ward's linkage, K=4 — USArrests dataset",
+       x = "PC1", y = "PC2") +
+  theme_minimal(base_size = 13)
+```
+
+**Code explanation:**
+
+- `hclust(dist, method)` fits hierarchical clustering. `method = "ward.D2"` implements Ward's criterion using squared distances (the standard Ward implementation in R).
+- `cophenetic(hc)` computes the cophenetic distance matrix; `cor(dist_mat, cophenetic(hc))` gives the cophenetic correlation — a model fit diagnostic.
+- `color_branches(dend, k)` from `dendextend` colors the dendrogram branches by cluster assignment, making the cut point visually clear.
+- `cutree(hc, k)` cuts the dendrogram to produce exactly $k$ clusters — no need to specify height directly.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 8.4
+Using the `mtcars` dataset:
+
+(a) Compute the Euclidean distance matrix on standardized data.
+(b) Apply hierarchical clustering with all four linkage methods. Compare dendrograms visually.
+(c) Choose the linkage with the highest cophenetic correlation. Cut at $K = 3$ and interpret the clusters using group means.
+(d) How do the hierarchical clusters compare to K-Means clusters ($K = 3$) from Exercise 8.2? Use a cross-tabulation.
+:::
+
+---
+
+# DBSCAN
+
+## Introduction
+
+K-Means and hierarchical clustering both struggle with clusters of **arbitrary shape** — elongated, curved, or interlocked — and with **noise** (outliers that do not belong to any cluster). **DBSCAN (Density-Based Spatial Clustering of Applications with Noise)**, introduced by Ester et al. (1996), solves these problems by defining clusters as dense regions of observations separated by sparse regions. It is particularly powerful for geospatial data, anomaly detection, and any domain where clusters are not compact spheres.
+
+## Theory
+
+### Core Concepts
+
+DBSCAN has two parameters:
+
+- $\varepsilon$ (**eps**): The neighborhood radius. Two points are neighbors if their distance is $\leq \varepsilon$.
+- **MinPts**: The minimum number of points required to form a dense region.
+
+Three types of points:
+
+1. **Core point:** Has at least MinPts neighbors within distance $\varepsilon$ (including itself).
+2. **Border point:** Within $\varepsilon$ of a core point but has fewer than MinPts neighbors.
+3. **Noise point (outlier):** Not a core point and not within $\varepsilon$ of any core point.
+
+**Density-reachability:** Point $q$ is density-reachable from core point $p$ if there is a chain of core points $p = p_1, p_2, \ldots, p_n = q$ where each $p_{i+1}$ is within $\varepsilon$ of $p_i$.
+
+A **cluster** is a maximal set of density-connected points.
+
+### The DBSCAN Algorithm
+
+1. For each unvisited point $p$:
+   - If $p$ is a core point: create a new cluster and expand it by adding all density-reachable points.
+   - If $p$ is a border or noise point: skip (may be assigned later when a core point reaches it).
+2. Points never assigned to any cluster are labeled **noise** (typically coded as 0 or -1).
+
+**Complexity:** $O(n \log n)$ with spatial indexing (k-d tree); $O(n^2)$ naively.
+
+### Advantages and Limitations
+
+| Feature | DBSCAN | K-Means |
+|---------|--------|---------|
+| Handles arbitrary shapes | ✓ | ✗ |
+| Detects outliers/noise | ✓ | ✗ |
+| Number of clusters $K$ | Automatic | Must specify |
+| Sensitive to scale | Yes | Yes |
+| Parameter tuning | $\varepsilon$, MinPts | $K$ |
+| Scales to large data | ✓ (with indexing) | ✓ |
+
+: DBSCAN vs. K-Means comparison {.striped}
+
+### Choosing $\varepsilon$: The $k$-Distance Plot
+
+Sort observations by their distance to the $k$-th nearest neighbor (typically $k$ = MinPts - 1). Plot these sorted distances. The "elbow" in this plot suggests the optimal $\varepsilon$ — at that distance, the density drops sharply from dense core regions to sparse noise.
+
+## Example: DBSCAN on Spatial Data
+
+**Example 8.4.** GPS coordinates of 500 restaurant locations in a city are clustered with DBSCAN ($\varepsilon = 0.3$ km, MinPts = 5). The algorithm discovers:
+
+- 4 natural **restaurant districts** of varying shapes (downtown, university area, shopping mall, tourist zone)
+- 12 isolated restaurants labeled as **noise** (no nearby neighbors)
+
+K-Means with $K = 4$ on the same data produces circular, equally-sized regions that cut across natural district boundaries — demonstrating DBSCAN's advantage for geographic data.
+
+## R Example: DBSCAN
+
+```{r dbscan-rings}
+# --- DBSCAN on ring-shaped data ---
+set.seed(42)
+n <- 200
+theta1 <- runif(n/2, 0, 2*pi)
+theta2 <- runif(n/2, 0, 2*pi)
+
+rings <- data.frame(
+  x = c(cos(theta1)*1 + rnorm(n/2, 0, 0.08),
+         cos(theta2)*2.5 + rnorm(n/2, 0, 0.08)),
+  y = c(sin(theta1)*1 + rnorm(n/2, 0, 0.08),
+         sin(theta2)*2.5 + rnorm(n/2, 0, 0.08)),
+  true_cluster = rep(1:2, each = n/2)
+)
+
+# K-Means (will fail on rings)
+set.seed(42)
+km_rings <- kmeans(rings[,1:2], centers = 2, nstart = 25)
+
+# DBSCAN
+db_rings <- dbscan::dbscan(rings[,1:2],
+                             eps = 0.3, minPts = 5)
+
+rings$km_cluster   <- factor(km_rings$cluster)
+rings$db_cluster   <- factor(db_rings$cluster)
+
+p1 <- ggplot(rings, aes(x, y, color = km_cluster)) +
+  geom_point(size = 1.8, alpha = 0.8) +
+  scale_color_brewer(palette = "Set1") +
+  labs(title    = "A. K-Means (K=2)",
+       subtitle = "Fails — cuts through rings",
+       color    = "Cluster") +
+  theme_minimal(base_size = 12) +
+  coord_equal()
+
+p2 <- ggplot(rings, aes(x, y, color = db_cluster)) +
+  geom_point(size = 1.8, alpha = 0.8) +
+  scale_color_manual(
+    values = c("0" = "gray70", "1" = "steelblue",
+               "2" = "tomato"),
+    labels = c("0" = "Noise", "1" = "Inner ring",
+               "2" = "Outer ring")) +
+  labs(title    = "B. DBSCAN (ε=0.3, MinPts=5)",
+       subtitle = "Succeeds — recovers true rings",
+       color    = "Cluster") +
+  theme_minimal(base_size = 12) +
+  coord_equal()
+
+p1 + p2
+```
+
+```{r dbscan-eps}
+# --- k-distance plot for epsilon selection ---
+# Using iris data
+iris_sc <- scale(iris[, 1:4])
+
+kNNdist_vals <- sort(dbscan::kNNdist(iris_sc, k = 4))
+knn_df       <- data.frame(
+  idx  = seq_along(kNNdist_vals),
+  dist = kNNdist_vals
+)
+
+ggplot(knn_df, aes(x = idx, y = dist)) +
+  geom_line(color = "steelblue", linewidth = 1) +
+  geom_hline(yintercept = 0.5, color = "tomato",
+             linetype = "dashed", linewidth = 1) +
+  annotate("text", x = 120, y = 0.55,
+           label = "ε ≈ 0.5 (elbow)",
+           color = "tomato", size = 4) +
+  labs(title    = "k-Distance Plot for ε Selection",
+       subtitle = "iris dataset, k=4 | elbow suggests optimal ε",
+       x = "Points sorted by 4-NN distance",
+       y = "4-NN Distance") +
+  theme_minimal(base_size = 13)
+```
+
+```{r dbscan-iris}
+# --- Apply DBSCAN to iris ---
+set.seed(42)
+db_iris <- dbscan::dbscan(iris_sc, eps = 0.5, minPts = 5)
+
+cat("DBSCAN Results (iris):\n")
+cat("Cluster sizes:\n")
+print(table(db_iris$cluster))
+cat("Noise points (cluster 0):",
+    sum(db_iris$cluster == 0), "\n\n")
+
+# Compare to true species
+table(DBSCAN = db_iris$cluster,
+      Species = iris$Species)
+```
+
+**Code explanation:**
+
+- `dbscan::dbscan(x, eps, minPts)` runs DBSCAN. Cluster 0 represents noise points — always check how many observations are labeled as noise.
+- `dbscan::kNNdist(x, k)` computes the $k$-nearest neighbor distance for each point; sorting and plotting these produces the $k$-distance plot.
+- The ring example (Panels A and B) is the canonical demonstration of DBSCAN's advantage — K-Means cannot recover the correct structure while DBSCAN does so effortlessly.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 8.5
+Using the `faithful` dataset (Old Faithful geyser eruptions):
+
+(a) Plot `eruptions` vs. `waiting`. How many clusters do you expect visually?
+(b) Apply DBSCAN. Use the $k$-distance plot to choose $\varepsilon$.
+(c) Compare DBSCAN to K-Means for this dataset. Which performs better?
+(d) How does changing MinPts from 3 to 10 affect the clustering? How many noise points are created?
+:::
+
+::: {.callout-tip}
+## Exercise 8.6
+Generate a dataset with 3 clusters of different densities and one cluster of outliers.
+
+(a) Show that K-Means struggles (merges the sparse cluster with noise).
+(b) Show that DBSCAN handles it correctly with appropriate parameters.
+(c) What are the trade-offs when choosing a very small vs. very large $\varepsilon$?
+:::
+
+---
+
+# Cluster Validation
+
+## Introduction
+
+Any clustering algorithm will produce clusters — even on purely random data. **Cluster validation** provides formal, quantitative criteria for evaluating whether a clustering solution is meaningful, stable, and optimal. Without validation, we have no principled basis for choosing between algorithms, comparing solutions with different $K$, or deciding whether the clusters are real or artifacts.
+
+## Theory
+
+### Internal Validation Indices
+
+Internal indices evaluate cluster quality using only the data and cluster assignments — no external labels required.
+
+**Silhouette Index (SI):**
+$$\bar{s} = \frac{1}{n}\sum_{i=1}^{n} s(i), \qquad s(i) = \frac{b(i) - a(i)}{\max(a(i), b(i))}$$
+
+Range: $[-1, 1]$. Higher is better. Values above 0.5 indicate reasonable clustering; above 0.7 indicates strong clustering.
+
+**Davies-Bouldin Index (DBI):**
+$$\text{DBI} = \frac{1}{K}\sum_{k=1}^{K} \max_{j \neq k} \left(\frac{s_k + s_j}{d_{kj}}\right)$$
+
+where $s_k$ is the average distance within cluster $k$ and $d_{kj}$ is the distance between cluster centroids $k$ and $j$. **Lower is better** (tighter clusters, farther apart).
+
+**Calinski-Harabasz Index (CHI)** (also called Variance Ratio Criterion):
+$$\text{CHI} = \frac{SS_B / (K-1)}{SS_W / (n-K)}$$
+
+where $SS_B$ is between-cluster sum of squares and $SS_W$ is within-cluster sum of squares. **Higher is better**.
+
+**Dunn Index:**
+$$\text{DI} = \frac{\min_{k \neq j} d(C_k, C_j)}{\max_k \text{diam}(C_k)}$$
+
+Ratio of minimum inter-cluster distance to maximum cluster diameter. **Higher is better**.
+
+### External Validation Indices
+
+When ground truth labels are available, external indices measure agreement between cluster assignments and true labels.
+
+**Adjusted Rand Index (ARI):**
+$$\text{ARI} = \frac{\text{RI} - E[\text{RI}]}{\max(\text{RI}) - E[\text{RI}]}$$
+
+Range: $[-1, 1]$. ARI = 1 means perfect agreement; ARI = 0 means random (no better than chance); ARI < 0 means worse than random. Corrects for agreement due to chance.
+
+**Normalized Mutual Information (NMI):**
+$$\text{NMI} = \frac{2 \cdot I(C; T)}{H(C) + H(T)}$$
+
+where $I(C;T)$ is mutual information between clusters and true labels, $H$ is entropy. Range: $[0, 1]$. Higher is better.
+
+### Stability-Based Validation
+
+Bootstrap the data multiple times, cluster each bootstrap sample, and measure how consistent the cluster assignments are. High variability across bootstrap samples suggests the solution is unstable and possibly spurious.
+
+## Example: Comparing Validation Indices
+
+**Example 8.5.** For the `iris` dataset clustered with K-Means at $K = 2, 3, 4, 5$:
+
+| $K$ | Silhouette | Davies-Bouldin | CHI | ARI (vs. species) |
+|-----|-----------|---------------|-----|------------------|
+| 2 | 0.58 | 0.72 | 235 | 0.57 |
+| 3 | 0.55 | 0.67 | 212 | 0.73 |
+| 4 | 0.50 | 0.78 | 196 | 0.64 |
+| 5 | 0.45 | 0.85 | 178 | 0.55 |
+
+Most indices agree: $K = 3$ is optimal, consistent with the known 3 species in the data. ARI peaks at $K = 3$, confirming alignment with true labels.
+
+## R Example: Cluster Validation
+
+```{r validation}
+# --- Comprehensive validation for iris K-Means ---
+data(iris)
+iris_sc <- scale(iris[, 1:4])
+true_labels <- as.integer(iris$Species)
+
+k_vals <- 2:6
+
+validation_df <- map_dfr(k_vals, function(k) {
+  set.seed(42)
+  km  <- kmeans(iris_sc, centers = k, nstart = 25)
+  sil <- silhouette(km$cluster, dist(iris_sc))
+
+  # Davies-Bouldin (via fpc)
+  cs  <- fpc::cluster.stats(dist(iris_sc), km$cluster)
+
+  data.frame(
+    K             = k,
+    Silhouette    = round(mean(sil[,3]), 4),
+    Davies_Bouldin = round(cs$avg.silwidth, 4),
+    CHI           = round(cs$ch, 2),
+    ARI           = round(mclust::adjustedRandIndex(
+                            km$cluster, true_labels), 4)
+  )
+})
+
+kable(validation_df,
+      caption   = "Cluster Validation Indices: iris K-Means",
+      col.names = c("K","Silhouette ↑",
+                    "Avg Silhouette ↑","CHI ↑","ARI ↑")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE) |>
+  row_spec(which(validation_df$ARI ==
+                   max(validation_df$ARI)),
+           bold = TRUE, background = "#EEF2FF")
+```
+
+```{r validation-plot}
+# --- Validation index profiles ---
+val_long <- validation_df |>
+  select(K, Silhouette, CHI, ARI) |>
+  pivot_longer(-K, names_to = "Index",
+               values_to = "Value") |>
+  group_by(Index) |>
+  mutate(Value_norm = (Value - min(Value)) /
+           (max(Value) - min(Value))) |>
+  ungroup()
+
+ggplot(val_long, aes(x = K, y = Value_norm,
+                      color = Index, group = Index)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3) +
+  geom_vline(xintercept = 3, color = "gray30",
+             linetype = "dashed", linewidth = 0.8) +
+  scale_color_brewer(palette = "Set1") +
+  labs(title    = "Normalized Validation Indices vs. K",
+       subtitle = "Dashed line: K=3 (true number of species)",
+       x        = "Number of Clusters (K)",
+       y        = "Normalized Index Value",
+       color    = "Index") +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "top")
+```
+
+**Code explanation:**
+
+- `fpc::cluster.stats()` computes many cluster validity indices simultaneously — efficient for comparing multiple solutions.
+- `mclust::adjustedRandIndex()` computes ARI between two cluster assignment vectors.
+- Normalizing indices to $[0,1]$ before plotting allows direct visual comparison of indices on different scales — the peak at $K = 3$ is immediately visible across all indices.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 8.7
+Using the `USArrests` dataset (standardized):
+
+(a) Compute Silhouette, Davies-Bouldin, and CHI for K-Means with $K = 2, \ldots, 6$.
+(b) Also compute these for hierarchical clustering (Ward's) with the same $K$ values.
+(c) Produce a side-by-side comparison plot of validation indices for both methods.
+(d) Which method and $K$ combination has the best overall validation profile?
+:::
+
+---
+
+# Gaussian Mixture Models
+
+## Introduction
+
+K-Means assigns each observation to exactly one cluster — **hard assignment**. But cluster membership is rarely this clear-cut: an observation near a cluster boundary plausibly belongs to multiple clusters with different degrees of certainty. **Gaussian Mixture Models (GMM)** provide a probabilistic generalization: each observation has a **probability of belonging to each cluster** — a **soft assignment**. GMMs also provide a principled statistical framework with formal model selection criteria.
+
+## Theory
+
+### The Mixture Model
+
+A GMM assumes the data is generated from a mixture of $K$ Gaussian distributions:
+
+$$p(\mathbf{x}) = \sum_{k=1}^{K} \pi_k \, \mathcal{N}(\mathbf{x} \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)$$
+
+where:
+- $\pi_k$ are **mixing proportions** ($\sum_k \pi_k = 1$, $\pi_k \geq 0$)
+- $\boldsymbol{\mu}_k$ is the **mean** of component $k$
+- $\boldsymbol{\Sigma}_k$ is the **covariance matrix** of component $k$
+
+### The EM Algorithm
+
+GMM parameters are estimated by the **Expectation-Maximization (EM)** algorithm:
+
+**E-step:** Compute the **posterior probability** (responsibility) of each component for each observation:
+$$r_{ik} = \frac{\pi_k \, \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)}{\sum_{j=1}^{K} \pi_j \, \mathcal{N}(\mathbf{x}_i \mid \boldsymbol{\mu}_j, \boldsymbol{\Sigma}_j)}$$
+
+**M-step:** Update parameters using the responsibilities:
+$$\pi_k^{\text{new}} = \frac{\sum_i r_{ik}}{n}, \quad \boldsymbol{\mu}_k^{\text{new}} = \frac{\sum_i r_{ik}\mathbf{x}_i}{\sum_i r_{ik}}, \quad \boldsymbol{\Sigma}_k^{\text{new}} = \frac{\sum_i r_{ik}(\mathbf{x}_i - \boldsymbol{\mu}_k)(\mathbf{x}_i - \boldsymbol{\mu}_k)^T}{\sum_i r_{ik}}$$
+
+EM converges to a local maximum of the log-likelihood. Run multiple times with different initializations.
+
+### Covariance Structure
+
+The covariance matrix $\boldsymbol{\Sigma}_k$ can be constrained to reduce the number of parameters:
+
+| Model | $\boldsymbol{\Sigma}_k$ | Shape |
+|-------|------------------------|-------|
+| EII (spherical, equal) | $\lambda \mathbf{I}$ | Equal spheres |
+| VII (spherical, variable) | $\lambda_k \mathbf{I}$ | Different-size spheres |
+| EEE (ellipsoidal, equal) | $\boldsymbol{\Sigma}$ | Equal ellipsoids |
+| VVV (ellipsoidal, variable) | $\boldsymbol{\Sigma}_k$ | Different ellipsoids |
+
+: Common GMM covariance models (mclust notation) {.striped}
+
+### Model Selection: BIC
+
+The **Bayesian Information Criterion** selects the number of components $K$ and covariance model:
+
+$$\text{BIC} = -2\ell(\hat{\theta}) + p \log n$$
+
+where $\ell(\hat{\theta})$ is the maximized log-likelihood and $p$ is the number of parameters. **Higher BIC is better** in the `mclust` package convention (they maximize $-\text{BIC}$). BIC penalizes complexity, balancing fit against parsimony.
+
+## Example: GMM vs. K-Means
+
+**Example 8.6.** Two overlapping Gaussian clusters are modeled:
+
+- **K-Means** assigns hard boundaries — observations near the boundary are assigned to one cluster with certainty.
+- **GMM** assigns probabilities — an observation on the boundary might have $P(\text{Cluster 1}) = 0.55$ and $P(\text{Cluster 2}) = 0.45$, honestly reflecting uncertainty.
+- For well-separated clusters, GMM and K-Means give nearly identical results. For overlapping clusters, GMM is more honest and often more accurate.
+
+## R Example: Gaussian Mixture Models
+
+```{r gmm}
+# --- GMM on iris using mclust ---
+data(iris)
+iris_sc <- scale(iris[, 1:4])
+
+# Fit GMM with automatic model and K selection via BIC
+gmm_result <- mclust::Mclust(iris_sc, G = 1:6,
+                               verbose = FALSE)
+
+cat("=== Best GMM Model ===\n")
+cat("Model type:        ", gmm_result$modelName, "\n")
+cat("Number of components:", gmm_result$G, "\n")
+cat("BIC:               ", round(gmm_result$bic, 2), "\n\n")
+
+# Classification table
+table(GMM     = gmm_result$classification,
+      Species = iris$Species)
+```
+
+```{r gmm-bic}
+# --- BIC plot for model selection ---
+plot(gmm_result, what = "BIC",
+     main = "GMM BIC: Model and Component Selection")
+```
+
+```{r gmm-uncertainty}
+# --- Soft assignments: observation uncertainty ---
+uncertainty_df <- data.frame(
+  pca_iris   <- prcomp(iris_sc)$x[, 1:2],
+  Uncertainty = gmm_result$uncertainty,
+  Cluster     = factor(gmm_result$classification),
+  Species     = iris$Species
+)
+
+p1 <- ggplot(uncertainty_df,
+             aes(x = PC1, y = PC2,
+                 color = Cluster,
+                 size  = Uncertainty)) +
+  geom_point(alpha = 0.75) +
+  scale_color_brewer(palette = "Set1") +
+  scale_size_continuous(range = c(1, 5)) +
+  labs(title    = "A. GMM Clusters with Uncertainty",
+       subtitle = "Larger points = higher assignment uncertainty",
+       x = "PC1", y = "PC2") +
+  theme_minimal(base_size = 12)
+
+# Posterior probabilities for uncertain observations
+top_uncertain <- order(gmm_result$uncertainty,
+                        decreasing = TRUE)[1:10]
+prob_df <- as.data.frame(gmm_result$z[top_uncertain,])
+prob_df$Obs     <- top_uncertain
+prob_df$Species <- iris$Species[top_uncertain]
+prob_df <- prob_df |>
+  pivot_longer(cols = starts_with("V"),
+               names_to  = "Component",
+               values_to = "Probability") |>
+  mutate(Component = paste0("Cluster ",
+                              str_remove(Component, "V")))
+
+p2 <- ggplot(prob_df, aes(x = factor(Obs),
+                            y = Probability,
+                            fill = Component)) +
+  geom_col() +
+  scale_fill_brewer(palette = "Set1") +
+  labs(title    = "B. Posterior Probabilities",
+       subtitle = "10 most uncertain observations",
+       x = "Observation Index",
+       y = "P(Cluster | Data)") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
+
+p1 + p2
+```
+
+**Code explanation:**
+
+- `mclust::Mclust(x, G)` automatically searches over a range of $K$ values and covariance models, selecting the best by BIC.
+- `gmm_result$uncertainty` gives the classification uncertainty for each observation — the probability of the second-best class assignment.
+- `gmm_result$z` is the $n \times K$ matrix of posterior probabilities — the soft assignments that distinguish GMM from K-Means.
+- Sizing points by uncertainty (Panel A) immediately identifies which observations are most ambiguously assigned.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 8.8
+Using the `faithful` dataset:
+
+(a) Fit a GMM using `mclust::Mclust()`. Which model and $K$ does BIC select?
+(b) Plot the fitted density contours over a scatterplot of the data.
+(c) Identify the 5 most uncertain observations. Where do they fall in the scatterplot?
+(d) Compare GMM classification to K-Means ($K = 2$) on this dataset. Which performs better?
+:::
+
+---
+
+# Practical Clustering Workflow
+
+## Introduction
+
+The preceding sections introduced individual clustering algorithms. In practice, clustering is an iterative, decision-rich process — there is no single correct approach. This section synthesizes the chapter into a **practical workflow** that guides the end-to-end clustering process from raw data to interpretable cluster profiles.
+
+## Theory
+
+### The End-to-End Clustering Workflow
+
+```
+1. Define the clustering objective
+        ↓
+2. Preprocess the data
+   - Handle missing values (Chapter 6)
+   - Remove or treat outliers
+   - Scale features (Z-score recommended)
+   - Reduce dimensions if p >> n (Chapter 7)
+        ↓
+3. Choose an algorithm
+   - Spherical clusters, known K → K-Means
+   - Hierarchical structure important → Hierarchical
+   - Arbitrary shapes, noise present → DBSCAN
+   - Probabilistic membership needed → GMM
+   - Very large data (n > 100K) → Mini-batch K-Means
+        ↓
+4. Determine the number of clusters
+   - Elbow method + Silhouette + BIC
+   - Domain knowledge
+        ↓
+5. Validate the solution
+   - Internal: Silhouette, Davies-Bouldin, CHI
+   - External (if labels available): ARI, NMI
+   - Stability: bootstrap resampling
+        ↓
+6. Interpret and profile clusters
+   - Cluster centroids / medoids
+   - Statistical differences between clusters
+   - Visualize in PCA / t-SNE space
+        ↓
+7. Communicate and act
+   - Name clusters meaningfully
+   - Report actionable insights
+```
+
+### Algorithm Selection Guide
+
+| Data Characteristics | Recommended Algorithm |
+|---------------------|----------------------|
+| Large $n$, spherical clusters | K-Means |
+| Small $n$, need hierarchy | Hierarchical (Ward's) |
+| Outliers, arbitrary shapes | DBSCAN |
+| Overlapping clusters, uncertainty | GMM |
+| Mixed data types | K-Medoids (PAM) |
+| Very high dimensions | PCA first, then K-Means |
+
+: Clustering algorithm selection guide {.striped}
+
+### Cluster Profiling
+
+After assigning cluster labels, profile each cluster by computing:
+
+- **Means/medians** of continuous variables per cluster
+- **Proportions** of categorical variables per cluster
+- **Statistical tests** for differences: ANOVA or Kruskal-Wallis for continuous; Chi-square for categorical
+- **Effect sizes**: $\eta^2$ (ANOVA) or Cramér's V (chi-square)
+
+## R Example: Complete Clustering Workflow
+
+```{r workflow}
+# === COMPLETE WORKFLOW: mtcars ===
+data(mtcars)
+
+# Step 1: Preprocess
+mt_scaled <- scale(mtcars[, c("mpg","hp","wt","disp","qsec")])
+
+# Step 2: Determine K
+set.seed(42)
+k_range <- 2:7
+sil_wf  <- sapply(k_range, function(k) {
+  km  <- kmeans(mt_scaled, centers = k, nstart = 25)
+  sil <- silhouette(km$cluster, dist(mt_scaled))
+  mean(sil[, 3])
+})
+optimal_k <- k_range[which.max(sil_wf)]
+cat("Optimal K (silhouette):", optimal_k, "\n")
+```
+
+```{r workflow-cluster}
+# Step 3: Fit final model
+set.seed(42)
+km_final <- kmeans(mt_scaled, centers = optimal_k,
+                    nstart = 50)
+
+# Step 4: Validate
+sil_final <- silhouette(km_final$cluster,
+                         dist(mt_scaled))
+cs_final  <- fpc::cluster.stats(dist(mt_scaled),
+                                  km_final$cluster)
+
+cat("Final solution validation:\n")
+cat("  Average silhouette: ",
+    round(mean(sil_final[,3]), 4), "\n")
+cat("  Davies-Bouldin:     ",
+    round(cs_final$avg.silwidth, 4), "\n")
+cat("  CHI:                ",
+    round(cs_final$ch, 2), "\n\n")
+```
+
+```{r workflow-profile}
+# Step 5: Profile clusters
+mtcars$Cluster <- factor(km_final$cluster)
+
+profile <- mtcars |>
+  group_by(Cluster) |>
+  summarise(
+    n      = n(),
+    mpg    = round(mean(mpg), 1),
+    hp     = round(mean(hp), 1),
+    wt     = round(mean(wt), 2),
+    disp   = round(mean(disp), 1),
+    qsec   = round(mean(qsec), 2),
+    .groups = "drop"
+  )
+
+kable(profile,
+      caption = paste0("Cluster Profiles: mtcars (K=",
+                        optimal_k, ")")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+```{r workflow-viz, fig.height=7}
+# Step 6: Visualize
+pca_wf    <- prcomp(mt_scaled)
+wf_plot   <- data.frame(
+  pca_wf$x[,1:2],
+  Cluster = factor(km_final$cluster),
+  Car     = rownames(mtcars)
+)
+
+p1 <- ggplot(wf_plot, aes(x = PC1, y = PC2,
+                            color = Cluster,
+                            label = Car)) +
+  geom_point(size = 3, alpha = 0.9) +
+  ggrepel::geom_text_repel(size = 2.8,
+                             show.legend = FALSE) +
+  scale_color_brewer(palette = "Set1") +
+  labs(title    = "A. Clusters in PCA Space",
+       x = "PC1", y = "PC2") +
+  theme_minimal(base_size = 12)
+
+p2 <- fviz_silhouette(sil_final) +
+  labs(title = "B. Silhouette Plot") +
+  theme_minimal(base_size = 12)
+
+p3 <- profile |>
+  pivot_longer(-c(Cluster, n),
+               names_to  = "Variable",
+               values_to = "Mean") |>
+  group_by(Variable) |>
+  mutate(Mean_norm = (Mean - min(Mean)) /
+           (max(Mean) - min(Mean))) |>
+  ggplot(aes(x = Variable, y = Mean_norm,
+             fill = Cluster)) +
+  geom_col(position = "dodge", color = "white") +
+  scale_fill_brewer(palette = "Set1") +
+  labs(title = "C. Normalized Cluster Profiles",
+       x = "Variable", y = "Normalized Mean") +
+  theme_minimal(base_size = 12)
+
+(p1 + p2) / p3
+```
+
+**Code explanation:**
+
+- `nstart = 50` in the final K-Means fit ensures the best solution is found reliably.
+- `group_by(Cluster) |> summarise(...)` profiles each cluster — this is the most important step for interpretation and business communication.
+- The radar-chart-style normalized profile (Panel C) compares clusters across all variables simultaneously, making their distinctive characteristics immediately apparent.
+
+## Exercises
+
+::: {.callout-tip}
+## Exercise 8.9
+Apply the full clustering workflow to the `wine` dataset (available via `rattle` or `pgmm`):
+
+(a) Preprocess: standardize all numeric variables.
+(b) Apply K-Means, hierarchical (Ward's), and GMM. Use validation indices to choose $K$ for each.
+(c) Compare the three solutions using ARI against the true wine variety labels.
+(d) Profile the best cluster solution. Write a 200-word interpretation describing each cluster.
+:::
+
+---
+
+# Chapter Lab Activity: Customer Segmentation with `wholesales` Data
+
+## Objectives
+
+In this lab you will apply the complete clustering workflow to a real-world customer segmentation problem using the `Wholesale customers` dataset. You will segment customers based on their annual spending across product categories, compare multiple algorithms, validate the solutions, and translate statistical clusters into actionable business insights.
+
+## The Dataset
+
+```{r lab-intro}
+# Simulate wholesale customer data
+# (based on UCI Wholesale customers dataset structure)
+set.seed(2024)
+n_cust <- 440
+
+wholesale <- data.frame(
+  Channel  = sample(c("Horeca","Retail"), n_cust,
+                     replace = TRUE, prob = c(0.7, 0.3)),
+  Region   = sample(c("Lisbon","Oporto","Other"),
+                     n_cust, replace = TRUE,
+                     prob = c(0.3, 0.2, 0.5)),
+  Fresh    = round(exp(rnorm(n_cust, 8.5, 1.0))),
+  Milk     = round(exp(rnorm(n_cust, 8.0, 0.9))),
+  Grocery  = round(exp(rnorm(n_cust, 8.2, 0.9))),
+  Frozen   = round(exp(rnorm(n_cust, 7.5, 1.1))),
+  Detergents = round(exp(rnorm(n_cust, 6.8, 1.3))),
+  Delicassen = round(exp(rnorm(n_cust, 7.2, 1.0)))
+)
+
+cat("Dataset dimensions:",
+    nrow(wholesale), "×", ncol(wholesale), "\n\n")
+summary(wholesale[, 3:8])
+```
+
+## Lab Task 1: Preprocessing
+
+```{r lab-task1}
+# Log-transform (right-skewed expenditures)
+ws_log <- wholesale |>
+  select(Fresh:Delicassen) |>
+  mutate(across(everything(), log))
+
+# Standardize
+ws_scaled <- scale(ws_log)
+
+# Check skewness before/after
+skew_before <- apply(wholesale[,3:8], 2,
+                      moments::skewness)
+skew_after  <- apply(ws_log, 2, moments::skewness)
+
+data.frame(
+  Variable     = names(skew_before),
+  Skew_Raw     = round(skew_before, 3),
+  Skew_Log     = round(skew_after, 3)
+) |>
+  kable(caption   = "Skewness: Raw vs. Log-Transformed",
+        col.names = c("Variable","Skewness (Raw)",
+                      "Skewness (Log)")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+## Lab Task 2: K-Means Segmentation
+
+```{r lab-task2}
+set.seed(42)
+k_range_lab <- 2:7
+
+lab_sil <- sapply(k_range_lab, function(k) {
+  km  <- kmeans(ws_scaled, centers = k, nstart = 25)
+  sil <- silhouette(km$cluster, dist(ws_scaled))
+  mean(sil[, 3])
+})
+
+lab_wcss <- sapply(k_range_lab, function(k) {
+  kmeans(ws_scaled, centers = k, nstart = 25)$tot.withinss
+})
+
+opt_k_lab <- k_range_lab[which.max(lab_sil)]
+cat("Optimal K:", opt_k_lab, "\n")
+
+# Fit final model
+set.seed(42)
+km_lab <- kmeans(ws_scaled, centers = opt_k_lab,
+                  nstart = 50)
+
+# Profile clusters
+wholesale$Cluster <- factor(km_lab$cluster)
+
+profile_lab <- wholesale |>
+  group_by(Cluster) |>
+  summarise(
+    n          = n(),
+    Fresh      = round(mean(Fresh), 0),
+    Milk       = round(mean(Milk), 0),
+    Grocery    = round(mean(Grocery), 0),
+    Frozen     = round(mean(Frozen), 0),
+    Detergents = round(mean(Detergents), 0),
+    Delicassen = round(mean(Delicassen), 0),
+    .groups    = "drop"
+  )
+
+kable(profile_lab,
+      caption = paste0("Customer Segment Profiles (K=",
+                        opt_k_lab, ")"),
+      format.args = list(big.mark = ",")) |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+## Lab Task 3: Hierarchical and GMM Comparison
+
+```{r lab-task3}
+# Hierarchical
+dist_lab <- dist(ws_scaled)
+hc_lab   <- hclust(dist_lab, method = "ward.D2")
+hc_cuts  <- cutree(hc_lab, k = opt_k_lab)
+
+# GMM
+gmm_lab  <- mclust::Mclust(ws_scaled,
+                              G = 2:6, verbose = FALSE)
+
+cat("GMM Best Model:", gmm_lab$modelName,
+    "K =", gmm_lab$G, "\n\n")
+
+# ARI comparison (using hierarchical as reference)
+ari_hc_km <- mclust::adjustedRandIndex(
+  hc_cuts, km_lab$cluster)
+ari_gmm_km <- mclust::adjustedRandIndex(
+  gmm_lab$classification, km_lab$cluster)
+
+data.frame(
+  Comparison = c("K-Means vs. Hierarchical",
+                  "K-Means vs. GMM"),
+  ARI        = round(c(ari_hc_km, ari_gmm_km), 4)
+) |>
+  kable(caption = "Agreement Between Clustering Methods (ARI)") |>
+  kable_styling(bootstrap_options = c("striped","hover"),
+                full_width = FALSE)
+```
+
+## Lab Task 4: Visualization
+
+```{r lab-task4, fig.height=8}
+pca_lab <- prcomp(ws_scaled)
+lab_pca_df <- data.frame(
+  pca_lab$x[, 1:2],
+  KMeans = factor(km_lab$cluster),
+  HC     = factor(hc_cuts),
+  GMM    = factor(gmm_lab$classification)
+)
+
+p1 <- ggplot(lab_pca_df, aes(PC1, PC2,
+                               color = KMeans)) +
+  geom_point(size = 1.8, alpha = 0.7) +
+  scale_color_brewer(palette = "Set1") +
+  labs(title = "A. K-Means Clusters") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top")
+
+p2 <- ggplot(lab_pca_df, aes(PC1, PC2,
+                               color = HC)) +
+  geom_point(size = 1.8, alpha = 0.7) +
+  scale_color_brewer(palette = "Set2") +
+  labs(title = "B. Hierarchical (Ward's)") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top")
+
+p3 <- ggplot(lab_pca_df, aes(PC1, PC2,
+                               color = GMM)) +
+  geom_point(size = 1.8, alpha = 0.7) +
+  scale_color_brewer(palette = "Set3") +
+  labs(title = "C. GMM Clusters") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "top")
+
+p4 <- profile_lab |>
+  pivot_longer(-c(Cluster, n),
+               names_to  = "Category",
+               values_to = "Spend") |>
+  group_by(Category) |>
+  mutate(Spend_norm = Spend / max(Spend)) |>
+  ggplot(aes(x = Category, y = Spend_norm,
+             fill = Cluster)) +
+  geom_col(position = "dodge", color = "white") +
+  scale_fill_brewer(palette = "Set1") +
+  labs(title = "D. Normalized Spending Profiles",
+       x = "Product Category",
+       y = "Normalized Mean Spend") +
+  theme_minimal(base_size = 11) +
+  theme(axis.text.x = element_text(angle = 30,
+                                     hjust = 1))
+
+(p1 + p2) / (p3 + p4)
+```
+
+## Lab Discussion Questions
+
+Answer the following in writing:
+
+1. **Algorithm Choice:** For customer segmentation, why might K-Means be preferred over DBSCAN? Under what business scenario would DBSCAN be more appropriate?
+
+2. **Preprocessing Impact:** In Lab Task 1, you log-transformed the spending variables before clustering. What would happen to the cluster solution if you clustered on the raw (untransformed) data? Would the same customers be grouped together?
+
+3. **Agreement Between Methods:** The ARI between K-Means and hierarchical clustering measures their agreement. If ARI is high, does this mean both methods found the "true" clusters? What else could explain high agreement?
+
+4. **Business Interpretation:** Based on the cluster profiles in Lab Task 2, assign a descriptive business name to each customer segment (e.g., "High-volume fresh food buyers"). What marketing strategy would you recommend for each segment?
+
+5. **Validation Limitations:** Internal validation indices like Silhouette and CHI were used to choose $K$. What are the limitations of relying solely on these indices? What additional information would make you more confident in the chosen $K$?
+
+---
+
+# Chapter Summary
+
+## Summary
+
+This chapter built a comprehensive clustering toolkit spanning the full spectrum of approaches:
+
+- **Introduction** — clustering is unsupervised grouping; algorithm choice must match data geometry; distance measures and scaling are foundational decisions.
+- **K-Means** — minimizes WCSS; uses the Lloyd algorithm with K-Means++ initialization; elbow and silhouette methods guide $K$ selection; assumes spherical, equal-size clusters.
+- **Hierarchical clustering** — builds a dendrogram of nested clusters; Ward's linkage recommended for most applications; cophenetic correlation diagnoses fit; `cutree()` extracts any $K$.
+- **DBSCAN** — density-based; detects arbitrary shapes and noise; requires tuning $\varepsilon$ and MinPts via $k$-distance plot; more robust than K-Means for spatial and irregular data.
+- **Cluster validation** — Silhouette, Davies-Bouldin, and CHI for internal validation; ARI and NMI for external; stability analysis for robustness.
+- **Gaussian Mixture Models** — soft probabilistic assignments; EM algorithm; BIC selects model and $K$; uncertainty quantification distinguishes GMM from hard methods.
+- **Practical workflow** — preprocessing → algorithm selection → $K$ determination → validation → profiling → communication; no single algorithm is universally best.
+
+::: {.callout-important}
+## Key Formulas to Know
+
+**K-Means Objective:**
+$$\text{WCSS} = \sum_{k=1}^{K}\sum_{i \in C_k}\|\mathbf{x}_i - \boldsymbol{\mu}_k\|^2$$
+
+**Silhouette Score:**
+$$s(i) = \frac{b(i) - a(i)}{\max(a(i), b(i))}$$
+
+**Davies-Bouldin Index:**
+$$\text{DBI} = \frac{1}{K}\sum_{k=1}^{K}\max_{j \neq k}\frac{s_k + s_j}{d_{kj}}$$
+
+**GMM Density:**
+$$p(\mathbf{x}) = \sum_{k=1}^{K}\pi_k\,\mathcal{N}(\mathbf{x} \mid \boldsymbol{\mu}_k, \boldsymbol{\Sigma}_k)$$
+
+**Adjusted Rand Index:**
+$$\text{ARI} = \frac{\text{RI} - E[\text{RI}]}{\max(\text{RI}) - E[\text{RI}]}$$
+
+**BIC:**
+$$\text{BIC} = -2\ell(\hat{\theta}) + p\log n$$
+:::
+
+## References
+
+Davies, D. L., & Bouldin, D. W. (1979). A cluster separation measure. *IEEE Transactions on Pattern Analysis and Machine Intelligence*, *1*(2), 224–227.
+
+Dempster, A. P., Laird, N. M., & Rubin, D. B. (1977). Maximum likelihood from incomplete data via the EM algorithm. *Journal of the Royal Statistical Society: Series B*, *39*(1), 1–38.
+
+Ester, M., Kriegel, H.-P., Sander, J., & Xu, X. (1996). A density-based algorithm for discovering clusters in large spatial databases with noise. In *Proceedings of the 2nd International Conference on Knowledge Discovery and Data Mining* (pp. 226–231). AAAI Press.
+
+Galili, T. (2015). dendextend: An R package for visualizing, adjusting, and comparing trees of hierarchical clustering. *Bioinformatics*, *31*(22), 3718–3720.
+
+Hahsler, M., Piekenbrock, M., & Doran, D. (2019). dbscan: Fast density-based clustering with R. *Journal of Statistical Software*, *91*(1), 1–30.
+
+Hartigan, J. A., & Wong, M. A. (1979). Algorithm AS 136: A K-means clustering algorithm. *Journal of the Royal Statistical Society: Series C*, *28*(1), 100–108.
+
+Henderson, H. V., & Velleman, P. F. (1981). Building multiple regression models interactively. *Biometrics*, *37*(2), 391–411.
+
+Hennig, C. (2023). *fpc: Flexible procedures for clustering* (R package version 2.2-10). https://CRAN.R-project.org/package=fpc
+
+Kassambara, A. (2023). *factoextra: Extract and visualize the results of multivariate data analyses* (R package version 1.0.7). https://CRAN.R-project.org/package=factoextra
+
+Maechler, M., Rousseeuw, P., Struyf, A., Hubert, M., & Hornik, K. (2023). *cluster: Cluster analysis basics and extensions* (R package version 2.1.4). https://CRAN.R-project.org/package=cluster
+
+Pedersen, T. L. (2022). *patchwork: The composer of plots* (R package version 1.1.2). https://CRAN.R-project.org/package=patchwork
+
+R Core Team. (2024). *R: A language and environment for statistical computing*. R Foundation for Statistical Computing. https://www.R-project.org/
+
+Rousseeuw, P. J. (1987). Silhouettes: A graphical aid to the interpretation and validation of cluster analysis. *Journal of Computational and Applied Mathematics*, *20*, 53–65.
+
+Schwarz, G. (1978). Estimating the dimension of a model. *Annals of Statistics*, *6*(2), 461–464.
+
+Scrucca, L., Fop, M., Murphy, T. B., & Raftery, A. E. (2016). mclust 5: Clustering, classification and density estimation using Gaussian finite mixture models. *The R Journal*, *8*(1), 289–317.
+
+Slowikowski, K. (2023). *ggrepel: Automatically position non-overlapping text labels with ggplot2* (R package version 0.9.3). https://CRAN.R-project.org/package=ggrepel
+
+Ward, J. H., Jr. (1963). Hierarchical grouping to optimize an objective function. *Journal of the American Statistical Association*, *58*(301), 236–244.
+
+Wickham, H. (2016). *ggplot2: Elegant graphics for data analysis*. Springer.
+
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. *Journal of Open Source Software*, *4*(43), 1686.
+
+Xie, Y. (2015). *Dynamic documents with R and knitr* (2nd ed.). CRC Press.
+
+---
+
+*End of Chapter 8. Proceed to Chapter 9: Data Classification.*

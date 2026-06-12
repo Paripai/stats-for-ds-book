@@ -1,0 +1,1700 @@
+# Chapter 3: Hypothesis Testing 
+
+```{r setup}
+# Load all libraries needed for this chapter
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(patchwork)
+library(moments)       # skewness
+library(coin)          # exact non-parametric tests
+library(pwr)           # power analysis
+library(effectsize)    # Cohen's d and effect size measures
+library(rstatix)       # tidy statistical tests
+```
+
+------------------------------------------------------------------------
+
+# Chapter Overview
+
+## Introduction
+
+Hypothesis testing is the formal procedure for using sample data to make
+decisions about population parameters. It is the engine behind
+scientific claims: *Does this drug reduce blood pressure? Is this
+algorithm more accurate than the baseline? Do students in different
+programs differ in exam performance?* Every such question can be framed
+as a hypothesis test.
+
+This chapter covers:
+
+- **The Logic of Hypothesis Testing** — the conceptual framework,
+  errors, and p-values
+- **One-Sample Tests** — testing a single mean against a known value
+- **Two-Sample Tests** — comparing means between two independent groups
+- **Paired Sample Test** — comparing means in matched or
+  repeated-measures designs
+- **One-Way ANOVA** — comparing means across three or more groups
+- **Non-Parametric Alternatives** — robust tests when normality cannot
+  be assumed
+- **Effect Size and Statistical Power** — measuring practical
+  significance and planning sample sizes
+
+::: callout-note
+## Learning Objectives
+
+By the end of this chapter, you will be able to:
+
+1.  Explain the logic of hypothesis testing including Type I and Type II
+    errors.
+2.  Select and apply the correct test for one-sample, two-sample, and
+    paired designs.
+3.  Conduct one-way ANOVA and interpret the F-statistic and post-hoc
+    tests.
+4.  Choose appropriate non-parametric alternatives when parametric
+    assumptions are violated.
+5.  Compute and interpret effect sizes and conduct power analyses for
+    sample size planning.
+6.  Report hypothesis test results in a format appropriate for academic
+    research.
+:::
+
+------------------------------------------------------------------------
+
+# The Logic of Hypothesis Testing
+
+## Introduction
+
+Before computing a single test statistic, it is essential to understand
+*why* hypothesis testing works the way it does. The procedure is built
+on a deceptively simple idea: assume the null hypothesis is true, then
+ask how surprising the observed data would be under that assumption. If
+the data are sufficiently unlikely under the null, we reject it. This
+section establishes the conceptual framework that underlies every test
+in this chapter and beyond.
+
+## Theory
+
+### The Null and Alternative Hypotheses
+
+Every hypothesis test begins with two competing claims:
+
+- **Null Hypothesis (**$H_0$): The "status quo" — a statement of no
+  effect, no difference, or equality. It is the hypothesis we seek
+  evidence *against*.
+- **Alternative Hypothesis (**$H_1$ or $H_a$): The claim we seek
+  evidence *for*. It represents the presence of an effect, difference,
+  or relationship.
+
+Hypotheses are always stated about **population parameters**, never
+about sample statistics.
+
+**Directionality of** $H_1$:
+
+| Test Type    | $H_0$            | $H_1$            | Rejection Region |
+|--------------|------------------|------------------|------------------|
+| Two-tailed   | $\mu = \mu_0$    | $\mu \neq \mu_0$ | Both tails       |
+| Left-tailed  | $\mu \geq \mu_0$ | $\mu < \mu_0$    | Left tail        |
+| Right-tailed | $\mu \leq \mu_0$ | $\mu > \mu_0$    | Right tail       |
+
+: Types of hypothesis tests
+
+### The p-value
+
+The **p-value** is the probability of observing a test statistic as
+extreme as (or more extreme than) the one computed from the sample,
+**assuming** $H_0$ is true.
+
+$$p\text{-value} = P(\text{test statistic as extreme as observed} \mid H_0 \text{ is true})$$
+
+A small p-value means the observed data are unlikely under $H_0$ —
+providing evidence against it. A large p-value means the data are
+consistent with $H_0$.
+
+::: callout-warning
+## What the p-value is NOT
+
+- It is **not** $P(H_0 \text{ is true})$
+- It is **not** the probability that the result occurred by chance
+- It is **not** a measure of effect size or practical importance
+- A statistically significant result is not necessarily practically
+  important
+:::
+
+### The Significance Level $\alpha$
+
+The **significance level** $\alpha$ is the threshold below which we
+reject $H_0$. It represents the maximum acceptable probability of making
+a Type I error. Common choices:
+
+- $\alpha = 0.05$ — standard in most social and biological sciences
+- $\alpha = 0.01$ — stricter; used when false positives are costly
+- $\alpha = 0.001$ — very strict; used in genomics, particle physics
+
+**Decision rule:** Reject $H_0$ if p-value $< \alpha$.
+
+### Type I and Type II Errors
+
+No decision rule is perfect. Two types of errors are possible:
+
+|   | $H_0$ is True | $H_0$ is False |
+|--------------|----------------------------|------------------------------|
+| **Reject** $H_0$ | Type I Error ($\alpha$) | Correct ✓ (Power = $1-\beta$) |
+| **Fail to Reject** $H_0$ | Correct ✓ | Type II Error ($\beta$) |
+
+: Decision outcomes in hypothesis testing
+
+- **Type I Error (False Positive):** Rejecting $H_0$ when it is actually
+  true. Probability = $\alpha$, controlled by the researcher.
+- **Type II Error (False Negative):** Failing to reject $H_0$ when $H_1$
+  is true. Probability = $\beta$.
+- **Power** = $1 - \beta$: the probability of correctly detecting a true
+  effect.
+
+There is an inherent tradeoff: decreasing $\alpha$ (stricter threshold)
+reduces Type I errors but increases $\beta$ (more Type II errors). The
+only way to reduce both simultaneously is to **increase the sample
+size**.
+
+### The General Procedure
+
+Every hypothesis test follows the same five-step procedure:
+
+1.  **State** $H_0$ and $H_1$ clearly, including directionality.
+2.  **Choose** the significance level $\alpha$ and the appropriate test.
+3.  **Compute** the test statistic from sample data.
+4.  **Find** the p-value (or compare test statistic to critical value).
+5.  **Decide** and **interpret** in context: reject or fail to reject
+    $H_0$, and state the practical meaning.
+
+### Confidence Intervals and Hypothesis Tests
+
+Confidence intervals and hypothesis tests are two sides of the same
+coin. A 95% confidence interval for $\mu$ contains all values of $\mu_0$
+for which the two-tailed test at $\alpha = 0.05$ would **fail to
+reject** $H_0: \mu = \mu_0$. When a CI excludes the null value, the
+corresponding test rejects $H_0$. CIs are often more informative than
+tests alone because they quantify the magnitude of the effect, not just
+its significance.
+
+## Example: The Logic of Hypothesis Testing
+
+**Example 3.1.** A university claims that the average time for students
+to complete a master's degree is 2 years (24 months). A researcher
+suspects it takes longer and surveys 36 recent graduates, finding
+$\bar{x} = 26.5$ months with $s = 7.2$ months.
+
+**Step 1 — Hypotheses:**
+$$H_0: \mu = 24 \qquad H_1: \mu > 24 \quad \text{(right-tailed)}$$
+
+**Step 2 — Significance level:** $\alpha = 0.05$
+
+**Step 3 — Test statistic** (t-test, $\sigma$ unknown):
+$$t = \frac{\bar{x} - \mu_0}{s/\sqrt{n}} = \frac{26.5 - 24}{7.2/\sqrt{36}} = \frac{2.5}{1.2} = 2.083$$
+
+**Step 4 — p-value** (right-tailed, df = 35):
+$$p\text{-value} = P(T_{35} > 2.083) \approx 0.022$$
+
+**Step 5 — Decision:** Since $p = 0.022 < \alpha = 0.05$, we **reject**
+$H_0$.
+
+**Interpretation:** There is statistically significant evidence at the
+5% level that the true average completion time exceeds 24 months
+($t_{35} = 2.08$, $p = 0.022$). The sample mean of 26.5 months suggests
+students take approximately 2.5 months longer than the claimed average.
+
+## R Example: Visualizing the p-value
+
+```{r logic-viz}
+# --- Visualize the p-value for Example 3.1 ---
+df_val   <- 35
+t_obs    <- 2.083
+p_val    <- pt(t_obs, df = df_val, lower.tail = FALSE)
+
+x_seq <- seq(-4, 4, length.out = 500)
+t_df  <- data.frame(x = x_seq, y = dt(x_seq, df = df_val))
+
+ggplot(t_df, aes(x, y)) +
+  geom_line(color = "steelblue", linewidth = 1.2) +
+  geom_area(data = subset(t_df, x >= t_obs),
+            fill = "tomato", alpha = 0.6) +
+  geom_vline(xintercept = t_obs, color = "tomato",
+             linetype = "dashed", linewidth = 1) +
+  annotate("text", x = 2.8, y = 0.25,
+           label = paste0("p = ", round(p_val, 3)),
+           color = "tomato", fontface = "bold", size = 4.5) +
+  annotate("text", x = 2.083, y = -0.015,
+           label = paste0("t = ", t_obs),
+           color = "tomato", size = 3.8, hjust = 0.5) +
+  labs(title    = "t-Distribution (df = 35): Right-Tailed Test",
+       subtitle = "Shaded area = p-value = P(T > 2.083 | H₀ true)",
+       x        = "t statistic", y = "Density") +
+  theme_minimal(base_size = 13)
+```
+
+**Code explanation:**
+
+- `dt()` computes the t-distribution density (PDF); `pt()` computes the
+  CDF (cumulative probability).
+- `pt(t_obs, df, lower.tail = FALSE)` gives the right-tail probability —
+  the p-value for a right-tailed test.
+- The shaded area visually represents the p-value: the probability of
+  observing $t \geq 2.083$ if $H_0$ were true.
+
+## Exercises
+
+::: callout-tip
+## Exercise 3.1
+
+For each scenario below, state $H_0$ and $H_1$, identify the test
+direction (two-tailed, left-, or right-tailed), and justify your choice:
+
+(a) A pharmaceutical company claims its new drug reduces systolic blood
+    pressure by at least 10 mmHg. A regulator wants to check if the
+    reduction is less than claimed.
+(b) A data scientist wants to know whether a new recommendation
+    algorithm changes average session duration compared to the old
+    algorithm (could be longer or shorter).
+(c) An educator believes that students who attend extra tutorials score
+    higher than those who do not.
+:::
+
+::: callout-tip
+## Exercise 3.2
+
+Explain in your own words why "failing to reject $H_0$" is not the same
+as "proving $H_0$ is true." Use an analogy from everyday life to
+illustrate the difference.
+:::
+
+------------------------------------------------------------------------
+
+# One-Sample Tests
+
+## Introduction
+
+The **one-sample test** addresses the simplest inferential question:
+does the population mean equal a specific hypothesized value $\mu_0$? It
+is the natural starting point for learning hypothesis testing because it
+involves a single group and a known reference value. In data science,
+one-sample tests arise when benchmarking a system against a known
+standard, verifying a manufacturer's claim, or checking whether a
+model's accuracy exceeds chance.
+
+## Theory
+
+### One-Sample z-Test
+
+Used when the **population standard deviation** $\sigma$ is known (rare
+in practice) or the sample is very large ($n > 100$):
+
+$$z = \frac{\bar{x} - \mu_0}{\sigma / \sqrt{n}} \sim N(0,1) \text{ under } H_0$$
+
+Critical values: $z^* = \pm 1.96$ (two-tailed, $\alpha = 0.05$),
+$z^* = 1.645$ (right-tailed, $\alpha = 0.05$).
+
+### One-Sample t-Test
+
+Used when $\sigma$ is **unknown** (estimated by $s$) — the typical case:
+
+$$t = \frac{\bar{x} - \mu_0}{s / \sqrt{n}} \sim t(n-1) \text{ under } H_0$$
+
+**Assumptions:**
+
+1.  The sample is a random sample from the population.
+2.  The variable is continuous (interval or ratio scale).
+3.  The population is approximately normally distributed **or**
+    $n \geq 30$ (CLT applies).
+
+### Confidence Interval Approach
+
+The $(1-\alpha) \times 100\%$ confidence interval for $\mu$ is:
+
+$$\bar{x} \pm t^*_{n-1} \cdot \frac{s}{\sqrt{n}}$$
+
+where $t^*_{n-1}$ is the critical value from the t-distribution with
+$n-1$ degrees of freedom.
+
+If $\mu_0$ falls **outside** this interval, reject $H_0$ at significance
+level $\alpha$.
+
+## Example: One-Sample t-Test
+
+**Example 3.2.** A coffee machine is calibrated to dispense 250 ml per
+cup. A quality control inspector measures 20 cups and finds
+$\bar{x} = 246.8$ ml, $s = 7.3$ ml. Is there evidence the machine is
+under-dispensing?
+
+**Hypotheses:**
+$$H_0: \mu = 250 \qquad H_1: \mu < 250 \quad \text{(left-tailed)}$$
+
+**Test statistic:**
+$$t = \frac{246.8 - 250}{7.3 / \sqrt{20}} = \frac{-3.2}{1.632} = -1.961$$
+
+**p-value** (left-tailed, df = 19): $P(T_{19} < -1.961) = 0.032$
+
+**Decision:** $p = 0.032 < \alpha = 0.05$ → **Reject** $H_0$.
+
+**Interpretation:** There is significant evidence that the machine
+dispenses less than 250 ml on average ($t_{19} = -1.96$, $p = 0.032$).
+The 95% CI for the true mean is $(243.4, 250.2)$ ml — just barely
+excluding 250, consistent with the borderline significant result.
+
+## R Example: One-Sample Tests
+
+```{r one-sample}
+# --- Simulate the coffee machine data ---
+set.seed(101)
+cups <- c(246.8, 243.5, 251.2, 248.0, 244.7, 252.1, 245.9,
+          247.3, 250.8, 243.1, 248.9, 246.2, 244.0, 253.5,
+          247.1, 245.8, 249.6, 244.3, 246.5, 248.4)
+
+# One-sample t-test (left-tailed: H1: mu < 250)
+t_result <- t.test(cups, mu = 250, alternative = "less")
+print(t_result)
+```
+
+```{r one-sample-summary}
+# --- Clean summary table ---
+data.frame(
+  Statistic   = c("Sample Mean", "Sample SD", "n",
+                  "t statistic", "df", "p-value (left-tailed)",
+                  "95% CI Lower", "95% CI Upper"),
+  Value       = c(round(mean(cups), 2), round(sd(cups), 2), length(cups),
+                  round(t_result$statistic, 3), t_result$parameter,
+                  round(t_result$p.value, 4),
+                  round(t_result$conf.int[1], 2),
+                  round(t_result$conf.int[2], 2))
+) |>
+  kable(caption = "One-Sample t-Test Results: Coffee Machine",
+        col.names = c("Statistic", "Value")) |>
+  kable_styling(bootstrap_options = c("striped","hover"), full_width = FALSE)
+```
+
+```{r one-sample-plot}
+# --- Visualize data with reference line ---
+ggplot(data.frame(ml = cups), aes(x = ml)) +
+  geom_histogram(bins = 8, fill = "steelblue",
+                 color = "white", alpha = 0.8) +
+  geom_vline(xintercept = mean(cups), color = "steelblue",
+             linewidth = 1.2, linetype = "dashed") +
+  geom_vline(xintercept = 250, color = "tomato",
+             linewidth = 1.2, linetype = "solid") +
+  annotate("text", x = mean(cups) - 0.5, y = 4.5,
+           label = paste0("x̄ = ", round(mean(cups),1)),
+           color = "steelblue", hjust = 1, size = 4) +
+  annotate("text", x = 250.5, y = 4.5,
+           label = "μ₀ = 250", color = "tomato",
+           hjust = 0, size = 4) +
+  labs(title    = "Coffee Machine Dispensing Volume",
+       subtitle = "Sample mean (blue) vs. claimed mean (red)",
+       x        = "Volume (ml)", y = "Count") +
+  theme_minimal(base_size = 13)
+```
+
+**Code explanation:**
+
+- `t.test(x, mu, alternative)` performs the one-sample t-test.
+  `alternative` can be `"less"`, `"greater"`, or `"two.sided"`.
+- The result object contains `$statistic` (t value), `$parameter` (df),
+  `$p.value`, and `$conf.int`.
+- The confidence interval returned by `t.test()` with
+  `alternative = "less"` gives a one-sided upper bound — for a two-sided
+  CI, use `alternative = "two.sided"`.
+
+## Exercises
+
+::: callout-tip
+## Exercise 3.3
+
+A manufacturer claims their batteries last 500 hours on average. You
+test 25 batteries and find $\bar{x} = 487$ hours, $s = 42$ hours.
+
+(a) State $H_0$ and $H_1$ for a two-tailed test.
+(b) Compute the t-statistic and p-value by hand. Verify in R.
+(c) Construct a 95% confidence interval for the true mean battery life.
+(d) Based on both the test and the CI, what do you conclude?
+:::
+
+::: callout-tip
+## Exercise 3.4
+
+Using the `sleep` dataset built into R (extra sleep hours gained with
+two drugs):
+
+(a) Test whether the mean extra sleep for group 1 (`group == 1`) differs
+    from zero (two-tailed, $\alpha = 0.05$).
+(b) Test whether the mean extra sleep for group 2 (`group == 2`) is
+    greater than zero (right-tailed).
+(c) Interpret both results and compare conclusions.
+:::
+
+------------------------------------------------------------------------
+
+# Two-Sample Tests
+
+## Introduction
+
+In many research and data science contexts, the question is not whether
+a population mean equals a fixed value, but whether **two populations
+have the same mean**. Does the treatment group differ from the control?
+Do users of version A spend more time on the platform than users of
+version B? The **two-sample t-test** is the standard tool for comparing
+means from two independent groups, and it underlies A/B testing,
+clinical trials, and comparative studies across all fields.
+
+## Theory
+
+### Independent Samples t-Test (Equal Variances)
+
+When we assume the two populations have equal variances
+($\sigma_1^2 = \sigma_2^2$), we pool the variance estimates:
+
+$$s_p^2 = \frac{(n_1 - 1)s_1^2 + (n_2 - 1)s_2^2}{n_1 + n_2 - 2}$$
+
+$$t = \frac{(\bar{x}_1 - \bar{x}_2) - \delta_0}{s_p\sqrt{\frac{1}{n_1} + \frac{1}{n_2}}} \sim t(n_1 + n_2 - 2) \text{ under } H_0$$
+
+where $\delta_0$ is the hypothesized difference (usually 0).
+
+### Welch's t-Test (Unequal Variances)
+
+The equal-variance assumption is often untenable. **Welch's t-test**
+does not assume equal variances and uses a modified degrees of freedom
+(Satterthwaite approximation):
+
+$$t = \frac{\bar{x}_1 - \bar{x}_2}{\sqrt{\frac{s_1^2}{n_1} + \frac{s_2^2}{n_2}}}$$
+
+$$df \approx \frac{\left(\frac{s_1^2}{n_1} + \frac{s_2^2}{n_2}\right)^2}{\frac{(s_1^2/n_1)^2}{n_1-1} + \frac{(s_2^2/n_2)^2}{n_2-1}}$$
+
+**Recommendation:** Welch's t-test is the default in R
+(`var.equal = FALSE`) and is preferred in practice — it performs well
+even when variances are equal, making it a safer choice.
+
+### Testing for Equal Variances: Levene's Test
+
+Before choosing between pooled and Welch's tests, some analysts check
+whether variances are equal using **Levene's test** ($H_0$: equal
+variances). However, many statisticians argue this pre-testing approach
+inflates overall Type I error and recommend simply always using Welch's
+test.
+
+**Assumptions for both tests:**
+
+1.  Independent random samples from each population.
+2.  Continuous variable (interval or ratio scale).
+3.  Approximately normal populations **or** $n_1, n_2 \geq 30$.
+
+## Example: Two-Sample t-Test
+
+**Example 3.3.** A researcher compares exam scores between two teaching
+methods. Group A (traditional): $n_1 = 30$, $\bar{x}_1 = 74.2$,
+$s_1 = 11.8$. Group B (flipped classroom): $n_2 = 28$,
+$\bar{x}_2 = 81.6$, $s_2 = 9.4$.
+
+**Hypotheses:**
+$$H_0: \mu_A = \mu_B \qquad H_1: \mu_A \neq \mu_B \quad \text{(two-tailed)}$$
+
+**Welch's t-statistic:**
+$$t = \frac{74.2 - 81.6}{\sqrt{\frac{11.8^2}{30} + \frac{9.4^2}{28}}} = \frac{-7.4}{\sqrt{4.643 + 3.153}} = \frac{-7.4}{2.792} = -2.651$$
+
+**df** (Satterthwaite) $\approx 55.6$, **p-value** $\approx 0.010$
+
+**Decision:** $p = 0.010 < 0.05$ → **Reject** $H_0$.
+
+**Interpretation:** Students in the flipped classroom scored
+significantly higher than those in the traditional classroom
+($t_{55.6} = -2.65$, $p = 0.010$). The mean difference of 7.4 points
+(95% CI: 1.7 to 13.1) is both statistically significant and potentially
+educationally meaningful.
+
+## R Example: Two-Sample Tests
+
+```{r two-sample}
+# --- Simulate teaching method data ---
+set.seed(202)
+group_A <- rnorm(30, mean = 74.2, sd = 11.8)
+group_B <- rnorm(28, mean = 81.6, sd = 9.4)
+
+# Welch's t-test (default in R: var.equal = FALSE)
+welch_result <- t.test(group_A, group_B,
+                       alternative = "two.sided",
+                       var.equal   = FALSE)
+
+# Pooled t-test for comparison
+pooled_result <- t.test(group_A, group_B,
+                        alternative = "two.sided",
+                        var.equal   = TRUE)
+
+# Compare results
+comparison <- data.frame(
+  Test         = c("Welch's t-test", "Pooled t-test"),
+  t_statistic  = round(c(welch_result$statistic,
+                          pooled_result$statistic), 3),
+  df           = round(c(welch_result$parameter,
+                          pooled_result$parameter), 1),
+  p_value      = round(c(welch_result$p.value,
+                          pooled_result$p.value), 4),
+  CI_lower     = round(c(welch_result$conf.int[1],
+                          pooled_result$conf.int[1]), 2),
+  CI_upper     = round(c(welch_result$conf.int[2],
+                          pooled_result$conf.int[2]), 2)
+)
+
+kable(comparison,
+      caption  = "Welch's vs. Pooled t-Test Results",
+      col.names = c("Test", "t", "df", "p-value",
+                    "95% CI Lower", "95% CI Upper")) |>
+  kable_styling(bootstrap_options = c("striped","hover"), full_width = FALSE)
+```
+
+```{r two-sample-plot}
+# --- Visualize group comparison ---
+scores_df <- data.frame(
+  score = c(group_A, group_B),
+  group = rep(c("Group A\n(Traditional)", "Group B\n(Flipped)"),
+              times = c(30, 28))
+)
+
+ggplot(scores_df, aes(x = group, y = score, fill = group)) +
+  geom_violin(alpha = 0.5, trim = FALSE) +
+  geom_boxplot(width = 0.15, fill = "white",
+               outlier.shape = 21, outlier.size = 2) +
+  stat_summary(fun = mean, geom = "point",
+               shape = 23, size = 4, fill = "white") +
+  scale_fill_manual(values = c("steelblue", "tomato")) +
+  labs(title    = "Exam Scores by Teaching Method",
+       subtitle = paste0("Welch's t-test: t = ",
+                         round(welch_result$statistic, 2),
+                         ", p = ", round(welch_result$p.value, 3)),
+       x        = "Teaching Method",
+       y        = "Exam Score") +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "none")
+```
+
+**Code explanation:**
+
+- `t.test(x, y, alternative, var.equal)` handles both Welch's
+  (`var.equal = FALSE`) and pooled (`var.equal = TRUE`) variants.
+- `stat_summary(fun = mean, geom = "point", shape = 23)` adds a
+  diamond-shaped mean marker inside the boxplot — a clean way to show
+  both median (boxplot line) and mean simultaneously.
+- The violin plot reveals distributional shape alongside the five-number
+  summary, providing richer information than a boxplot alone.
+
+## Exercises
+
+::: callout-tip
+## Exercise 3.5
+
+Using the `mtcars` dataset, test whether automatic and manual
+transmission cars have different fuel efficiency (`mpg`).
+
+(a) Check normality for each group using Shapiro-Wilk and QQ plots.
+(b) Run Welch's t-test. State hypotheses, report t, df, p-value, and 95%
+    CI.
+(c) Run the pooled t-test. Compare results to Welch's.
+(d) Which test is more appropriate here? Justify using Levene's test
+    (`var.test()` in R).
+:::
+
+::: callout-tip
+## Exercise 3.6
+
+A/B testing scenario: Two versions of a webpage are shown to random
+users. Version A: $n = 200$, mean session = 4.2 min, $s = 1.8$ min.
+Version B: $n = 200$, mean session = 4.7 min, $s = 2.1$ min.
+
+(a) Conduct a two-tailed Welch's t-test at $\alpha = 0.05$. What do you
+    conclude?
+(b) Compute the 95% CI for the difference in means.
+(c) Even if significant, should the company switch to Version B? What
+    other factors matter?
+:::
+
+------------------------------------------------------------------------
+
+# Paired Sample Test
+
+## Introduction
+
+The two-sample t-test assumes **independent** groups — the two samples
+are drawn from completely separate populations. But many research
+designs deliberately **match** or **pair** observations: measuring the
+same subject before and after a treatment, comparing twins, or matching
+patients by age and severity. In these designs, ignoring the pairing
+wastes information and inflates variability. The **paired t-test**
+exploits the within-pair relationship, making it more powerful than the
+independent samples test when pairing is effective.
+
+## Theory
+
+### The Paired t-Test
+
+Given $n$ pairs $(x_{1i}, x_{2i})$, compute the difference for each
+pair:
+
+$$d_i = x_{1i} - x_{2i}, \qquad i = 1, 2, \ldots, n$$
+
+The paired t-test is simply a **one-sample t-test on the differences**
+$d_i$, testing whether the mean difference $\mu_d$ equals zero:
+
+$$H_0: \mu_d = 0 \qquad H_1: \mu_d \neq 0 \quad \text{(or one-sided)}$$
+
+$$t = \frac{\bar{d}}{s_d / \sqrt{n}} \sim t(n-1) \text{ under } H_0$$
+
+where $\bar{d}$ is the sample mean of differences and $s_d$ is the
+standard deviation of differences.
+
+**Key insight:** By working with differences, we eliminate
+**between-subject variability** — a major source of noise in independent
+samples designs. The paired test is more powerful when subjects are
+heterogeneous but respond similarly to treatment.
+
+**When to use paired vs. independent:**
+
+| Use Paired t-Test               | Use Independent t-Test      |
+|---------------------------------|-----------------------------|
+| Same subject measured twice     | Two separate groups         |
+| Matched pairs (twins, siblings) | Random assignment to groups |
+| Before-after design             | Cross-sectional comparison  |
+
+: Choosing between paired and independent t-tests
+
+**Assumptions:**
+
+1.  Pairs are randomly and independently selected.
+2.  Differences $d_i$ are approximately normally distributed (not the
+    raw data).
+3.  The variable is continuous.
+
+## Example: Paired t-Test
+
+**Example 3.4.** Ten patients' systolic blood pressure (mmHg) is
+measured before and after 8 weeks of a new medication:
+
+| Patient | Before | After | Difference ($d_i$) |
+|---------|--------|-------|--------------------|
+| 1       | 145    | 132   | 13                 |
+| 2       | 158    | 148   | 10                 |
+| 3       | 162    | 151   | 11                 |
+| 4       | 149    | 140   | 9                  |
+| 5       | 155    | 143   | 12                 |
+| 6       | 170    | 159   | 11                 |
+| 7       | 152    | 147   | 5                  |
+| 8       | 141    | 136   | 5                  |
+| 9       | 163    | 150   | 13                 |
+| 10      | 157    | 148   | 9                  |
+
+$\bar{d} = 9.8$, $s_d = 2.86$, $n = 10$
+
+**Hypotheses:** $H_0: \mu_d = 0$ vs. $H_1: \mu_d > 0$ (right-tailed —
+testing for reduction)
+
+**Test statistic:**
+$$t = \frac{9.8}{2.86/\sqrt{10}} = \frac{9.8}{0.904} = 10.84$$
+
+**p-value** (right-tailed, df = 9): $P(T_9 > 10.84) < 0.0001$
+
+**Decision:** **Reject** $H_0$ with overwhelming evidence.
+
+**Interpretation:** The medication produced a highly significant
+reduction in systolic blood pressure ($t_9 = 10.84$, $p < 0.0001$). The
+mean reduction of 9.8 mmHg (95% CI: 7.75 to 11.85 mmHg) is clinically
+meaningful by conventional standards.
+
+## R Example: Paired t-Test
+
+```{r paired}
+# --- Blood pressure data ---
+before <- c(145, 158, 162, 149, 155, 170, 152, 141, 163, 157)
+after  <- c(132, 148, 151, 140, 143, 159, 147, 136, 150, 148)
+diff_d <- before - after
+
+# Paired t-test
+paired_result <- t.test(before, after,
+                         paired      = TRUE,
+                         alternative = "greater")
+
+cat("Mean difference (before - after):", round(mean(diff_d), 2), "mmHg\n")
+cat("SD of differences:               ", round(sd(diff_d), 2),  "mmHg\n")
+print(paired_result)
+```
+
+```{r paired-plot}
+# --- Visualize paired data ---
+bp_df <- data.frame(
+  patient = rep(1:10, 2),
+  time    = rep(c("Before", "After"), each = 10),
+  bp      = c(before, after)
+)
+bp_df$time <- factor(bp_df$time, levels = c("Before", "After"))
+
+p1 <- ggplot(bp_df, aes(x = time, y = bp, group = patient)) +
+  geom_line(color = "gray60", alpha = 0.7) +
+  geom_point(aes(color = time), size = 3) +
+  scale_color_manual(values = c("Before" = "tomato", "After" = "steelblue")) +
+  labs(title    = "A. Individual Blood Pressure Changes",
+       subtitle = "Each line represents one patient",
+       x        = "Time Point", y = "Systolic BP (mmHg)") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+
+p2 <- ggplot(data.frame(d = diff_d), aes(x = d)) +
+  geom_histogram(bins = 6, fill = "steelblue",
+                 color = "white", alpha = 0.8) +
+  geom_vline(xintercept = mean(diff_d), color = "tomato",
+             linewidth = 1.2, linetype = "dashed") +
+  geom_vline(xintercept = 0, color = "gray40",
+             linewidth = 1, linetype = "solid") +
+  annotate("text", x = mean(diff_d) + 0.3, y = 3.3,
+           label = paste0("d̄ = ", round(mean(diff_d),1)),
+           color = "tomato", size = 4) +
+  labs(title    = "B. Distribution of Differences",
+       subtitle = "Null value (0) vs. observed mean difference",
+       x        = "Difference (Before − After)", y = "Count") +
+  theme_minimal(base_size = 12)
+
+p1 + p2
+```
+
+**Code explanation:**
+
+- `t.test(x, y, paired = TRUE)` runs the paired t-test in R. Internally,
+  it computes differences and runs a one-sample test.
+- The spaghetti plot (Panel A) is the canonical visualization for paired
+  data — each line traces one subject's trajectory, making
+  individual-level change visible.
+- Panel B shows the distribution of differences. The red dashed line
+  (mean difference) being far from zero confirms the visual story of
+  Panel A.
+
+## Exercises
+
+::: callout-tip
+## Exercise 3.7
+
+Use the built-in `sleep` dataset in R, which records extra hours of
+sleep with two drugs for 10 patients.
+
+(a) Treat this as paired data (same 10 patients in both groups). Compute
+    differences (group 2 − group 1).
+(b) Test $H_0: \mu_d = 0$ vs. $H_1: \mu_d \neq 0$ using
+    `t.test(..., paired = TRUE)`.
+(c) Produce a spaghetti plot and a histogram of differences.
+(d) Would you reach a different conclusion using an independent samples
+    t-test? Why does pairing matter here?
+:::
+
+------------------------------------------------------------------------
+
+# One-Way ANOVA
+
+## Introduction
+
+The t-test compares means between **two** groups. But what if we have
+three, four, or more groups? Conducting multiple pairwise t-tests is
+statistically invalid — with $k$ groups, there are $\binom{k}{2}$
+possible comparisons, and the probability of at least one false positive
+increases rapidly (**familywise error rate inflation**). For $k = 5$
+groups and $\alpha = 0.05$, running all 10 pairwise tests gives a
+familywise error rate of $1 - 0.95^{10} \approx 40\%$. **One-way ANOVA**
+solves this by testing all groups simultaneously in a single test.
+
+## Theory
+
+### The ANOVA Model
+
+One-way ANOVA tests whether the means of $k$ independent groups are all
+equal:
+
+$$H_0: \mu_1 = \mu_2 = \cdots = \mu_k \qquad H_1: \text{at least one } \mu_i \neq \mu_j$$
+
+The model decomposes each observation into components:
+
+$$x_{ij} = \mu + \tau_i + \varepsilon_{ij}$$
+
+where $\mu$ is the grand mean, $\tau_i$ is the effect of group $i$, and
+$\varepsilon_{ij} \sim N(0, \sigma^2)$ is random error.
+
+### Partitioning Variance
+
+ANOVA works by partitioning the **total variability** in the data into
+two sources:
+
+$$SS_{\text{Total}} = SS_{\text{Between}} + SS_{\text{Within}}$$
+
+| Source | Sum of Squares | df | Mean Square | F |
+|-------------|-------------------|-------------|----------------|-------------|
+| Between groups | $SS_B = \sum_i n_i(\bar{x}_i - \bar{x})^2$ | $k-1$ | $MS_B = SS_B/(k-1)$ | $MS_B/MS_W$ |
+| Within groups | $SS_W = \sum_i\sum_j(x_{ij}-\bar{x}_i)^2$ | $N-k$ | $MS_W = SS_W/(N-k)$ |  |
+| Total | $SS_T$ | $N-1$ |  |  |
+
+: ANOVA table structure
+
+The **F-statistic** is the ratio of between-group variability to
+within-group variability:
+
+$$F = \frac{MS_{\text{Between}}}{MS_{\text{Within}}} \sim F(k-1, N-k) \text{ under } H_0$$
+
+If $H_0$ is true, $F \approx 1$ (between-group variation ≈ within-group
+variation). A large $F$ suggests genuine group differences.
+
+### Assumptions
+
+1.  **Independence:** Observations are independent within and across
+    groups.
+2.  **Normality:** Observations within each group are approximately
+    normally distributed.
+3.  **Homogeneity of variance (homoscedasticity):**
+    $\sigma_1^2 = \sigma_2^2 = \cdots = \sigma_k^2$. Test with Levene's
+    test.
+
+### Post-Hoc Tests
+
+A significant ANOVA only tells us that **at least one** mean differs —
+it does not tell us *which* pairs differ. **Post-hoc tests** conduct
+pairwise comparisons while controlling the familywise error rate:
+
+- **Tukey's HSD (Honest Significant Difference):** Most common; compares
+  all pairs; controls familywise error at $\alpha$.
+- **Bonferroni correction:** Divides $\alpha$ by the number of
+  comparisons; conservative.
+- **Scheffé's test:** Most flexible; controls error for all possible
+  contrasts, not just pairwise.
+
+## Example: One-Way ANOVA
+
+**Example 3.5.** A nutritionist compares weight loss (kg) over 12 weeks
+across three diet plans (A, B, C). Summary: $\bar{x}_A = 4.2$,
+$\bar{x}_B = 6.8$, $\bar{x}_C = 5.5$, $n_i = 15$ each. The ANOVA F-test
+gives $F(2, 42) = 8.43$, $p = 0.001$.
+
+**Decision:** Reject $H_0$ — at least one diet plan produces different
+mean weight loss.
+
+**Post-hoc (Tukey HSD):** Diet B vs. A: $p = 0.001$ (significant); Diet
+B vs. C: $p = 0.048$ (significant); Diet C vs. A: $p = 0.121$ (not
+significant).
+
+**Interpretation:** Diet B produces significantly greater weight loss
+than both Diets A and C. Diets A and C do not differ significantly from
+each other.
+
+## R Example: One-Way ANOVA
+
+```{r anova}
+# --- Use the built-in PlantGrowth dataset ---
+data(PlantGrowth)
+
+# Descriptive statistics by group
+PlantGrowth |>
+  group_by(group) |>
+  summarise(
+    n      = n(),
+    Mean   = round(mean(weight), 3),
+    SD     = round(sd(weight), 3),
+    Median = round(median(weight), 3)
+  ) |>
+  kable(caption = "Plant Weight by Treatment Group") |>
+  kable_styling(bootstrap_options = c("striped","hover"), full_width = FALSE)
+```
+
+```{r anova-test}
+# --- One-way ANOVA ---
+anova_model  <- aov(weight ~ group, data = PlantGrowth)
+anova_result <- summary(anova_model)
+print(anova_result)
+```
+
+```{r anova-posthoc}
+# --- Tukey HSD Post-Hoc Test ---
+tukey_result <- TukeyHSD(anova_model)
+print(tukey_result)
+
+# Tidy post-hoc table
+tukey_df <- as.data.frame(tukey_result$group)
+tukey_df$Comparison <- rownames(tukey_df)
+tukey_df <- tukey_df[, c(5, 1:4)]
+tukey_df[, 2:5] <- round(tukey_df[, 2:5], 4)
+
+kable(tukey_df,
+      caption   = "Tukey HSD Post-Hoc Comparisons",
+      row.names = FALSE,
+      col.names = c("Comparison", "Difference",
+                    "Lower CI", "Upper CI", "p adj")) |>
+  kable_styling(bootstrap_options = c("striped","hover"), full_width = FALSE) |>
+  column_spec(5, bold = TRUE,
+              color = ifelse(tukey_df[, 5] < 0.05, "tomato", "gray40"))
+```
+
+```{r anova-plot}
+# --- Visualization ---
+p1 <- ggplot(PlantGrowth, aes(x = group, y = weight, fill = group)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = 21) +
+  geom_jitter(width = 0.1, size = 2, alpha = 0.6) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title    = "A. Plant Weight by Treatment",
+       x        = "Treatment Group",
+       y        = "Dry Weight (g)") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+
+# Tukey HSD confidence intervals plot
+p2 <- as.data.frame(tukey_result$group) |>
+  rownames_to_column("comparison") |>
+  ggplot(aes(x = comparison, y = diff,
+             ymin = lwr, ymax = upr, color = comparison)) +
+  geom_pointrange(size = 0.9) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray40") +
+  scale_color_brewer(palette = "Set1") +
+  coord_flip() +
+  labs(title    = "B. Tukey HSD 95% CIs",
+       subtitle = "CI crossing zero = not significant",
+       x        = "Comparison",
+       y        = "Mean Difference") +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+
+p1 + p2
+```
+
+**Code explanation:**
+
+- `aov(formula, data)` fits the ANOVA model; `summary()` produces the
+  ANOVA table with F-statistic and p-value.
+- `TukeyHSD(model)` performs all pairwise comparisons with familywise
+  error control.
+- The `pointrange` plot (Panel B) is the standard way to visualize Tukey
+  HSD results — CIs crossing zero indicate non-significant differences.
+
+## Exercises
+
+::: callout-tip
+## Exercise 3.8
+
+Using the `iris` dataset, test whether mean `Sepal.Length` differs
+across the three species.
+
+(a) Check ANOVA assumptions: normality per group (Shapiro-Wilk) and
+    equal variances (Levene's test via `car::leveneTest()`).
+(b) Run one-way ANOVA. Report F, df, and p-value in APA format.
+(c) Run Tukey HSD. Which species pairs differ significantly?
+(d) Produce a boxplot and Tukey CI plot.
+:::
+
+::: callout-tip
+## Exercise 3.9 (Challenge)
+
+The `npk` dataset in R contains crop yield data from a factorial
+experiment.
+
+(a) Use one-way ANOVA to test whether nitrogen treatment (`N`) affects
+    yield.
+(b) What happens to your conclusions if you violate the homoscedasticity
+    assumption? Rerun the analysis using Welch's ANOVA
+    (`oneway.test(var.equal = FALSE)`) and compare.
+:::
+
+------------------------------------------------------------------------
+
+# Non-Parametric Alternatives
+
+## Introduction
+
+Parametric tests (t-tests, ANOVA) assume normally distributed
+populations and, in some cases, equal variances. When these assumptions
+are seriously violated — particularly with small samples, heavily skewed
+data, or ordinal outcomes — **non-parametric tests** provide valid
+alternatives. These tests make no assumption about the distributional
+form of the data, instead working with **ranks** rather than raw values.
+The cost is a small loss of statistical power when parametric
+assumptions are actually met.
+
+## Theory
+
+### Wilcoxon Signed-Rank Test (One-Sample / Paired)
+
+The **non-parametric alternative to the one-sample and paired t-tests**.
+It tests whether the median of differences equals zero, without assuming
+normality.
+
+**Procedure:**
+
+1.  Compute differences $d_i = x_{1i} - x_{2i}$ (or $d_i = x_i - \mu_0$
+    for one-sample).
+2.  Rank the **absolute values** $|d_i|$, ignoring zeros.
+3.  Assign signs to ranks based on the sign of $d_i$.
+4.  Compute $W^+$ (sum of positive ranks) and $W^-$ (sum of negative
+    ranks).
+5.  Test statistic: $W = \min(W^+, W^-)$.
+
+For large samples, $W$ is approximately normal and a z-approximation is
+used.
+
+### Mann-Whitney U Test (Two Independent Samples)
+
+The **non-parametric alternative to the independent samples t-test**.
+Tests whether one population tends to have larger values than another
+(stochastic dominance), without assuming normality.
+
+**Procedure:**
+
+1.  Pool and rank all observations from both groups.
+2.  Compute $U_1$ (sum of ranks from group 1 minus the minimum possible)
+    and $U_2$.
+3.  Test statistic: $U = \min(U_1, U_2)$.
+
+In R, both the Wilcoxon signed-rank and Mann-Whitney U tests are
+implemented in `wilcox.test()`.
+
+### Kruskal-Wallis Test (Three or More Groups)
+
+The **non-parametric alternative to one-way ANOVA**. Tests whether the
+distributions of $k$ groups are identical (with the alternative that at
+least one group tends to have different values):
+
+$$H = \frac{12}{N(N+1)} \sum_{i=1}^{k} \frac{R_i^2}{n_i} - 3(N+1) \sim \chi^2(k-1) \text{ under } H_0$$
+
+where $R_i$ is the sum of ranks in group $i$ and $N$ is the total sample
+size.
+
+**Post-hoc for Kruskal-Wallis:** Dunn's test with Bonferroni or
+Benjamini-Hochberg correction.
+
+### When to Choose Non-Parametric Tests
+
+| Situation | Non-Parametric Test | Parametric Equivalent |
+|-----------------|--------------------------|-----------------------------|
+| One sample or paired, non-normal | Wilcoxon signed-rank | Paired t-test |
+| Two independent groups, non-normal | Mann-Whitney U | Independent t-test |
+| Three or more groups, non-normal | Kruskal-Wallis | One-way ANOVA |
+| Small $n$ (\< 15 per group) with skew | Any of the above | Requires normal assumption |
+| Ordinal outcome variable | Any of the above | Inappropriate |
+
+: Non-parametric test selection guide
+
+## Example: Mann-Whitney U Test
+
+**Example 3.6.** A researcher compares reaction times (ms) between
+younger ($n_1 = 12$) and older ($n_2 = 10$) adults. The older group
+shows strong right skew (skewness = 2.1), violating normality. The
+Mann-Whitney U test gives $U = 18$, $p = 0.003$.
+
+**Interpretation:** Older adults have significantly longer reaction
+times than younger adults ($W = 18$, $p = 0.003$). The non-parametric
+test was appropriate given the violation of normality in the older
+group.
+
+## R Example: Non-Parametric Tests
+
+```{r nonparam}
+# --- Use airquality: compare Ozone in May vs. August ---
+data(airquality)
+ozone_may <- na.omit(airquality$Ozone[airquality$Month == 5])
+ozone_aug <- na.omit(airquality$Ozone[airquality$Month == 8])
+
+# Check normality
+cat("Shapiro-Wilk — May Ozone:    p =",
+    round(shapiro.test(ozone_may)$p.value, 4), "\n")
+cat("Shapiro-Wilk — August Ozone: p =",
+    round(shapiro.test(ozone_aug)$p.value, 4), "\n\n")
+
+# Mann-Whitney U test (non-parametric two-sample)
+mw_result <- wilcox.test(ozone_may, ozone_aug,
+                          alternative = "two.sided",
+                          exact       = FALSE)
+print(mw_result)
+
+# Compare: Welch's t-test on the same data
+t_result_ozone <- t.test(ozone_may, ozone_aug)
+cat("\nWelch's t-test p-value:     ", round(t_result_ozone$p.value, 4), "\n")
+cat("Mann-Whitney U p-value:     ", round(mw_result$p.value, 4), "\n")
+```
+
+```{r nonparam-kw}
+# --- Kruskal-Wallis: Ozone across all months ---
+airquality_kw <- na.omit(airquality[, c("Ozone","Month")])
+
+kw_result <- kruskal.test(Ozone ~ factor(Month), data = airquality_kw)
+print(kw_result)
+```
+
+```{r nonparam-plot}
+# --- Visualization ---
+month_labels <- c("5" = "May", "6" = "Jun",
+                  "7" = "Jul", "8" = "Aug", "9" = "Sep")
+
+airquality_kw |>
+  mutate(Month = factor(Month, labels = month_labels)) |>
+  ggplot(aes(x = Month, y = Ozone, fill = Month)) +
+  geom_boxplot(alpha = 0.7, outlier.shape = 21) +
+  geom_jitter(width = 0.1, size = 1.8, alpha = 0.5) +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title    = "Ozone Concentration by Month",
+       subtitle = paste0("Kruskal-Wallis: χ² = ",
+                         round(kw_result$statistic, 2),
+                         ", df = ", kw_result$parameter,
+                         ", p = ", round(kw_result$p.value, 4)),
+       x        = "Month", y = "Ozone (ppb)") +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "none")
+```
+
+**Code explanation:**
+
+- `wilcox.test(x, y, alternative, exact)` runs both the Mann-Whitney U
+  (two independent samples) and Wilcoxon signed-rank (one-sample or
+  paired with `paired = TRUE`) test.
+- `exact = FALSE` uses a normal approximation — appropriate when there
+  are ties in the data.
+- `kruskal.test(formula, data)` runs the Kruskal-Wallis test. For
+  post-hoc, use `dunn_test()` from `rstatix`.
+
+## Exercises
+
+::: callout-tip
+## Exercise 3.10
+
+Using the `sleep` dataset (extra sleep hours for two drugs, 10 patients
+each):
+
+(a) Test normality of differences. Is the paired t-test appropriate?
+(b) Run the Wilcoxon signed-rank test
+    (`wilcox.test(..., paired = TRUE)`).
+(c) Compare results with the paired t-test from Exercise 3.7. Do
+    conclusions agree?
+(d) Under what circumstances would the two tests disagree?
+:::
+
+::: callout-tip
+## Exercise 3.11
+
+Using the `iris` dataset, test whether `Petal.Length` differs across
+species using the Kruskal-Wallis test.
+
+(a) State why you might prefer Kruskal-Wallis over ANOVA for this
+    variable.
+(b) Run `kruskal.test()` and interpret the result.
+(c) Perform Dunn's post-hoc test using `rstatix::dunn_test()` with
+    Bonferroni correction.
+(d) Do the conclusions match those from the parametric ANOVA in Exercise
+    3.8?
+:::
+
+------------------------------------------------------------------------
+
+# Effect Size and Statistical Power
+
+## Introduction
+
+A statistically significant result answers only one question: *Is the
+effect real (not due to chance)?* It says nothing about whether the
+effect is **practically important**. With a large enough sample, even a
+trivially small difference becomes statistically significant. **Effect
+size** measures the magnitude of an effect independently of sample size,
+answering: *How big is this?* **Statistical power** determines whether
+our study is large enough to detect an effect if one truly exists.
+Together, effect size and power analysis are essential tools for
+designing rigorous research and interpreting published results.
+
+## Theory
+
+### Effect Size Measures
+
+**Cohen's d** (for mean comparisons):
+$$d = \frac{\bar{x}_1 - \bar{x}_2}{s_{\text{pooled}}}$$
+
+| Cohen's d | Interpretation |
+|-----------|----------------|
+| 0.2       | Small effect   |
+| 0.5       | Medium effect  |
+| 0.8       | Large effect   |
+
+: Cohen's d benchmarks
+
+$\eta^2$ (Eta-squared) for ANOVA:
+$$\eta^2 = \frac{SS_{\text{Between}}}{SS_{\text{Total}}}$$
+
+Represents the proportion of total variance explained by group
+membership. Values of 0.01, 0.06, and 0.14 correspond to small, medium,
+and large effects respectively.
+
+$r$ (Correlation coefficient) for non-parametric tests:
+$$r = \frac{Z}{\sqrt{N}}$$
+
+where $Z$ is the standardized test statistic. Values of 0.1, 0.3, and
+0.5 are small, medium, and large.
+
+### Statistical Power
+
+**Power** = $P(\text{Reject } H_0 \mid H_1 \text{ is true}) = 1 - \beta$
+
+Power depends on four interrelated factors:
+
+| Factor                        | Effect on Power |
+|-------------------------------|-----------------|
+| Sample size $n$ ↑             | Power ↑         |
+| Effect size $d$ ↑             | Power ↑         |
+| Significance level $\alpha$ ↑ | Power ↑         |
+| Variability $\sigma$ ↑        | Power ↓         |
+
+: Factors affecting statistical power
+
+**Conventional target:** Power $\geq 0.80$ (80%) — meaning we have at
+least an 80% chance of detecting a true effect.
+
+### Power Analysis for Sample Size Planning
+
+Power analysis is performed **before data collection** to determine the
+required sample size. Given:
+
+- The desired power ($1 - \beta$, typically 0.80 or 0.90)
+- The significance level ($\alpha$, typically 0.05)
+- The minimum effect size of practical interest ($d$ or $f$)
+
+We solve for $n$. This is a critical step in research design —
+under-powered studies waste resources and fail to detect real effects;
+over-powered studies waste money and may detect trivially small effects.
+
+## Example: Effect Size and Power
+
+**Example 3.7.** Returning to the teaching method comparison (Example
+3.3):
+
+$$d = \frac{|81.6 - 74.2|}{\sqrt{(11.8^2 + 9.4^2)/2}} = \frac{7.4}{\sqrt{106.1}} = \frac{7.4}{10.3} \approx 0.72$$
+
+A Cohen's d of 0.72 indicates a **medium-to-large** effect. The
+difference of 7.4 points is both statistically significant and
+educationally meaningful. A researcher planning a replication study who
+wants 80% power to detect $d = 0.72$ at $\alpha = 0.05$ (two-tailed)
+would need approximately $n = 32$ per group.
+
+## R Example: Effect Size and Power Analysis
+
+```{r effect-size}
+# --- Cohen's d for teaching methods ---
+library(effectsize)
+
+set.seed(202)
+group_A <- rnorm(30, mean = 74.2, sd = 11.8)
+group_B <- rnorm(28, mean = 81.6, sd = 9.4)
+
+# Cohen's d
+d_result <- effectsize::cohens_d(group_B, group_A)
+print(d_result)
+interpret_cohens_d(d_result$Cohens_d)
+```
+
+```{r power-analysis}
+# --- Power analysis using pwr package ---
+library(pwr)
+
+# 1. What power do we have with n=30 per group and d=0.72?
+power_current <- pwr.t.test(n    = 30,
+                             d    = 0.72,
+                             sig.level = 0.05,
+                             type = "two.sample",
+                             alternative = "two.sided")
+cat("Power with n=30, d=0.72:", round(power_current$power, 3), "\n\n")
+
+# 2. What n do we need for 80% power with d=0.72?
+n_needed <- pwr.t.test(power = 0.80,
+                        d     = 0.72,
+                        sig.level   = 0.05,
+                        type        = "two.sample",
+                        alternative = "two.sided")
+cat("n needed for 80% power, d=0.72:", ceiling(n_needed$n), "per group\n\n")
+
+# 3. What n do we need for 90% power?
+n_needed_90 <- pwr.t.test(power = 0.90,
+                           d     = 0.72,
+                           sig.level   = 0.05,
+                           type        = "two.sample",
+                           alternative = "two.sided")
+cat("n needed for 90% power, d=0.72:", ceiling(n_needed_90$n), "per group\n")
+```
+
+```{r power-curve}
+# --- Power curve: power vs. sample size for different effect sizes ---
+n_seq     <- seq(10, 100, by = 2)
+d_values  <- c(0.2, 0.5, 0.8)
+d_labels  <- c("Small (d=0.2)", "Medium (d=0.5)", "Large (d=0.8)")
+
+power_df <- map_dfr(seq_along(d_values), function(i) {
+  d   <- d_values[i]
+  lbl <- d_labels[i]
+  pwr_vals <- sapply(n_seq, function(n) {
+    pwr.t.test(n = n, d = d, sig.level = 0.05,
+               type = "two.sample",
+               alternative = "two.sided")$power
+  })
+  data.frame(n = n_seq, power = pwr_vals, effect = lbl)
+})
+
+ggplot(power_df, aes(x = n, y = power, color = effect)) +
+  geom_line(linewidth = 1.2) +
+  geom_hline(yintercept = 0.80, linetype = "dashed",
+             color = "gray30", linewidth = 0.8) +
+  geom_hline(yintercept = 0.90, linetype = "dotted",
+             color = "gray30", linewidth = 0.8) +
+  annotate("text", x = 95, y = 0.82,
+           label = "80% power", color = "gray30", size = 3.5) +
+  annotate("text", x = 95, y = 0.92,
+           label = "90% power", color = "gray30", size = 3.5) +
+  scale_color_manual(values = c("steelblue","seagreen","tomato")) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(title    = "Power Curves: Two-Sample t-Test (α = 0.05)",
+       subtitle = "Each curve shows a different effect size",
+       x        = "Sample Size per Group (n)",
+       y        = "Statistical Power",
+       color    = "Effect Size") +
+  theme_minimal(base_size = 13) +
+  theme(legend.position = "top")
+```
+
+**Code explanation:**
+
+- `cohens_d()` from `effectsize` computes Cohen's d with confidence
+  intervals; `interpret_cohens_d()` gives the verbal label
+  (small/medium/large).
+- `pwr.t.test()` from `pwr` performs power analysis for t-tests. Set any
+  three of (n, d, sig.level, power) and it solves for the fourth.
+- The power curve plot is an essential tool for research design — it
+  visually shows the sample size required to achieve desired power for
+  effects of different magnitudes.
+
+## Exercises
+
+::: callout-tip
+## Exercise 3.12
+
+For the `mtcars` analysis from Exercise 3.5 (mpg by transmission type):
+
+(a) Compute Cohen's d for the mean difference between automatic and
+    manual transmission cars.
+(b) Interpret the effect size using Cohen's benchmarks.
+(c) How many cars per group would be needed to achieve 80% power to
+    detect this effect at $\alpha = 0.05$?
+(d) Plot a power curve showing power vs. sample size for small, medium,
+    and the observed effect size.
+:::
+
+::: callout-tip
+## Exercise 3.13 (Challenge)
+
+A researcher is planning a three-arm clinical trial comparing a new
+drug, an existing drug, and placebo. They expect a medium effect size
+($f = 0.25$ for ANOVA) and want 80% power at $\alpha = 0.05$.
+
+(a) Use `pwr.anova.test()` to determine the required sample size per
+    group.
+(b) How does the required n change if power is increased to 90%?
+(c) Compute $\eta^2$ from the `PlantGrowth` ANOVA result and interpret
+    its magnitude.
+:::
+
+------------------------------------------------------------------------
+
+# Chapter Lab Activity: Exploring Hypothesis Testing with the `ToothGrowth` Dataset
+
+## Objectives
+
+In this lab you will apply the full hypothesis testing workflow to the
+`ToothGrowth` dataset — a classic R dataset recording the length of
+odontoblasts (cells responsible for tooth growth) in 60 guinea pigs,
+each receiving one of three doses of Vitamin C (0.5, 1, and 2 mg/day)
+via one of two delivery methods (orange juice or ascorbic acid). You
+will move from checking assumptions to selecting tests, reporting
+results, and computing effect sizes.
+
+## The Dataset
+
+```{r lab-intro}
+data(ToothGrowth)
+
+kable(head(ToothGrowth, 12),
+      caption = "First 12 Rows of the ToothGrowth Dataset") |>
+  kable_styling(bootstrap_options = c("striped","hover"), font_size = 11)
+
+cat("Dimensions:", nrow(ToothGrowth), "rows x",
+    ncol(ToothGrowth), "columns\n")
+cat("Supplement types:", levels(factor(ToothGrowth$supp)), "\n")
+cat("Dose levels:", unique(ToothGrowth$dose), "mg/day\n")
+```
+
+**Variable descriptions:**
+
+| Variable | Description | Scale |
+|------------------------|-------------------------------|------------------|
+| `len` | Odontoblast length (microns) | Ratio, continuous |
+| `supp` | Supplement type: OJ (orange juice) or VC (ascorbic acid) | Nominal |
+| `dose` | Vitamin C dose (0.5, 1.0, 2.0 mg/day) | Ordinal (treated as ratio here) |
+
+## Lab Task 1: Descriptive Overview and Assumption Checks
+
+```{r lab-task1}
+# Descriptive statistics by supplement and dose
+ToothGrowth |>
+  mutate(dose = factor(dose)) |>
+  group_by(supp, dose) |>
+  summarise(
+    n      = n(),
+    Mean   = round(mean(len), 2),
+    SD     = round(sd(len), 2),
+    Median = round(median(len), 2),
+    .groups = "drop"
+  ) |>
+  kable(caption = "Tooth Length by Supplement and Dose") |>
+  kable_styling(bootstrap_options = c("striped","hover"), full_width = FALSE)
+```
+
+```{r lab-task1b}
+# Normality check per group
+ToothGrowth |>
+  group_by(supp) |>
+  summarise(
+    SW_W       = round(shapiro.test(len)$statistic, 4),
+    SW_pvalue  = round(shapiro.test(len)$p.value, 4),
+    Skewness   = round(moments::skewness(len), 3),
+    .groups    = "drop"
+  ) |>
+  kable(caption = "Normality Assessment by Supplement Type") |>
+  kable_styling(bootstrap_options = c("striped","hover"), full_width = FALSE)
+```
+
+## Lab Task 2: Two-Sample Test — OJ vs. VC
+
+```{r lab-task2}
+# Split by supplement
+oj <- ToothGrowth$len[ToothGrowth$supp == "OJ"]
+vc <- ToothGrowth$len[ToothGrowth$supp == "VC"]
+
+# Welch's t-test
+t_supp <- t.test(oj, vc, alternative = "two.sided")
+
+# Mann-Whitney U (non-parametric comparison)
+mw_supp <- wilcox.test(oj, vc, alternative = "two.sided", exact = FALSE)
+
+# Cohen's d
+d_supp <- effectsize::cohens_d(oj, vc)
+
+results_supp <- data.frame(
+  Test       = c("Welch's t-test", "Mann-Whitney U"),
+  Statistic  = round(c(t_supp$statistic, mw_supp$statistic), 3),
+  p_value    = round(c(t_supp$p.value, mw_supp$p.value), 4),
+  Decision   = ifelse(c(t_supp$p.value, mw_supp$p.value) < 0.05,
+                      "Reject H₀", "Fail to Reject H₀")
+)
+
+kable(results_supp,
+      caption   = "OJ vs. VC: Test Results at α = 0.05",
+      col.names = c("Test", "Statistic", "p-value", "Decision")) |>
+  kable_styling(bootstrap_options = c("striped","hover"), full_width = FALSE) |>
+  column_spec(4, bold = TRUE,
+              color = ifelse(results_supp$Decision == "Reject H₀",
+                             "tomato", "steelblue"))
+
+cat("\nCohen's d:", round(d_supp$Cohens_d, 3),
+    "(", interpret_cohens_d(d_supp$Cohens_d), ")\n")
+
+```
+
+## Lab Task 3: One-Way ANOVA — Effect of Dose
+
+```{r lab-task3}
+# One-way ANOVA: does dose affect tooth length?
+ToothGrowth$dose_f <- factor(ToothGrowth$dose)
+anova_dose   <- aov(len ~ dose_f, data = ToothGrowth)
+tukey_dose   <- TukeyHSD(anova_dose)
+
+cat("=== ANOVA: Tooth Length by Dose ===\n")
+print(summary(anova_dose))
+
+cat("\n=== Tukey HSD Post-Hoc ===\n")
+print(tukey_dose)
+
+# Eta-squared
+ss_between <- summary(anova_dose)[[1]][1,"Sum Sq"]
+ss_total   <- sum(summary(anova_dose)[[1]][,"Sum Sq"])
+eta_sq     <- ss_between / ss_total
+cat("\nEta-squared (η²):", round(eta_sq, 4),
+    "— proportion of variance explained by dose\n")
+```
+
+## Lab Task 4: Comprehensive Visualization
+
+```{r lab-task4, fig.height=8}
+# Panel A: Overall distribution by supplement
+p1 <- ggplot(ToothGrowth, aes(x = supp, y = len, fill = supp)) +
+  geom_violin(alpha = 0.5, trim = FALSE) +
+  geom_boxplot(width = 0.12, fill = "white",
+               outlier.shape = 21) +
+  scale_fill_manual(values = c("OJ" = "tomato", "VC" = "steelblue")) +
+  labs(title = "A. Length by Supplement",
+       x = "Supplement", y = "Tooth Length (µm)") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "none")
+
+# Panel B: Length by dose
+p2 <- ggplot(ToothGrowth,
+             aes(x = factor(dose), y = len, fill = factor(dose))) +
+  geom_boxplot(alpha = 0.7, outlier.shape = 21) +
+  geom_jitter(width = 0.1, size = 1.8, alpha = 0.5) +
+  scale_fill_brewer(palette = "Blues") +
+  labs(title = "B. Length by Dose",
+       x = "Dose (mg/day)", y = "Tooth Length (µm)") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "none")
+
+# Panel C: Interaction — supplement × dose
+p3 <- ToothGrowth |>
+  group_by(supp, dose) |>
+  summarise(mean_len = mean(len), se = sd(len)/sqrt(n()), .groups="drop") |>
+  ggplot(aes(x = factor(dose), y = mean_len,
+             group = supp, color = supp)) +
+  geom_line(linewidth = 1.2) +
+  geom_point(size = 3.5) +
+  geom_errorbar(aes(ymin = mean_len - se, ymax = mean_len + se),
+                width = 0.1) +
+  scale_color_manual(values = c("OJ" = "tomato", "VC" = "steelblue")) +
+  labs(title = "C. Interaction: Supplement × Dose",
+       x = "Dose (mg/day)", y = "Mean Tooth Length (µm)",
+       color = "Supplement") +
+  theme_minimal(base_size = 11)
+
+# Panel D: Tukey HSD intervals for dose
+p4 <- as.data.frame(tukey_dose$dose_f) |>
+  rownames_to_column("comparison") |>
+  ggplot(aes(x = comparison, y = diff,
+             ymin = lwr, ymax = upr,
+             color = diff > 0)) +
+  geom_pointrange(size = 0.9) +
+  geom_hline(yintercept = 0, linetype = "dashed") +
+  scale_color_manual(values = c("FALSE" = "steelblue",
+                                "TRUE"  = "tomato")) +
+  coord_flip() +
+  labs(title = "D. Tukey HSD: Dose Comparisons",
+       x = "Comparison", y = "Mean Difference") +
+  theme_minimal(base_size = 11) +
+  theme(legend.position = "none")
+
+(p1 + p2) / (p3 + p4)
+```
+
+## Lab Discussion Questions
+
+Answer the following in writing:
+
+1.  **Test Selection:** In Lab Task 2, both Welch's t-test and
+    Mann-Whitney U give similar conclusions. Under what conditions might
+    they disagree? Which would you report in a paper, and why?
+
+2.  **Practical Significance:** The ANOVA in Task 3 is highly
+    significant. Compute and interpret $\eta^2$. Does the dose variable
+    explain a large, medium, or small proportion of variance in tooth
+    length?
+
+3.  **Post-Hoc Interpretation:** Based on Tukey HSD, which dose
+    transition produces the greatest gain in tooth length: 0.5 → 1.0
+    mg/day or 1.0 → 2.0 mg/day? What does this suggest about
+    dose-response?
+
+4.  **Interaction Pattern:** Panel C shows that at low doses, OJ
+    outperforms VC, but at 2.0 mg/day the two converge. What does this
+    interaction pattern imply for designing a Vitamin C supplementation
+    study?
+
+5.  **Power and Replication:** With only 10 animals per supplement-dose
+    combination, compute the power of the two-sample t-test to detect
+    the observed effect size between OJ and VC. Is this study adequately
+    powered?
+
+------------------------------------------------------------------------
+
+# Chapter Summary
+
+## Summary
+
+This chapter established hypothesis testing as a principled framework
+for data-driven decision making:
+
+- **The logic of hypothesis testing** — stating $H_0$ and $H_1$,
+  computing p-values, controlling Type I and II errors — is the same
+  across all tests; only the test statistic changes.
+- **One-sample t-tests** compare a single population mean to a
+  hypothesized value.
+- **Two-sample tests** (Welch's t-test preferred) compare means between
+  two independent groups.
+- **Paired t-tests** exploit within-subject pairing to eliminate
+  between-subject noise and increase power.
+- **One-way ANOVA** extends t-tests to three or more groups, avoiding
+  familywise error inflation; post-hoc tests (Tukey HSD) identify which
+  pairs differ.
+- **Non-parametric tests** (Wilcoxon, Mann-Whitney, Kruskal-Wallis)
+  provide valid alternatives when normality or equal-variance
+  assumptions are violated.
+- **Effect size** (Cohen's d, $\eta^2$) measures practical importance
+  independently of sample size; **power analysis** ensures studies are
+  designed to detect meaningful effects.
+
+::: callout-important
+## Key Formulas to Know
+
+**One-sample t-statistic:**
+$$t = \frac{\bar{x} - \mu_0}{s/\sqrt{n}} \sim t(n-1)$$
+
+**Two-sample t-statistic (Welch's):**
+$$t = \frac{\bar{x}_1 - \bar{x}_2}{\sqrt{s_1^2/n_1 + s_2^2/n_2}}$$
+
+**Paired t-statistic:** $$t = \frac{\bar{d}}{s_d/\sqrt{n}} \sim t(n-1)$$
+
+**F-statistic (ANOVA):**
+$$F = \frac{MS_{\text{Between}}}{MS_{\text{Within}}} \sim F(k-1, N-k)$$
+
+**Cohen's d:** $$d = \frac{\bar{x}_1 - \bar{x}_2}{s_{\text{pooled}}}$$
+
+**Eta-squared:**
+$$\eta^2 = \frac{SS_{\text{Between}}}{SS_{\text{Total}}}$$
+:::
+
+## References
+
+Anderson, E. (1935). The irises of the Gaspé Peninsula. *Bulletin of the American Iris Society*, *59*, 2–5.
+
+Cohen, J. (1988). *Statistical power analysis for the behavioral sciences* (2nd ed.). Lawrence Erlbaum Associates.
+
+Fisher, R. A. (1925). *Statistical methods for research workers*. Oliver and Boyd.
+
+Fox, J., & Weisberg, S. (2019). *An R companion to applied regression* (3rd ed.). SAGE.
+
+Henderson, H. V., & Velleman, P. F. (1981). Building multiple regression models interactively. *Biometrics*, *37*(2), 391–411.
+
+Kassambara, A. (2023). *rstatix: Pipe-friendly framework for basic statistical tests* (R package version 0.7.2). https://CRAN.R-project.org/package=rstatix
+
+Lüdecke, D., Ben-Shachar, M. S., Patil, I., & Makowski, D. (2020). Extracting, computing and exploring the parameters of statistical models using R. *Journal of Open Source Software*, *5*(53), 2445.
+
+Mann, H. B., & Whitney, D. R. (1947). On a test of whether one of two random variables is stochastically larger than the other. *Annals of Mathematical Statistics*, *18*(1), 50–60.
+
+Pedersen, T. L. (2022). *patchwork: The composer of plots* (R package version 1.1.2). https://CRAN.R-project.org/package=patchwork
+
+R Core Team. (2024). *R: A language and environment for statistical computing*. R Foundation for Statistical Computing. https://www.R-project.org/
+
+Shapiro, S. S., & Wilk, M. B. (1965). An analysis of variance test for normality. *Biometrika*, *52*(3/4), 591–611.
+
+Tukey, J. W. (1977). *Exploratory data analysis*. Addison-Wesley.
+
+Venables, W. N., & Ripley, B. D. (2002). *Modern applied statistics with S* (4th ed.). Springer.
+
+Wickham, H. (2016). *ggplot2: Elegant graphics for data analysis*. Springer.
+
+Wickham, H., Averick, M., Bryan, J., Chang, W., McGowan, L. D., François, R., Grolemund, G., Hayes, A., Henry, L., Hester, J., Kuhn, M., Pedersen, T. L., Miller, E., Bache, S. M., Müller, K., Ooms, J., Robinson, D., Seidel, D. P., Spinu, V., … Yutani, H. (2019). Welcome to the tidyverse. *Journal of Open Source Software*, *4*(43), 1686.
+
+Wilcoxon, F. (1945). Individual comparisons by ranking methods. *Biometrics Bulletin*, *1*(6), 80–83.
+
+Xie, Y. (2015). *Dynamic documents with R and knitr* (2nd ed.). CRC Press.
+
+------------------------------------------------------------------------
+
+*End of Chapter 3. Proceed to Chapter 4: Test of Independence of
+Variables.*
