@@ -52,7 +52,7 @@ format:
       - \definecolor{gray40}{RGB}{102,102,102}
     
 execute:
-  echo: false
+  echo: true
   warning: false
   message: false
 
