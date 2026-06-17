@@ -1,0 +1,60 @@
+name: Render and Deploy Quarto Book
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      id-token: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.4.0'
+          use-public-rspm: true
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libcurl4-openssl-dev libssl-dev libxml2-dev \
+            libfontconfig1-dev libharfbuzz-dev libfribidi-dev \
+            libfreetype6-dev libpng-dev libtiff5-dev libjpeg-dev
+
+      - name: Cache R packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.R_LIBS_USER }}
+          key: ${{ runner.os }}-r-${{ hashFiles('**/*.qmd') }}
+          restore-keys: ${{ runner.os }}-r-
+
+      - name: Install R packages
+        shell: Rscript {0}
+        run: |
+          install.packages(c(
+            "tidyverse", "knitr", "kableExtra", "patchwork", "ragg",
+            "cluster", "factoextra", "dbscan", "mclust",
+            "dendextend", "NbClust", "fpc",
+            "e1071", "caret", "class", "rpart", "rpart.plot",
+            "randomForest", "MASS", "car", "corrplot"
+          ))
+
+      - name: Setup Quarto
+        uses: quarto-dev/quarto-actions/setup@v2
+
+      - name: Render and Publish
+        uses: quarto-dev/quarto-actions/publish@v2
+        with:
+          target: gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
