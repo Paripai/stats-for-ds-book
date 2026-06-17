@@ -1384,7 +1384,7 @@ Answer the following in writing:
 
 1. **Measurement Scales:** The `Month` variable is stored as an integer in R. Explain why it should be converted to an ordered factor for analysis. What statistical operations become inappropriate if we treat it as a ratio-scale number?
 
-2. **Missing Data:** `Ozone` has 24 missing values (15.7%). How might this affect your probability calculations? What assumptions are you implicitly making when you use `na.omit()`?
+2. **Missing Data:** `Ozone` has 37 missing values (24.2%). How might this affect your probability calculations? What assumptions are you implicitly making when you use `na.omit()`?
 
 3. **Distribution Choice:** Based on Lab Task 2, which probability distribution (Normal, Poisson, Exponential, or other) would you use to model each of the four continuous variables? Justify each choice using skewness, shape, and domain knowledge.
 

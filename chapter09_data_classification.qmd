@@ -466,7 +466,7 @@ ggplot(knn_df, aes(x = K, y = Accuracy)) +
 
 - `scale(test_x, center = ..., scale = ...)` applies training set scaling to test data — critical to prevent data leakage; always scale test using training set parameters.
 - `createFolds(y, k = 5)` creates stratified cross-validation folds, preserving class proportions in each fold.
-- `class::knn(..., prob = TRUE)` returns class probabilities via `attr(pred, "prob")` for ROC analysis.
+- `class::knn(..., prob = TRUE)` stores, via `attr(pred, "prob")`, the vote proportion for the *predicted (winning)* class — not the positive class. For ROC, convert it first: `ifelse(pred == "Yes", p, 1 - p)`.
 
 ## Exercises
 
@@ -894,7 +894,7 @@ models_df <- data.frame(
                       levels = c("No","Yes")),
   lr_prob   = lr_probs,
   knn_class = knn_pred,
-  knn_prob  = attr(knn_pred,"prob"),
+  knn_prob  = ifelse(knn_pred == "Yes", attr(knn_pred, "prob"), 1 - attr(knn_pred, "prob")),
   tree_class = tree_pred,
   tree_prob  = tree_probs,
   rf_class  = rf_pred,

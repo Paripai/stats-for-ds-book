@@ -33,14 +33,14 @@ format:
     highlight-style: github
     code-fold: true
     code-tools: false
-    number-sections: true
+    number-sections: false
     fig-width: 8
     fig-height: 5
   pdf:
     pdf-engine: xelatex
     documentclass: scrreprt
     toc: true
-    number-sections: true
+    number-sections: false
     geometry: margin=1in
     fontsize: 12pt
     header-includes:

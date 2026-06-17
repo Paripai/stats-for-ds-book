@@ -256,7 +256,7 @@ If instead, patients with very high cholesterol avoided the test (fearing bad ne
 
 ```{r missing-viz}
 # --- Missing data visualization ---
-# airquality: Ozone (24 missing) and Solar.R (7 missing)
+# airquality: Ozone (37 missing) and Solar.R (7 missing)
 
 # Pattern of missingness
 naniar::vis_miss(airquality) +

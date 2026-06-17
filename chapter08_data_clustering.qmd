@@ -13,6 +13,20 @@ library(mclust)        # Gaussian mixture models
 library(dendextend)    # enhanced dendrograms
 library(NbClust)       # multiple cluster validity indices
 library(fpc)           # cluster statistics
+
+# Davies-Bouldin index (centroid-based; matches the DBI formula in this chapter)
+davies_bouldin <- function(x, cl) {
+  x    <- as.matrix(x)
+  ks   <- sort(unique(cl))
+  K    <- length(ks)
+  cent <- t(sapply(ks, function(c) colMeans(x[cl == c, , drop = FALSE])))
+  S    <- sapply(seq_len(K), function(i) {
+    pts <- x[cl == ks[i], , drop = FALSE]
+    mean(sqrt(rowSums((pts - matrix(cent[i, ], nrow(pts), ncol(x), byrow = TRUE))^2)))
+  })
+  D <- as.matrix(dist(cent))
+  mean(sapply(seq_len(K), function(i) max((S[i] + S[-i]) / D[i, -i])))
+}
 ```
 
 ---
@@ -213,7 +227,7 @@ Random initialization can lead to poor solutions. **K-Means++** selects initial 
 
 $$P(\mathbf{x}_i \text{ chosen}) \propto \min_k \|\mathbf{x}_i - \boldsymbol{\mu}_k\|^2$$
 
-This spreads initial centroids apart, dramatically improving solution quality and speed of convergence. R's `kmeans()` uses K-Means++ by default with `algorithm = "Hartigan-Wong"`.
+This spreads initial centroids apart, dramatically improving solution quality and speed of convergence. K-Means++ is the default initializer in Python's scikit-learn, but base R's `kmeans()` does **not** use it — R initializes centroids by random selection. (The `algorithm = "Hartigan-Wong"` default controls the *iterative refinement* step, which is separate from initialization.) R's safeguard against poor random starts is the `nstart` argument, which runs many random initializations and keeps the best.
 
 ### Choosing $K$: The Elbow Method
 
@@ -798,12 +812,12 @@ Bootstrap the data multiple times, cluster each bootstrap sample, and measure ho
 
 | $K$ | Silhouette | Davies-Bouldin | CHI | ARI (vs. species) |
 |-----|-----------|---------------|-----|------------------|
-| 2 | 0.58 | 0.72 | 235 | 0.57 |
-| 3 | 0.55 | 0.67 | 212 | 0.73 |
-| 4 | 0.50 | 0.78 | 196 | 0.64 |
-| 5 | 0.45 | 0.85 | 178 | 0.55 |
+| 2 | 0.58 | 0.59 | 251 | 0.57 |
+| 3 | 0.46 | 0.83 | 242 | 0.62 |
+| 4 | 0.38 | 0.88 | 207 | 0.47 |
+| 5 | 0.35 | 0.95 | 203 | 0.42 |
 
-Most indices agree: $K = 3$ is optimal, consistent with the known 3 species in the data. ARI peaks at $K = 3$, confirming alignment with true labels.
+Here the internal and external indices disagree — which is itself an important lesson. **Internal** indices (Silhouette, Davies-Bouldin, CHI) all favour $K = 2$: Silhouette is highest, Davies-Bouldin is lowest, and CHI is largest at $K = 2$. This is because scaled iris splits most cleanly into two well-separated groups — *versicolor* and *virginica* overlap heavily and are hard to distinguish geometrically. The **external** index tells a different story: ARI peaks at $K = 3$, because there really are three species. Internal validity rewards geometric separation; external validity rewards alignment with ground truth. The two need not coincide, and iris is a canonical example of why.
 
 ## R Example: Cluster Validation
 
@@ -820,13 +834,13 @@ validation_df <- map_dfr(k_vals, function(k) {
   km  <- kmeans(iris_sc, centers = k, nstart = 25)
   sil <- silhouette(km$cluster, dist(iris_sc))
 
-  # Davies-Bouldin (via fpc)
+  # CHI via fpc; Davies-Bouldin via davies_bouldin() helper (q=1, matches formula)
   cs  <- fpc::cluster.stats(dist(iris_sc), km$cluster)
 
   data.frame(
     K             = k,
     Silhouette    = round(mean(sil[,3]), 4),
-    Davies_Bouldin = round(cs$avg.silwidth, 4),
+    Davies_Bouldin = round(davies_bouldin(iris_sc, km$cluster), 4),
     CHI           = round(cs$ch, 2),
     ARI           = round(mclust::adjustedRandIndex(
                             km$cluster, true_labels), 4)
@@ -836,7 +850,7 @@ validation_df <- map_dfr(k_vals, function(k) {
 kable(validation_df,
       caption   = "Cluster Validation Indices: iris K-Means",
       col.names = c("K","Silhouette ↑",
-                    "Avg Silhouette ↑","CHI ↑","ARI ↑")) |>
+                    "Davies-Bouldin ↓","CHI ↑","ARI ↑")) |>
   kable_styling(bootstrap_options = c("striped","hover"),
                 full_width = FALSE) |>
   row_spec(which(validation_df$ARI ==
@@ -1152,7 +1166,7 @@ cat("Final solution validation:\n")
 cat("  Average silhouette: ",
     round(mean(sil_final[,3]), 4), "\n")
 cat("  Davies-Bouldin:     ",
-    round(cs_final$avg.silwidth, 4), "\n")
+    round(davies_bouldin(mt_scaled, km_final$cluster), 4), "\n")
 cat("  CHI:                ",
     round(cs_final$ch, 2), "\n\n")
 ```
@@ -1460,7 +1474,7 @@ Answer the following in writing:
 This chapter built a comprehensive clustering toolkit spanning the full spectrum of approaches:
 
 - **Introduction** — clustering is unsupervised grouping; algorithm choice must match data geometry; distance measures and scaling are foundational decisions.
-- **K-Means** — minimizes WCSS; uses the Lloyd algorithm with K-Means++ initialization; elbow and silhouette methods guide $K$ selection; assumes spherical, equal-size clusters.
+- **K-Means** — minimizes WCSS; uses an iterative refinement algorithm (R's default is Hartigan-Wong); good initialization such as K-Means++ (scikit-learn's default) improves results; elbow and silhouette methods guide $K$ selection; assumes spherical, equal-size clusters.
 - **Hierarchical clustering** — builds a dendrogram of nested clusters; Ward's linkage recommended for most applications; cophenetic correlation diagnoses fit; `cutree()` extracts any $K$.
 - **DBSCAN** — density-based; detects arbitrary shapes and noise; requires tuning $\varepsilon$ and MinPts via $k$-distance plot; more robust than K-Means for spatial and irregular data.
 - **Cluster validation** — Silhouette, Davies-Bouldin, and CHI for internal validation; ARI and NMI for external; stability analysis for robustness.

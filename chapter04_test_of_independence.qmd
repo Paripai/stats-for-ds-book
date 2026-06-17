@@ -242,13 +242,13 @@ $$E_{21} = \frac{75 \times 85}{200} = 31.9, \quad E_{22} = \frac{75 \times 115}{
 $$E_{31} = \frac{60 \times 85}{200} = 25.5, \quad E_{32} = \frac{60 \times 115}{200} = 34.5$$
 
 **Test statistic:**
-$$\chi^2 = \frac{(40-27.6)^2}{27.6} + \frac{(25-37.4)^2}{37.4} + \cdots = 5.58 + 4.12 + 0.11 + 0.08 + 4.33 + 3.20 = 17.42$$
+$$\chi^2 = \frac{(40-27.6)^2}{27.6} + \frac{(25-37.4)^2}{37.4} + \cdots = 5.54 + 4.10 + 0.11 + 0.08 + 4.32 + 3.20 = 17.35$$
 
-**df** $= (3-1)(2-1) = 2$, **p-value** $= P(\chi^2_2 > 17.42) < 0.001$
+**df** $= (3-1)(2-1) = 2$, **p-value** $= P(\chi^2_2 > 17.35) < 0.001$
 
-**Decision:** Reject $H_0$ — exercise frequency and health status are significantly associated ($\chi^2(2) = 17.42$, $p < 0.001$).
+**Decision:** Reject $H_0$ — exercise frequency and health status are significantly associated ($\chi^2(2) = 17.35$, $p < 0.001$).
 
-**Standardized residuals** reveal the pattern: "Rarely exercises / Poor Health" is notably higher than expected ($r = +2.36$), while "Regularly exercises / Poor Health" is notably lower ($r = -2.08$) — people who exercise regularly are less likely to report poor health.
+**Standardized residuals** reveal the pattern: "Rarely exercises / Poor Health" is notably higher than expected ($r = +2.35$), while "Regularly exercises / Poor Health" is notably lower ($r = -2.08$) — people who exercise regularly are less likely to report poor health.
 
 ## R Example: Chi-Square Test of Independence
 
@@ -282,14 +282,14 @@ kable(round(chi_result$expected, 2),
                 full_width = FALSE)
 
 # --- Standardized residuals ---
-kable(round(chi_result$stdres, 3),
+kable(round(chi_result$residuals, 3),
       caption = "Standardized Residuals (|r| > 2 = notable departure)") |>
   kable_styling(bootstrap_options = c("striped","hover"),
                 full_width = FALSE) |>
-  column_spec(2:3,
-              color = ifelse(
-                abs(chi_result$stdres) > 2, "tomato", "black"
-              ))
+  column_spec(2,   # Poor
+              color = ifelse(abs(chi_result$residuals[, 1]) > 2, "tomato", "black")) |>
+  column_spec(3,   # Good
+              color = ifelse(abs(chi_result$residuals[, 2]) > 2, "tomato", "black"))
 ```
 
 ```{r chisq-plot}
@@ -550,9 +550,9 @@ $\lambda = 0$ means knowing $X$ does not help predict $Y$; $\lambda = 1$ means p
 
 ## Example: Cramér's V
 
-**Example 4.4.** Returning to the exercise × health study (Example 4.2): $\chi^2 = 17.42$, $N = 200$, table is 3×2.
+**Example 4.4.** Returning to the exercise × health study (Example 4.2): $\chi^2 = 17.35$, $N = 200$, table is 3×2.
 
-$$V = \sqrt{\frac{17.42/200}{\min(3-1, 2-1)}} = \sqrt{\frac{0.0871}{1}} = \sqrt{0.0871} \approx 0.295$$
+$$V = \sqrt{\frac{17.35/200}{\min(3-1, 2-1)}} = \sqrt{\frac{0.0868}{1}} = \sqrt{0.0868} \approx 0.295$$
 
 For a table with $\min(r-1, c-1) = 1$, benchmarks are 0.10/0.30/0.50 (small/medium/large). $V = 0.295$ is close to a **medium effect** — the association between exercise and health is statistically significant and of moderate practical importance.
 
@@ -587,7 +587,7 @@ print(assoc_stats)
 
 ```{r cramers-heatmap}
 # --- Visualize standardized residuals as heatmap ---
-stdres <- chi_result$stdres
+stdres <- chi_result$residuals
 stdres_df <- as.data.frame(as.table(stdres)) |>
   rename(Exercise = Exercise, Health = Health, Residual = Freq)
 
