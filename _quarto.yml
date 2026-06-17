@@ -33,6 +33,7 @@ format:
     highlight-style: github
     code-fold: true
     code-tools: false
+    code-summary: "Show the R code"
     number-sections: false
     fig-width: 8
     fig-height: 5
@@ -51,7 +52,7 @@ format:
       - \definecolor{gray40}{RGB}{102,102,102}
     
 execute:
-  echo: false
+  echo: true
   warning: false
   message: false
 
