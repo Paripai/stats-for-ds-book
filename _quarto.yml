@@ -33,6 +33,7 @@ format:
     highlight-style: github
     code-fold: true
     code-tools: false
+    code-summary: "Show the R code"
     number-sections: false
     fig-width: 8
     fig-height: 5
