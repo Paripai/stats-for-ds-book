@@ -43,10 +43,18 @@ jobs:
         run: |
           install.packages(c(
             "tidyverse", "knitr", "kableExtra", "patchwork", "ragg",
+            "moments", "psych", "nortest", "effectsize", "pwr",
+            "boot", "broom", "coin", "rstatix",
+            "sampling", "survey",
+            "mice", "naniar", "VIM", "recipes",
             "cluster", "factoextra", "dbscan", "mclust",
             "dendextend", "NbClust", "fpc",
+            "FactoMineR", "Rtsne",
+            "GGally", "ggcorrplot", "ggfortify", "corrplot",
             "e1071", "caret", "class", "rpart", "rpart.plot",
-            "randomForest", "MASS", "car", "corrplot"
+            "randomForest", "MLmetrics", "pROC",
+            "MASS", "car", "lmtest", "glmnet", "mgcv",
+            "ppcor", "vcd"
           ))
 
       - name: Setup Quarto
