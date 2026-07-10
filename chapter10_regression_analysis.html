@@ -496,7 +496,10 @@ window.Quarto = {
 <h2 class="anchored" data-anchor-id="example-simple-linear-regression">Example: Simple Linear Regression</h2>
 <p><strong>Example 10.1.</strong> The relationship between car weight (<code>wt</code>, in 1000 lbs) and fuel efficiency (<code>mpg</code>) in the <code>mtcars</code> dataset.</p>
 <p>Fitted model: <span class="math inline">\(\hat{\text{mpg}} = 37.29 - 5.34 \times \text{wt}\)</span></p>
-<p><strong>Interpretation:</strong> - Intercept: A car weighing 0 lbs would have an expected mpg of 37.29 — extrapolation beyond the data range; not meaningful. - Slope: Each additional 1,000 lbs of weight is associated with a decrease of 5.34 mpg, on average. - <span class="math inline">\(R^2 = 0.753\)</span>: Weight explains 75.3% of the variance in fuel efficiency. - <span class="math inline">\(t = -9.56\)</span>, <span class="math inline">\(p &lt; 0.001\)</span>: The slope is highly significantly different from zero.</p>
+<p><strong>Interpretation:</strong> - Intercept: A car weighing 0 lbs would have an expected mpg of 37.29 — extrapolation beyond the data range; not meaningful. - Slope: Each additional 1,000 lbs of weight is associated with a decrease of 5.34 mpg, on average. - <span class="math inline">\(R^2 = 0.753\)</span>: Weight explains 75.3% of the variance in fuel efficiency. - Testing <span class="math inline">\(H_0: \beta_1 = 0\)</span> vs.&nbsp;<span class="math inline">\(H_1: \beta_1 \neq 0\)</span> (two-tailed), <span class="math inline">\(n = 32\)</span>, <span class="math inline">\(df = n - 2 = 30\)</span>:</p>
+<p><strong>Method 1 — p-value.</strong> <span class="math inline">\(t_{\text{cal}} = -9.56\)</span>, <span class="math inline">\(p &lt; 0.001 &lt; \alpha = 0.05\)</span> <span class="math inline">\(\Rightarrow\)</span> <strong>Reject</strong> <span class="math inline">\(H_0\)</span>.</p>
+<p><strong>Method 2 — critical value.</strong> Two-tailed test, so: <span class="math display">\[t_{\text{crit}} = \pm\, t_{0.975,\,30} = \pm\,\texttt{qt(0.975, 30)} = \pm 2.042\]</span> <span class="math display">\[|t_{\text{cal}}| = 9.56 &gt; 2.042 \quad \Rightarrow \quad \textbf{Reject } H_0\]</span></p>
+<p>Both methods agree: the slope is highly significantly different from zero (<span class="math inline">\(t_{\text{cal}} = -9.56\)</span>, <span class="math inline">\(df = 30\)</span>, <span class="math inline">\(p &lt; 0.001\)</span> — reported as <span class="math inline">\(t(30) = -9.56\)</span>).</p>
 </section>
 <section id="r-example-simple-linear-regression" class="level2">
 <h2 class="anchored" data-anchor-id="r-example-simple-linear-regression">R Example: Simple Linear Regression</h2>
@@ -704,6 +707,8 @@ F-statistic: 91.38 on 1 and 30 DF,  p-value: 1.294e-10</code></pre>
 <p>Tests whether at least one predictor has a non-zero coefficient:</p>
 <p><span class="math display">\[H_0: \beta_1 = \beta_2 = \cdots = \beta_p = 0\]</span></p>
 <p><span class="math display">\[F = \frac{(TSS - RSS)/p}{RSS/(n-p-1)} = \frac{MS_{\text{Reg}}}{MS_{\text{Res}}} \sim F(p, n-p-1) \text{ under } H_0\]</span></p>
+<p>The F-distribution takes <strong>two</strong> degrees-of-freedom parameters, but the same quantile convention from Chapter 3 applies: <code>qf(p, df1, df2)</code> returns the value with cumulative probability <span class="math inline">\(p\)</span> to its left. The F-test is always right-tailed (only large <span class="math inline">\(F\)</span> indicates evidence against <span class="math inline">\(H_0\)</span>), so the critical value at significance <span class="math inline">\(\alpha\)</span> is <span class="math inline">\(F_{\text{crit}} =
+F_{1-\alpha,\,(df_1, df_2)}\)</span>.</p>
 </section>
 <section id="multicollinearity" class="level3">
 <h3 class="anchored" data-anchor-id="multicollinearity">Multicollinearity</h3>
@@ -758,7 +763,11 @@ F-statistic: 91.38 on 1 and 30 DF,  p-value: 1.294e-10</code></pre>
 <h2 class="anchored" data-anchor-id="example-multiple-regression">Example: Multiple Regression</h2>
 <p><strong>Example 10.2.</strong> Predicting <code>mpg</code> from <code>wt</code>, <code>hp</code>, and <code>am</code> (transmission) in <code>mtcars</code>:</p>
 <p><span class="math display">\[\hat{\text{mpg}} = 34.00 - 2.88 \cdot \text{wt} - 0.037 \cdot \text{hp} + 2.08 \cdot \text{am}\]</span></p>
-<p><strong>Interpretation:</strong> - Each 1,000 lbs increase in weight decreases mpg by 2.88, <strong>holding hp and am constant</strong>. - Each additional horsepower decreases mpg by 0.037, holding wt and am constant. - Manual transmission (am = 1) increases mpg by 2.08 compared to automatic, holding wt and hp constant. - <span class="math inline">\(\bar{R}^2 = 0.826\)</span>: The model explains 82.6% of variance after adjusting for the 3 predictors.</p>
+<p><strong>Interpretation:</strong> - Each 1,000 lbs increase in weight decreases mpg by 2.88, <strong>holding hp and am constant</strong>. - Each additional horsepower decreases mpg by 0.037, holding wt and am constant. - Manual transmission (am = 1) increases mpg by 2.08 compared to automatic, holding wt and hp constant. - <span class="math inline">\(\bar{R}^2 = 0.823\)</span>: The model explains 82.3% of variance after adjusting for the 3 predictors.</p>
+<p><strong>Testing overall significance</strong> (<span class="math inline">\(H_0: \beta_1 = \beta_2 = \beta_3 = 0\)</span>), <span class="math inline">\(n = 32\)</span>, <span class="math inline">\(p = 3\)</span> predictors, <span class="math inline">\(df = (3,\, 28)\)</span>:</p>
+<p><strong>Method 1 — p-value.</strong> <span class="math inline">\(F_{\text{cal}} = 48.96\)</span>, <span class="math inline">\(p &lt; 0.001 &lt; \alpha = 0.05\)</span> <span class="math inline">\(\Rightarrow\)</span> <strong>Reject</strong> <span class="math inline">\(H_0\)</span>.</p>
+<p><strong>Method 2 — critical value.</strong> The F-test is always right-tailed: <span class="math display">\[F_{\text{crit}} = F_{0.95,\,(3,28)} = \texttt{qf(0.95, 3, 28)} = 2.947\]</span> <span class="math display">\[F_{\text{cal}} = 48.96 &gt; F_{\text{crit}} = 2.947 \quad \Rightarrow \quad \textbf{Reject } H_0\]</span></p>
+<p>Both methods agree: at least one predictor has a non-zero coefficient (<span class="math inline">\(F_{\text{cal}} = 48.96\)</span>, <span class="math inline">\(df = (3, 28)\)</span>, <span class="math inline">\(p &lt; 0.001\)</span> — reported as <span class="math inline">\(F(3, 28) = 48.96\)</span>).</p>
 </section>
 <section id="r-example-multiple-linear-regression" class="level2">
 <h2 class="anchored" data-anchor-id="r-example-multiple-linear-regression">R Example: Multiple Linear Regression</h2>
@@ -2852,9 +2861,9 @@ $ medv    &lt;dbl&gt; 24.0, 21.6, 34.7, 33.4, 36.2, 28.7, 22.9, 27.1, 16.5, 18.9
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">GAM</td>
-<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">104</td>
-<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">8.962</td>
+<td style="text-align: left; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">GAM</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">104</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">8.962</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">OLS (full)</td>

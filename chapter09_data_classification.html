@@ -2125,7 +2125,7 @@ Yes  30  38   0.4411765</code></pre>
 </tr>
 </tbody>
 </table>
-<p>Random Forest has the highest mean AUC and the lowest variability. A paired t-test confirms Random Forest significantly outperforms KNN (<span class="math inline">\(t_9 = 3.2\)</span>, <span class="math inline">\(p = 0.011\)</span>) and Decision Tree (<span class="math inline">\(p = 0.003\)</span>), but does not significantly outperform Logistic Regression (<span class="math inline">\(p = 0.12\)</span>). Given that Logistic Regression is nearly as accurate and far more interpretable, it may be preferred for a clinical deployment.</p>
+<p>Random Forest has the highest mean AUC and the lowest variability. A paired t-test confirms Random Forest significantly outperforms KNN (<span class="math inline">\(t_{\text{cal}} = 3.2\)</span>, <span class="math inline">\(df = 9\)</span>, <span class="math inline">\(p = 0.011\)</span> — reported as <span class="math inline">\(t(9) = 3.2\)</span>) and Decision Tree (<span class="math inline">\(p = 0.003\)</span>), but does not significantly outperform Logistic Regression (<span class="math inline">\(p = 0.12\)</span>). Given that Logistic Regression is nearly as accurate and far more interpretable, it may be preferred for a clinical deployment.</p>
 </section>
 <section id="r-example-cross-validation-and-model-comparison" class="level2">
 <h2 class="anchored" data-anchor-id="r-example-cross-validation-and-model-comparison">R Example: Cross-Validation and Model Comparison</h2>
@@ -2322,12 +2322,12 @@ RF   1  1        1                </code></pre>
 </thead>
 <tbody>
 <tr class="odd">
-<td style="text-align: left; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">LR</td>
-<td style="text-align: left; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">LR</td>
-<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">0.8589</td>
-<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">0.0519</td>
-<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">0.7513</td>
-<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 255) !important;">0.9254</td>
+<td style="text-align: left; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">LR</td>
+<td style="text-align: left; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">LR</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">0.8589</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">0.0519</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">0.7513</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">0.9254</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">RF</td>
