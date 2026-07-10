@@ -1101,7 +1101,7 @@ Beyond performance, consider:
 | Decision Tree | 0.782 | 0.052 |
 | Random Forest | 0.856 | 0.022 |
 
-Random Forest has the highest mean AUC and the lowest variability. A paired t-test confirms Random Forest significantly outperforms KNN ($t_9 = 3.2$, $p = 0.011$) and Decision Tree ($p = 0.003$), but does not significantly outperform Logistic Regression ($p = 0.12$). Given that Logistic Regression is nearly as accurate and far more interpretable, it may be preferred for a clinical deployment.
+Random Forest has the highest mean AUC and the lowest variability. A paired t-test confirms Random Forest significantly outperforms KNN ($t_{\text{cal}} = 3.2$, $df = 9$, $p = 0.011$ — reported as $t(9) = 3.2$) and Decision Tree ($p = 0.003$), but does not significantly outperform Logistic Regression ($p = 0.12$). Given that Logistic Regression is nearly as accurate and far more interpretable, it may be preferred for a clinical deployment.
 
 ## R Example: Cross-Validation and Model Comparison
 

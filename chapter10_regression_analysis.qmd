@@ -114,7 +114,17 @@ Fitted model: $\hat{\text{mpg}} = 37.29 - 5.34 \times \text{wt}$
 - Intercept: A car weighing 0 lbs would have an expected mpg of 37.29 — extrapolation beyond the data range; not meaningful.
 - Slope: Each additional 1,000 lbs of weight is associated with a decrease of 5.34 mpg, on average.
 - $R^2 = 0.753$: Weight explains 75.3% of the variance in fuel efficiency.
-- $t = -9.56$, $p < 0.001$: The slope is highly significantly different from zero.
+- Testing $H_0: \beta_1 = 0$ vs. $H_1: \beta_1 \neq 0$ (two-tailed), $n = 32$, $df = n - 2 = 30$:
+
+**Method 1 — p-value.** $t_{\text{cal}} = -9.56$, $p < 0.001 < \alpha = 0.05$ $\Rightarrow$ **Reject** $H_0$.
+
+**Method 2 — critical value.** Two-tailed test, so:
+$$t_{\text{crit}} = \pm\, t_{0.975,\,30} = \pm\,\texttt{qt(0.975, 30)} = \pm 2.042$$
+$$|t_{\text{cal}}| = 9.56 > 2.042 \quad \Rightarrow \quad \textbf{Reject } H_0$$
+
+Both methods agree: the slope is highly significantly different from
+zero ($t_{\text{cal}} = -9.56$, $df = 30$, $p < 0.001$ — reported as
+$t(30) = -9.56$).
 
 ## R Example: Simple Linear Regression
 
@@ -249,6 +259,13 @@ $$H_0: \beta_1 = \beta_2 = \cdots = \beta_p = 0$$
 
 $$F = \frac{(TSS - RSS)/p}{RSS/(n-p-1)} = \frac{MS_{\text{Reg}}}{MS_{\text{Res}}} \sim F(p, n-p-1) \text{ under } H_0$$
 
+The F-distribution takes **two** degrees-of-freedom parameters, but the
+same quantile convention from Chapter 3 applies: `qf(p, df1, df2)` returns
+the value with cumulative probability $p$ to its left. The F-test is
+always right-tailed (only large $F$ indicates evidence against $H_0$), so
+the critical value at significance $\alpha$ is $F_{\text{crit}} =
+F_{1-\alpha,\,(df_1, df_2)}$.
+
 ### Multicollinearity
 
 When predictors are highly correlated, coefficient estimates become unstable and standard errors inflate. The **Variance Inflation Factor (VIF)** measures how much the variance of $\hat{\beta}_j$ is inflated by collinearity:
@@ -282,7 +299,19 @@ $$\hat{\text{mpg}} = 34.00 - 2.88 \cdot \text{wt} - 0.037 \cdot \text{hp} + 2.08
 - Each 1,000 lbs increase in weight decreases mpg by 2.88, **holding hp and am constant**.
 - Each additional horsepower decreases mpg by 0.037, holding wt and am constant.
 - Manual transmission (am = 1) increases mpg by 2.08 compared to automatic, holding wt and hp constant.
-- $\bar{R}^2 = 0.826$: The model explains 82.6% of variance after adjusting for the 3 predictors.
+- $\bar{R}^2 = 0.823$: The model explains 82.3% of variance after adjusting for the 3 predictors.
+
+**Testing overall significance** ($H_0: \beta_1 = \beta_2 = \beta_3 = 0$), $n = 32$, $p = 3$ predictors, $df = (3,\, 28)$:
+
+**Method 1 — p-value.** $F_{\text{cal}} = 48.96$, $p < 0.001 < \alpha = 0.05$ $\Rightarrow$ **Reject** $H_0$.
+
+**Method 2 — critical value.** The F-test is always right-tailed:
+$$F_{\text{crit}} = F_{0.95,\,(3,28)} = \texttt{qf(0.95, 3, 28)} = 2.947$$
+$$F_{\text{cal}} = 48.96 > F_{\text{crit}} = 2.947 \quad \Rightarrow \quad \textbf{Reject } H_0$$
+
+Both methods agree: at least one predictor has a non-zero coefficient
+($F_{\text{cal}} = 48.96$, $df = (3, 28)$, $p < 0.001$ — reported as
+$F(3, 28) = 48.96$).
 
 ## R Example: Multiple Linear Regression
 

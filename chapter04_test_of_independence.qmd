@@ -199,6 +199,33 @@ Under $H_0$ (independence), $\chi^2 \sim \chi^2((r-1)(c-1))$ approximately.
 $$H_0: \text{The two variables are independent}$$
 $$H_1: \text{The two variables are associated}$$
 
+### Critical Value for the Chi-Square Test
+
+Recall from Chapter 3: a critical value is a quantile chosen so that the
+area beyond it equals $\alpha$. The same idea extends to any distribution
+— including the chi-square distribution, which is what we need here. The
+quantile function follows the same `q`-prefix convention:
+
+| Distribution | CDF | Quantile |
+|---|---|---|
+| $t(df)$ | `pt(x, df)` | `qt(p, df)` |
+| $\chi^2(df)$ | `pchisq(x, df)` | `qchisq(p, df)` |
+
+The chi-square test is always **right-tailed** — larger $\chi^2$ means
+more disagreement between observed and expected counts, so the rejection
+region is only in the upper tail. The critical value at significance
+$\alpha$ with $df$ degrees of freedom is:
+
+$$\chi^2_{\text{crit}} = \chi^2_{1-\alpha,\; df}$$
+
+```{r chisq-crit-primer}
+qchisq(0.95, df = 2)   # chi^2_0.95,2 = 5.991
+```
+
+Just as before, keep $\chi^2_{\text{cal}}$ (computed from your contingency
+table) separate from $\chi^2_{\text{crit}}$ (determined only by $\alpha$
+and $df$, via `qchisq()`).
+
 ### Assumptions
 
 1. Observations are **independent** (each subject appears in exactly one cell).
@@ -246,7 +273,20 @@ $$\chi^2 = \frac{(40-27.6)^2}{27.6} + \frac{(25-37.4)^2}{37.4} + \cdots = 5.54 +
 
 **df** $= (3-1)(2-1) = 2$, **p-value** $= P(\chi^2_2 > 17.35) < 0.001$
 
-**Decision:** Reject $H_0$ — exercise frequency and health status are significantly associated ($\chi^2(2) = 17.35$, $p < 0.001$).
+**Decision — two equivalent methods.**
+
+**Method 1 — p-value.**
+$$p < 0.001 < \alpha = 0.05 \quad \Rightarrow \quad \textbf{Reject } H_0$$
+
+**Method 2 — critical value.** The chi-square test is right-tailed, so:
+$$\chi^2_{\text{crit}} = \chi^2_{0.95,\,2} = \texttt{qchisq(0.95, 2)} = 5.991$$
+
+Compare to the calculated statistic:
+$$\chi^2_{\text{cal}} = 17.35 > \chi^2_{\text{crit}} = 5.991 \quad \Rightarrow \quad \textbf{Reject } H_0$$
+
+Both methods agree — exercise frequency and health status are
+significantly associated ($\chi^2_{\text{cal}} = 17.35$, $df = 2$,
+$p < 0.001$ — reported as $\chi^2(2) = 17.35$).
 
 **Standardized residuals** reveal the pattern: "Rarely exercises / Poor Health" is notably higher than expected ($r = +2.35$), while "Regularly exercises / Poor Health" is notably lower ($r = -2.08$) — people who exercise regularly are less likely to report poor health.
 
@@ -692,7 +732,8 @@ A significant correlation between $X$ and $Y$ does not imply that $X$ causes $Y$
 
 **Example 4.5.** A researcher examines the relationship between hours of sleep per night ($X$) and cognitive performance score ($Y$) in 40 participants.
 
-Results: $r = 0.61$, $t_{38} = 4.73$, $p < 0.001$, 95% CI: $(0.37, 0.78)$.
+Results: $r = 0.61$, $t_{\text{cal}} = 4.73$, $df = 38$, $p < 0.001$
+(reported as $t(38) = 4.73$), 95% CI: $(0.37, 0.78)$.
 
 **Interpretation:** There is a statistically significant, strong positive linear correlation between sleep duration and cognitive performance ($r = 0.61$, $p < 0.001$). The 95% CI $(0.37, 0.78)$ excludes zero, confirming the association. However, this is an observational study — we cannot conclude that more sleep **causes** better performance.
 
@@ -845,7 +886,7 @@ A subtle distinction: the **point-biserial** is used when the binary variable is
 
 ## Example: Point-Biserial Correlation
 
-**Example 4.6.** A study records whether students passed a preparatory course (0 = No, 1 = Yes) and their final exam score. Results: $r_{pb} = 0.48$, $t_{58} = 4.19$, $p < 0.001$.
+**Example 4.6.** A study records whether students passed a preparatory course (0 = No, 1 = Yes) and their final exam score. Results: $r_{pb} = 0.48$, $t_{\text{cal}} = 4.19$, $df = 58$, $p < 0.001$ (reported as $t(58) = 4.19$).
 
 **Interpretation:** Students who passed the preparatory course scored significantly higher on the final exam ($r_{pb} = 0.48$, $p < 0.001$). This is a moderate-to-strong effect, indicating the preparatory course is associated with better exam performance. Note that this is equivalent to a two-sample t-test comparing exam scores between the two groups.
 

@@ -927,6 +927,14 @@ $$T = \frac{\bar{X} - \mu}{s / \sqrt{n}} \sim t(n-1)$$
 
 The $t$-distribution is symmetric and bell-shaped like the normal, but has **heavier tails** — reflecting the additional uncertainty from estimating $\sigma$. As $n \to \infty$, $t(n-1) \to N(0,1)$.
 
+**A note on notation you'll need soon:** every distribution has a CDF
+(`pnorm()`, `pt()`, ...) that goes from a value to a cumulative probability.
+It also has an inverse — the **quantile function** (`qnorm()`, `qt()`, ...)
+— that goes the other way: from a cumulative probability back to a value.
+We write the quantile using a subscript equal to that cumulative
+probability, e.g. $z_{0.975}$ or $t_{0.95,\,df}$. You'll use this constantly
+in Chapter 3 to find critical values — we'll build it up properly there.
+
 ## Example: Demonstrating the CLT
 
 **Example 2.8.** Consider sampling from a highly skewed **Exponential(1)** distribution ($\mu = 1$, $\sigma = 1$). The CLT predicts that for large $n$, the sampling distribution of $\bar{X}$ will be approximately $N(1, 1/n)$.

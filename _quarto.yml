@@ -10,7 +10,7 @@ book:
   subtitle: "229711"
   author: "Parichart Pattarapanitchai"
   downloads: [pdf]
-  date: "2026"
+  date: "today"
   chapters:
     - index.qmd
     - chapter01_descriptive_statistics.qmd

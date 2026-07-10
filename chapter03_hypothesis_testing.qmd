@@ -167,6 +167,74 @@ Every hypothesis test follows the same five-step procedure:
 5.  **Decide** and **interpret** in context: reject or fail to reject
     $H_0$, and state the practical meaning.
 
+### Quantiles and Critical Values
+
+Step 4 above mentions comparing the test statistic to a **critical
+value** — we define that here, since we'll use it in every example going
+forward.
+
+Every distribution has a CDF (`pnorm()`, `pt()`, ...) that goes from a
+value to a cumulative probability. It also has an inverse — the
+**quantile function** (`qnorm()`, `qt()`, ...) — that goes the other way:
+from a cumulative probability back to a value.
+
+$$\text{If } P(X \leq x_p) = p, \text{ then } x_p \text{ is the } p\text{-th quantile of } X$$
+
+| Distribution | CDF (area to the left) | Quantile (inverse CDF) |
+|---|---|---|
+| Standard Normal | `pnorm(x)` | `qnorm(p)` |
+| $t(df)$ | `pt(x, df)` | `qt(p, df)` |
+
+**Notation.** We write the quantile using a subscript equal to the
+cumulative probability: $z_p$ for the standard normal, $t_{p, df}$ for the
+$t$-distribution. **The subscript is always the area to the *left*** —
+matching the `p` argument you pass into `qnorm()` / `qt()` directly. A
+**critical value** is simply a quantile chosen so that the area beyond it
+equals $\alpha$ (or $\alpha/2$ per tail, for a two-tailed test).
+
+::: {.callout-warning}
+## Convention check
+
+Some textbooks write $t_{\alpha, df}$ for the area in the **right** tail —
+the opposite of the convention here. Always check the definition, not just
+the symbol. **In this book, the subscript is the left-tail cumulative
+probability.**
+:::
+
+```{r quantile-primer}
+qnorm(0.975)        # z_0.975  = 1.959964
+qnorm(0.95)          # z_0.95   = 1.644854
+qt(0.95, df = 19)    # t_0.95,19 = 1.729133
+```
+
+$z_{0.975} \approx 1.96$ is the two-tailed 95% critical value (2.5% in each
+tail). $z_{0.95} \approx 1.645$ is the right-tailed 95% critical value (5%
+in the upper tail). Both reappear throughout this chapter.
+
+::: {.callout-important}
+## Calculated statistic vs. critical value
+
+- **Calculated statistic** ($t_{\text{cal}}$, or $z_{\text{cal}}$):
+  computed **from your sample** ($\bar{x}$, $s$, $n$). Changes with every
+  new sample.
+- **Critical value** ($t_{\text{crit}}$, e.g. $t_{0.95, 19}$): determined
+  **only by $\alpha$ and $df$**, via `qt()` / `qnorm()`. Does not depend on
+  your data.
+
+Every test in this chapter compares these two. If unsure which you're
+looking at, ask: "did this come from the data, or from `qt()`?"
+:::
+
+**A third notation you'll see, so all three don't blur together:** $T_{df}$
+(capital $T$) denotes the **random variable** itself — "$T_{19}$ follows a
+$t$-distribution with 19 degrees of freedom" — used when *stating* a
+p-value, e.g. $P(T_{19} < -1.961)$. It is neither the quantile
+$t_{p, df}$ nor the calculated statistic $t_{\text{cal}}$; it's the
+distribution the other two live on. When we *report* a result, we'll write
+$t_{\text{cal}} = \ldots$ (df = \ldots), matching the software convention
+`t(df) = value` you'll see in R output and in papers — never a bare
+$t_{df}$, since that subscript position is already reserved for quantiles.
+
 ### Confidence Intervals and Hypothesis Tests
 
 Confidence intervals and hypothesis tests are two sides of the same
@@ -195,12 +263,28 @@ $$t = \frac{\bar{x} - \mu_0}{s/\sqrt{n}} = \frac{26.5 - 24}{7.2/\sqrt{36}} = \fr
 **Step 4 — p-value** (right-tailed, df = 35):
 $$p\text{-value} = P(T_{35} > 2.083) \approx 0.022$$
 
-**Step 5 — Decision:** Since $p = 0.022 < \alpha = 0.05$, we **reject**
-$H_0$.
+**Step 5 — Decision.** Two equivalent ways to decide:
+
+**Method 1 — p-value.** Compare the p-value to $\alpha$:
+$$p = 0.022 < \alpha = 0.05 \quad \Rightarrow \quad \textbf{Reject } H_0$$
+
+**Method 2 — critical value.** This is a right-tailed test, so the
+rejection region is the upper 5% of $t(35)$:
+$$t_{\text{crit}} = t_{0.95,\,35} = \texttt{qt(0.95, 35)} = 1.690$$
+
+Compare the sample statistic $t_{\text{cal}} = 2.083$ to this threshold:
+$$\text{Reject } H_0 \text{ if } t_{\text{cal}} > t_{\text{crit}}$$
+$$2.083 > 1.690 \quad \Rightarrow \quad \textbf{Reject } H_0$$
+
+Both methods agree — they must, since $p = P(T_{35} > t_{\text{cal}})$ and
+$t_{\text{crit}}$ is defined as the value with exactly $\alpha$ beyond it,
+so "$t_{\text{cal}}$ past $t_{\text{crit}}$" and "$p < \alpha$" are the same
+statement viewed two ways.
 
 **Interpretation:** There is statistically significant evidence at the
 5% level that the true average completion time exceeds 24 months
-($t_{35} = 2.08$, $p = 0.022$). The sample mean of 26.5 months suggests
+($t_{\text{cal}} = 2.08$, $df = 35$, $p = 0.022$ — reported in papers
+and R output as $t(35) = 2.08$). The sample mean of 26.5 months suggests
 students take approximately 2.5 months longer than the claimed average.
 
 ## R Example: Visualizing the p-value
@@ -333,10 +417,26 @@ $$t = \frac{246.8 - 250}{7.3 / \sqrt{20}} = \frac{-3.2}{1.632} = -1.961$$
 
 **p-value** (left-tailed, df = 19): $P(T_{19} < -1.961) = 0.032$
 
-**Decision:** $p = 0.032 < \alpha = 0.05$ → **Reject** $H_0$.
+**Decision — two equivalent methods.**
+
+**Method 1 — p-value.**
+$$p = 0.032 < \alpha = 0.05 \quad \Rightarrow \quad \textbf{Reject } H_0$$
+
+**Method 2 — critical value.** Left-tailed test, $\alpha = 0.05$, $df = 19$:
+
+$$t_{\text{crit}} = -t_{0.95,\,19} = -\texttt{qt(0.95, 19)} = -1.729$$
+
+Compare to the sample statistic $t_{\text{cal}} = -1.961$:
+
+$$\text{Reject } H_0 \text{ if } t_{\text{cal}} < t_{\text{crit}}$$
+$$-1.961 < -1.729 \quad \Rightarrow \quad \textbf{Reject } H_0$$
+
+Both methods agree: the p-value is the area beyond $t_{\text{cal}}$, and
+$t_{\text{crit}}$ marks off area exactly $\alpha$.
 
 **Interpretation:** There is significant evidence that the machine
-dispenses less than 250 ml on average ($t_{19} = -1.96$, $p = 0.032$).
+dispenses less than 250 ml on average ($t_{\text{cal}} = -1.96$,
+$df = 19$, $p = 0.032$ — reported as $t(19) = -1.96$).
 The one-sided 95% upper confidence bound for the true mean is 249.6 ml
 — below the claimed 250 ml, consistent with rejecting $H_0$ in this
 left-tailed test.
@@ -500,11 +600,31 @@ $$t = \frac{74.2 - 81.6}{\sqrt{\frac{11.8^2}{30} + \frac{9.4^2}{28}}} = \frac{-7
 
 **df** (Satterthwaite) $\approx 55.6$, **p-value** $\approx 0.010$
 
-**Decision:** $p = 0.010 < 0.05$ → **Reject** $H_0$.
+**Decision — two equivalent methods.**
+
+**Method 1 — p-value.**
+$$p = 0.010 < \alpha = 0.05 \quad \Rightarrow \quad \textbf{Reject } H_0$$
+
+**Method 2 — critical value.** This is a **two-tailed** test, so the
+rejection region is split into both tails: $\alpha/2 = 0.025$ in each.
+Unlike the one-tailed examples so far, this gives us **two** critical
+values, symmetric around zero:
+$$t_{\text{crit}} = \pm\, t_{0.975,\,55.6} = \pm\,\texttt{qt(0.975, 55.6)} = \pm 2.004$$
+
+Compare the sample statistic $t_{\text{cal}} = -2.651$ — for a two-tailed
+test we compare its magnitude:
+$$\text{Reject } H_0 \text{ if } |t_{\text{cal}}| > t_{\text{crit}}$$
+$$|-2.651| = 2.651 > 2.004 \quad \Rightarrow \quad \textbf{Reject } H_0$$
+
+Both methods agree. Note the difference from Examples 3.1 and 3.2: a
+one-tailed test compares $t_{\text{cal}}$ to a single critical value in one
+direction, while a two-tailed test compares $|t_{\text{cal}}|$ to a single
+critical value that represents *two* symmetric boundaries.
 
 **Interpretation:** Students in the flipped classroom scored
 significantly higher than those in the traditional classroom
-($t_{55.6} = -2.65$, $p = 0.010$). The mean difference of 7.4 points
+($t_{\text{cal}} = -2.65$, $df = 55.6$, $p = 0.010$ — reported as
+$t(55.6) = -2.65$). The mean difference of 7.4 points
 (95% CI: 1.7 to 13.1) is both statistically significant and potentially
 educationally meaningful.
 
@@ -700,7 +820,8 @@ $$t = \frac{9.8}{2.90/\sqrt{10}} = \frac{9.8}{0.917} = 10.69$$
 **Decision:** **Reject** $H_0$ with overwhelming evidence.
 
 **Interpretation:** The medication produced a highly significant
-reduction in systolic blood pressure ($t_9 = 10.69$, $p < 0.0001$). The
+reduction in systolic blood pressure ($t_{\text{cal}} = 10.69$,
+$df = 9$, $p < 0.0001$ — reported as $t(9) = 10.69$). The
 mean reduction of 9.8 mmHg (95% CI: 7.73 to 11.87 mmHg) is clinically
 meaningful by conventional standards.
 

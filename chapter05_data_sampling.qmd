@@ -616,7 +616,20 @@ One of the most common questions in research design is: *How many observations d
 
 We want the **margin of error** $E$ (half-width of the CI) to be no larger than a specified value:
 
-$$E = z_{\alpha/2} \cdot \frac{\sigma}{\sqrt{n}} \quad \Rightarrow \quad n = \left(\frac{z_{\alpha/2} \cdot \sigma}{E}\right)^2$$
+$$E = z_{1-\alpha/2} \cdot \frac{\sigma}{\sqrt{n}} \quad \Rightarrow \quad n = \left(\frac{z_{1-\alpha/2} \cdot \sigma}{E}\right)^2$$
+
+::: {.callout-warning}
+## Watch the subscript here
+
+This is exactly the convention trap flagged in Chapter 3: many sources
+write $z_{\alpha/2}$ for this quantity, using the *right-tail* convention
+(area $\alpha/2$ remaining above the value). Under **this book's**
+left-tail-cumulative convention, that same value — e.g. 1.96 for a 95% CI
+— is $z_{1-\alpha/2}$, not $z_{\alpha/2}$. Written the other way,
+$z_{\alpha/2}$ would evaluate to $-1.96$ under our convention, the wrong
+sign for a margin of error. Always check which convention a formula was
+written in before plugging in `qnorm()`.
+:::
 
 Since $\sigma$ is usually unknown, we substitute a prior estimate, a pilot study result, or the rule of thumb $\sigma \approx \text{range}/4$.
 
@@ -627,7 +640,7 @@ $$n^* = \frac{n}{1 + (n-1)/N}$$
 
 For a binary outcome with proportion $p$:
 
-$$n = \frac{z_{\alpha/2}^2 \cdot p(1-p)}{E^2}$$
+$$n = \frac{z_{1-\alpha/2}^2 \cdot p(1-p)}{E^2}$$
 
 When $p$ is unknown, use $p = 0.5$ (maximizes $p(1-p) = 0.25$, giving the most conservative — largest — required $n$).
 
@@ -635,13 +648,16 @@ When $p$ is unknown, use $p = 0.5$ (maximizes $p(1-p) = 0.25$, giving the most c
 
 For a two-sample t-test with equal group sizes, the required $n$ per group to detect effect size $d$ with power $1-\beta$ at significance $\alpha$:
 
-$$n = \frac{2(z_{\alpha/2} + z_\beta)^2}{d^2}$$
+$$n = \frac{2(z_{1-\alpha/2} + z_{1-\beta})^2}{d^2}$$
 
-where $d = |\mu_1 - \mu_2|/\sigma$ is Cohen's d. In practice, use `pwr.t.test()` as in Chapter 3.
+where $d = |\mu_1 - \mu_2|/\sigma$ is Cohen's d. Note $z_{1-\beta}$ follows
+the same convention: for 80% power ($\beta = 0.20$), $z_{1-\beta} =
+z_{0.80} = \texttt{qnorm(0.80)} = 0.842$. In practice, use `pwr.t.test()`
+as in Chapter 3.
 
 ### Common z-Values
 
-| Confidence Level | $\alpha$ | $z_{\alpha/2}$ |
+| Confidence Level | $\alpha$ | $z_{1-\alpha/2}$ |
 |-----------------|---------|----------------|
 | 90% | 0.10 | 1.645 |
 | 95% | 0.05 | 1.960 |
@@ -1470,10 +1486,10 @@ This chapter established sampling as the foundation of all empirical data scienc
 $$\text{SE}(\bar{x}) = \sqrt{\frac{s^2}{n}\left(1 - \frac{n}{N}\right)}$$
 
 **Sample Size for Mean:**
-$$n = \left(\frac{z_{\alpha/2} \cdot \sigma}{E}\right)^2$$
+$$n = \left(\frac{z_{1-\alpha/2} \cdot \sigma}{E}\right)^2$$
 
 **Sample Size for Proportion:**
-$$n = \frac{z_{\alpha/2}^2 \cdot p(1-p)}{E^2}$$
+$$n = \frac{z_{1-\alpha/2}^2 \cdot p(1-p)}{E^2}$$
 
 **Bootstrap Standard Error:**
 $$\widehat{\text{SE}}_{\text{boot}} = \sqrt{\frac{1}{B-1}\sum_{b=1}^{B}(\hat{\theta}^*_b - \bar{\theta}^*)^2}$$
