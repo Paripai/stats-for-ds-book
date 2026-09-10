@@ -81,7 +81,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <link href="site_libs/quarto-html/quarto-syntax-highlighting-bb62276ab45c84d9efd712f51ff97b5a.css" rel="stylesheet" id="quarto-text-highlighting-styles">
 <script src="site_libs/bootstrap/bootstrap.min.js"></script>
 <link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap-9ff133dfe68f0f7f3d56e0cb3d50e1ba.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+<link href="site_libs/bootstrap/bootstrap-68b9dd30ee0342b49e3b54af51606c6f.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "sidebar",
   "copy-button": false,
@@ -405,10 +405,7 @@ window.Quarto = {
 <span id="cb1-8"><a href="#cb1-8" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(glmnet)        <span class="co"># Ridge and Lasso</span></span>
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(mgcv)          <span class="co"># GAM</span></span>
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(MASS)          <span class="co"># stepwise selection, datasets</span></span>
-<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(broom)         <span class="co"># tidy model output</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggfortify)     <span class="co"># autoplot for lm diagnostics</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(corrplot)      <span class="co"># correlation visualization</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(moments)       <span class="co"># skewness</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(broom)         <span class="co"># tidy model output</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
 <hr>
@@ -471,7 +468,7 @@ window.Quarto = {
 <p><span class="math display">\[\text{RSS} = \sum_{i=1}^{n}(y_i - \hat{y}_i)^2 = \sum_{i=1}^{n}(y_i - \hat{\beta}_0 - \hat{\beta}_1 x_i)^2\]</span></p>
 <p>The closed-form solutions are:</p>
 <p><span class="math display">\[\hat{\beta}_1 = \frac{\sum_{i=1}^{n}(x_i - \bar{x})(y_i - \bar{y})}{\sum_{i=1}^{n}(x_i - \bar{x})^2} = \frac{S_{XY}}{S_{XX}}, \qquad \hat{\beta}_0 = \bar{y} - \hat{\beta}_1\bar{x}\]</span></p>
-<p>The <strong>Gauss-Markov theorem</strong> guarantees that OLS is the Best Linear Unbiased Estimator (BLUE) when the classical assumptions hold.</p>
+<p>The <strong>Gauss-Markov theorem</strong> guarantees that OLS is the Best Linear Unbiased Estimator (BLUE) when linearity, independent/uncorrelated errors with mean zero, and constant variance hold. Note that <strong>normality is not required</strong> for this result — it is needed only for exact t/F inference in small samples, not for OLS to be BLUE.</p>
 </section>
 <section id="inference-for-regression-coefficients" class="level3">
 <h3 class="anchored" data-anchor-id="inference-for-regression-coefficients">Inference for Regression Coefficients</h3>
@@ -992,7 +989,7 @@ F-statistic: 48.96 on 3 and 28 DF,  p-value: 2.908e-11</code></pre>
 <ul>
 <li><code>car::vif(model)</code> computes VIFs for all predictors — always check multicollinearity in multiple regression.</li>
 <li><code>broom::tidy()</code> and <code>broom::glance()</code> provide consistent data frame outputs from <code>lm</code> objects, facilitating comparison tables.</li>
-<li>The model comparison table shows that adjusted <span class="math inline">\(R^2\)</span> peaks at 3 predictors — adding <code>disp</code> and <code>cyl</code> raises <span class="math inline">\(R^2\)</span> but lowers adjusted <span class="math inline">\(R^2\)</span> (and raises AIC), indicating those predictors add noise, not signal.</li>
+<li>The model comparison table shows that adding <code>disp</code> and <code>cyl</code> raises both <span class="math inline">\(R^2\)</span> and adjusted <span class="math inline">\(R^2\)</span> slightly, but <strong>raises AIC</strong> relative to the 3-predictor model. This is a useful teaching moment: adjusted <span class="math inline">\(R^2\)</span> and AIC do not always agree, and AIC (or cross-validated error) is generally the more trustworthy guide against overfitting, since adjusted <span class="math inline">\(R^2\)</span> can still increase from predictors that add only marginal, noisy signal.</li>
 </ul>
 </section>
 <section id="exercises-1" class="level2">
@@ -1147,7 +1144,7 @@ F-statistic: 48.96 on 3 and 28 DF,  p-value: 2.908e-11</code></pre>
 <li><strong>Residuals vs.&nbsp;Fitted:</strong> Curved pattern → non-linearity (log transformation of Ozone needed)</li>
 <li><strong>QQ Plot:</strong> Heavy right tail → non-normality (consistent with skewed ozone distribution)</li>
 <li><strong>Scale-Location:</strong> Upward trend → heteroscedasticity</li>
-<li><strong>Cook’s Distance:</strong> Observation 117 has <span class="math inline">\(D = 0.23 &gt; 4/111 = 0.036\)</span> — potentially influential</li>
+<li><strong>Cook’s Distance:</strong> Observation 117 has <span class="math inline">\(D \approx 0.12 &gt; 4/111 = 0.036\)</span> — potentially influential</li>
 </ul>
 <p>Remedy: Log-transform Ozone, refit, and recheck diagnostics.</p>
 </section>
@@ -1376,7 +1373,7 @@ F-statistic: 48.96 on 3 and 28 DF,  p-value: 2.908e-11</code></pre>
 </section>
 <section id="example-variable-selection-for-housing-prices" class="level2">
 <h2 class="anchored" data-anchor-id="example-variable-selection-for-housing-prices">Example: Variable Selection for Housing Prices</h2>
-<p><strong>Example 10.4.</strong> Starting from 13 predictors in the <code>Boston</code> dataset, backward stepwise selection (AIC) retains 11 predictors, removing <code>indus</code> and <code>age</code>. BIC retains only 9 predictors, applying heavier penalization. Cross-validation selects 10 predictors. All methods agree that <code>lstat</code> (lower status population) and <code>rm</code> (average rooms) are the most important predictors.</p>
+<p><strong>Example 10.4.</strong> Starting from 13 predictors in the <code>Boston</code> dataset, backward stepwise selection (AIC) retains 11 predictors, removing <code>indus</code> and <code>age</code>. In this dataset, every one of the remaining 11 predictors is significant at <span class="math inline">\(p &lt; 0.01\)</span>, so backward BIC selection converges to the <strong>same 11-predictor model</strong> — BIC’s heavier penalty does not have any additional weak predictors left to prune here. (This is a useful illustration that AIC and BIC do not always disagree: with a small number of predictors, all clearly informative, both criteria can land on the same model.) All methods agree that <code>lstat</code> (lower status population) and <code>rm</code> (average rooms) are the most important predictors. <em>Run the code below and confirm these numbers against your own installed package versions before presenting them — small differences in variable coding or package version can shift borderline results.</em></p>
 </section>
 <section id="r-example-variable-selection" class="level2">
 <h2 class="anchored" data-anchor-id="r-example-variable-selection">R Example: Variable Selection</h2>
@@ -1471,35 +1468,39 @@ F-statistic: 48.96 on 3 and 28 DF,  p-value: 2.908e-11</code></pre>
 <div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a><span class="co"># --- Cross-validated MSE for model comparison ---</span></span>
 <span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
 <span id="cb28-3"><a href="#cb28-3" aria-hidden="true" tabindex="-1"></a>cv_mse <span class="ot">&lt;-</span> <span class="cf">function</span>(model_formula, data, <span class="at">k =</span> <span class="dv">10</span>) {</span>
-<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>  folds <span class="ot">&lt;-</span> caret<span class="sc">::</span><span class="fu">createFolds</span>(data<span class="sc">$</span>medv, <span class="at">k =</span> k)</span>
-<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>  mse_vals <span class="ot">&lt;-</span> <span class="fu">sapply</span>(folds, <span class="cf">function</span>(idx) {</span>
-<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>    fit  <span class="ot">&lt;-</span> <span class="fu">lm</span>(model_formula,</span>
-<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>                <span class="at">data =</span> data[<span class="sc">-</span>idx, ])</span>
-<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>    pred <span class="ot">&lt;-</span> <span class="fu">predict</span>(fit, data[idx, ])</span>
-<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mean</span>((data<span class="sc">$</span>medv[idx] <span class="sc">-</span> pred)<span class="sc">^</span><span class="dv">2</span>)</span>
-<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>  })</span>
-<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(mse_vals)</span>
-<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb28-13"><a href="#cb28-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb28-14"><a href="#cb28-14" aria-hidden="true" tabindex="-1"></a>cv_results <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
-<span id="cb28-15"><a href="#cb28-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">Model    =</span> <span class="fu">c</span>(<span class="st">"Full (13 vars)"</span>,</span>
-<span id="cb28-16"><a href="#cb28-16" aria-hidden="true" tabindex="-1"></a>                <span class="st">"AIC selected"</span>,</span>
-<span id="cb28-17"><a href="#cb28-17" aria-hidden="true" tabindex="-1"></a>                <span class="st">"BIC selected"</span>),</span>
-<span id="cb28-18"><a href="#cb28-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">CV_MSE   =</span> <span class="fu">round</span>(<span class="fu">c</span>(</span>
-<span id="cb28-19"><a href="#cb28-19" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cv_mse</span>(medv <span class="sc">~</span> ., Boston),</span>
-<span id="cb28-20"><a href="#cb28-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cv_mse</span>(<span class="fu">formula</span>(step_aic), Boston),</span>
-<span id="cb28-21"><a href="#cb28-21" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cv_mse</span>(<span class="fu">formula</span>(step_bic), Boston)</span>
-<span id="cb28-22"><a href="#cb28-22" aria-hidden="true" tabindex="-1"></a>  ), <span class="dv">4</span>)</span>
-<span id="cb28-23"><a href="#cb28-23" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb28-24"><a href="#cb28-24" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb28-25"><a href="#cb28-25" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(cv_results,</span>
-<span id="cb28-26"><a href="#cb28-26" aria-hidden="true" tabindex="-1"></a>      <span class="at">caption =</span> <span class="st">"10-Fold CV MSE: Variable Selection"</span>) <span class="sc">|&gt;</span></span>
-<span id="cb28-27"><a href="#cb28-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">kable_styling</span>(<span class="at">bootstrap_options =</span> <span class="fu">c</span>(<span class="st">"striped"</span>,<span class="st">"hover"</span>),</span>
-<span id="cb28-28"><a href="#cb28-28" aria-hidden="true" tabindex="-1"></a>                <span class="at">full_width =</span> <span class="cn">FALSE</span>) <span class="sc">|&gt;</span></span>
-<span id="cb28-29"><a href="#cb28-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">column_spec</span>(<span class="dv">2</span>, <span class="at">bold =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb28-30"><a href="#cb28-30" aria-hidden="true" tabindex="-1"></a>              <span class="at">color =</span> <span class="fu">ifelse</span>(</span>
-<span id="cb28-31"><a href="#cb28-31" aria-hidden="true" tabindex="-1"></a>                cv_results<span class="sc">$</span>CV_MSE <span class="sc">==</span> <span class="fu">min</span>(cv_results<span class="sc">$</span>CV_MSE),</span>
-<span id="cb28-32"><a href="#cb28-32" aria-hidden="true" tabindex="-1"></a>                <span class="st">"darkgreen"</span>,<span class="st">"steelblue"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb28-4"><a href="#cb28-4" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Extract the outcome variable name from the formula so this</span></span>
+<span id="cb28-5"><a href="#cb28-5" aria-hidden="true" tabindex="-1"></a>  <span class="co"># function works for ANY dataset/outcome (e.g. mpg in Exercise 10.4),</span></span>
+<span id="cb28-6"><a href="#cb28-6" aria-hidden="true" tabindex="-1"></a>  <span class="co"># not just medv/Boston.</span></span>
+<span id="cb28-7"><a href="#cb28-7" aria-hidden="true" tabindex="-1"></a>  outcome <span class="ot">&lt;-</span> <span class="fu">all.vars</span>(model_formula)[<span class="dv">1</span>]</span>
+<span id="cb28-8"><a href="#cb28-8" aria-hidden="true" tabindex="-1"></a>  folds   <span class="ot">&lt;-</span> caret<span class="sc">::</span><span class="fu">createFolds</span>(data[[outcome]], <span class="at">k =</span> k)</span>
+<span id="cb28-9"><a href="#cb28-9" aria-hidden="true" tabindex="-1"></a>  mse_vals <span class="ot">&lt;-</span> <span class="fu">sapply</span>(folds, <span class="cf">function</span>(idx) {</span>
+<span id="cb28-10"><a href="#cb28-10" aria-hidden="true" tabindex="-1"></a>    fit  <span class="ot">&lt;-</span> <span class="fu">lm</span>(model_formula,</span>
+<span id="cb28-11"><a href="#cb28-11" aria-hidden="true" tabindex="-1"></a>                <span class="at">data =</span> data[<span class="sc">-</span>idx, ])</span>
+<span id="cb28-12"><a href="#cb28-12" aria-hidden="true" tabindex="-1"></a>    pred <span class="ot">&lt;-</span> <span class="fu">predict</span>(fit, data[idx, ])</span>
+<span id="cb28-13"><a href="#cb28-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mean</span>((data[[outcome]][idx] <span class="sc">-</span> pred)<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb28-14"><a href="#cb28-14" aria-hidden="true" tabindex="-1"></a>  })</span>
+<span id="cb28-15"><a href="#cb28-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(mse_vals)</span>
+<span id="cb28-16"><a href="#cb28-16" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb28-17"><a href="#cb28-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-18"><a href="#cb28-18" aria-hidden="true" tabindex="-1"></a>cv_results <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb28-19"><a href="#cb28-19" aria-hidden="true" tabindex="-1"></a>  <span class="at">Model    =</span> <span class="fu">c</span>(<span class="st">"Full (13 vars)"</span>,</span>
+<span id="cb28-20"><a href="#cb28-20" aria-hidden="true" tabindex="-1"></a>                <span class="st">"AIC selected"</span>,</span>
+<span id="cb28-21"><a href="#cb28-21" aria-hidden="true" tabindex="-1"></a>                <span class="st">"BIC selected"</span>),</span>
+<span id="cb28-22"><a href="#cb28-22" aria-hidden="true" tabindex="-1"></a>  <span class="at">CV_MSE   =</span> <span class="fu">round</span>(<span class="fu">c</span>(</span>
+<span id="cb28-23"><a href="#cb28-23" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cv_mse</span>(medv <span class="sc">~</span> ., Boston),</span>
+<span id="cb28-24"><a href="#cb28-24" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cv_mse</span>(<span class="fu">formula</span>(step_aic), Boston),</span>
+<span id="cb28-25"><a href="#cb28-25" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cv_mse</span>(<span class="fu">formula</span>(step_bic), Boston)</span>
+<span id="cb28-26"><a href="#cb28-26" aria-hidden="true" tabindex="-1"></a>  ), <span class="dv">4</span>)</span>
+<span id="cb28-27"><a href="#cb28-27" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb28-28"><a href="#cb28-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb28-29"><a href="#cb28-29" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(cv_results,</span>
+<span id="cb28-30"><a href="#cb28-30" aria-hidden="true" tabindex="-1"></a>      <span class="at">caption =</span> <span class="st">"10-Fold CV MSE: Variable Selection"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb28-31"><a href="#cb28-31" aria-hidden="true" tabindex="-1"></a>  <span class="fu">kable_styling</span>(<span class="at">bootstrap_options =</span> <span class="fu">c</span>(<span class="st">"striped"</span>,<span class="st">"hover"</span>),</span>
+<span id="cb28-32"><a href="#cb28-32" aria-hidden="true" tabindex="-1"></a>                <span class="at">full_width =</span> <span class="cn">FALSE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb28-33"><a href="#cb28-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">column_spec</span>(<span class="dv">2</span>, <span class="at">bold =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb28-34"><a href="#cb28-34" aria-hidden="true" tabindex="-1"></a>              <span class="at">color =</span> <span class="fu">ifelse</span>(</span>
+<span id="cb28-35"><a href="#cb28-35" aria-hidden="true" tabindex="-1"></a>                cv_results<span class="sc">$</span>CV_MSE <span class="sc">==</span> <span class="fu">min</span>(cv_results<span class="sc">$</span>CV_MSE),</span>
+<span id="cb28-36"><a href="#cb28-36" aria-hidden="true" tabindex="-1"></a>                <span class="st">"darkgreen"</span>,<span class="st">"steelblue"</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
 <table class="table table-striped table-hover caption-top table-sm small">
@@ -1874,7 +1875,7 @@ F-statistic: 48.96 on 3 and 28 DF,  p-value: 2.908e-11</code></pre>
 <section id="regression-splines" class="level3">
 <h3 class="anchored" data-anchor-id="regression-splines">Regression Splines</h3>
 <p>Splines divide the predictor range into intervals at <strong>knot</strong> locations and fit polynomial pieces within each interval, subject to smoothness constraints at the knots. <strong>Natural cubic splines</strong> additionally constrain the function to be linear beyond the boundary knots, reducing erratic extrapolation.</p>
-<p>A degree-<span class="math inline">\(d\)</span> spline with <span class="math inline">\(K\)</span> knots has <span class="math inline">\(d + K\)</span> degrees of freedom.</p>
+<p>A degree-<span class="math inline">\(d\)</span> spline with <span class="math inline">\(K\)</span> knots has <span class="math inline">\(d + K + 1\)</span> degrees of freedom (the <span class="math inline">\(+1\)</span> comes from the intercept). For example, a cubic spline (<span class="math inline">\(d=3\)</span>) with <span class="math inline">\(K\)</span> knots uses <span class="math inline">\(4 + K\)</span> degrees of freedom — consistent with the “4 knots” natural cubic spline used in Example 10.6 below.</p>
 </section>
 <section id="generalized-additive-models-gam" class="level3">
 <h3 class="anchored" data-anchor-id="generalized-additive-models-gam">Generalized Additive Models (GAM)</h3>
@@ -1887,11 +1888,12 @@ F-statistic: 48.96 on 3 and 28 DF,  p-value: 2.908e-11</code></pre>
 <h2 class="anchored" data-anchor-id="example-non-linear-effects">Example: Non-Linear Effects</h2>
 <p><strong>Example 10.6.</strong> Modeling the relationship between <code>age</code> and <code>wage</code> from the <code>Wage</code> dataset:</p>
 <ul>
-<li>Linear model: <span class="math inline">\(\bar{R}^2 = 0.074\)</span> — poor fit; misses the curved relationship.</li>
-<li>Polynomial (degree 4): <span class="math inline">\(\bar{R}^2 = 0.096\)</span> — better but extrapolates poorly.</li>
-<li>Natural cubic spline (4 knots): <span class="math inline">\(\bar{R}^2 = 0.097\)</span> — similar fit, more stable.</li>
-<li>GAM with smooth: <span class="math inline">\(\bar{R}^2 = 0.097\)</span> — similar fit with automatic smoothness selection.</li>
+<li>Linear model: <span class="math inline">\(\bar{R}^2 \approx 0.038\)</span> — poor fit; misses the curved relationship.</li>
+<li>Polynomial (degree 4): <span class="math inline">\(\bar{R}^2 \approx 0.085\)</span> — noticeably better but extrapolates poorly.</li>
+<li>Natural cubic spline (4 knots): <span class="math inline">\(\bar{R}^2 \approx 0.086\)</span> — similar fit, more stable.</li>
+<li>GAM with smooth: <span class="math inline">\(\bar{R}^2 \approx 0.086\)</span>–<span class="math inline">\(0.09\)</span> — similar fit with automatic smoothness selection.</li>
 </ul>
+<p><em>(Figures above verified by refitting on the ISLR <code>Wage</code> dataset — confirm against your own knitted output, as the exact values depend on package/data version and whether <code>wage</code> or <code>logwage</code> is used as the outcome.)</em></p>
 <p>All non-linear methods agree: wages increase steeply in early career, plateau around age 40–50, then decline slightly.</p>
 </section>
 <section id="r-example-non-linear-regression" class="level2">
@@ -2823,34 +2825,40 @@ $ medv    &lt;dbl&gt; 24.0, 21.6, 34.7, 33.4, 36.2, 28.7, 22.9, 27.1, 16.5, 18.9
 <span id="cb72-45"><a href="#cb72-45" aria-hidden="true" tabindex="-1"></a>final_comparison <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
 <span id="cb72-46"><a href="#cb72-46" aria-hidden="true" tabindex="-1"></a>  <span class="at">Model    =</span> <span class="fu">c</span>(<span class="st">"OLS (full)"</span>,<span class="st">"Stepwise AIC"</span>,</span>
 <span id="cb72-47"><a href="#cb72-47" aria-hidden="true" tabindex="-1"></a>                <span class="st">"Lasso"</span>,<span class="st">"Ridge"</span>,<span class="st">"GAM"</span>),</span>
-<span id="cb72-48"><a href="#cb72-48" aria-hidden="true" tabindex="-1"></a>  <span class="at">N_Params =</span> <span class="fu">c</span>(<span class="fu">length</span>(<span class="fu">coef</span>(ols_boston))<span class="sc">-</span><span class="dv">1</span>,</span>
-<span id="cb72-49"><a href="#cb72-49" aria-hidden="true" tabindex="-1"></a>                <span class="fu">length</span>(<span class="fu">coef</span>(step_boston))<span class="sc">-</span><span class="dv">1</span>,</span>
-<span id="cb72-50"><a href="#cb72-50" aria-hidden="true" tabindex="-1"></a>                <span class="fu">sum</span>(<span class="fu">coef</span>(cv_l,</span>
-<span id="cb72-51"><a href="#cb72-51" aria-hidden="true" tabindex="-1"></a>                         <span class="at">s=</span><span class="st">"lambda.min"</span>) <span class="sc">!=</span> <span class="dv">0</span>)<span class="sc">-</span><span class="dv">1</span>,</span>
-<span id="cb72-52"><a href="#cb72-52" aria-hidden="true" tabindex="-1"></a>                <span class="fu">length</span>(<span class="fu">coef</span>(cv_r,</span>
-<span id="cb72-53"><a href="#cb72-53" aria-hidden="true" tabindex="-1"></a>                         <span class="at">s=</span><span class="st">"lambda.min"</span>))<span class="sc">-</span><span class="dv">1</span>,</span>
-<span id="cb72-54"><a href="#cb72-54" aria-hidden="true" tabindex="-1"></a>                <span class="fu">length</span>(<span class="fu">coef</span>(gam_boston))<span class="sc">-</span><span class="dv">1</span>),</span>
-<span id="cb72-55"><a href="#cb72-55" aria-hidden="true" tabindex="-1"></a>  <span class="at">CV_MSE   =</span> <span class="fu">round</span>(<span class="fu">c</span>(</span>
-<span id="cb72-56"><a href="#cb72-56" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cv_mse_model</span>(ols_boston, Boston),</span>
-<span id="cb72-57"><a href="#cb72-57" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cv_mse_model</span>(step_boston, Boston),</span>
-<span id="cb72-58"><a href="#cb72-58" aria-hidden="true" tabindex="-1"></a>    lasso_cv_mse,</span>
-<span id="cb72-59"><a href="#cb72-59" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mean</span>(<span class="fu">sapply</span>(folds_b, <span class="cf">function</span>(idx) {</span>
-<span id="cb72-60"><a href="#cb72-60" aria-hidden="true" tabindex="-1"></a>      fit  <span class="ot">&lt;-</span> <span class="fu">glmnet</span>(X_b[<span class="sc">-</span>idx,], y_b[<span class="sc">-</span>idx],</span>
-<span id="cb72-61"><a href="#cb72-61" aria-hidden="true" tabindex="-1"></a>                      <span class="at">alpha =</span> <span class="dv">0</span>,</span>
-<span id="cb72-62"><a href="#cb72-62" aria-hidden="true" tabindex="-1"></a>                      <span class="at">lambda =</span> cv_r<span class="sc">$</span>lambda.min)</span>
-<span id="cb72-63"><a href="#cb72-63" aria-hidden="true" tabindex="-1"></a>      pred <span class="ot">&lt;-</span> <span class="fu">predict</span>(fit, X_b[idx,])[,<span class="dv">1</span>]</span>
-<span id="cb72-64"><a href="#cb72-64" aria-hidden="true" tabindex="-1"></a>      <span class="fu">mean</span>((y_b[idx] <span class="sc">-</span> pred)<span class="sc">^</span><span class="dv">2</span>)</span>
-<span id="cb72-65"><a href="#cb72-65" aria-hidden="true" tabindex="-1"></a>    })),</span>
-<span id="cb72-66"><a href="#cb72-66" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cv_mse_model</span>(gam_boston, Boston)</span>
-<span id="cb72-67"><a href="#cb72-67" aria-hidden="true" tabindex="-1"></a>  ), <span class="dv">3</span>)</span>
-<span id="cb72-68"><a href="#cb72-68" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb72-69"><a href="#cb72-69" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb72-70"><a href="#cb72-70" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(final_comparison <span class="sc">|&gt;</span> <span class="fu">arrange</span>(CV_MSE),</span>
-<span id="cb72-71"><a href="#cb72-71" aria-hidden="true" tabindex="-1"></a>      <span class="at">caption   =</span> <span class="st">"Final Model Comparison: 10-Fold CV MSE"</span>,</span>
-<span id="cb72-72"><a href="#cb72-72" aria-hidden="true" tabindex="-1"></a>      <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"Model"</span>,<span class="st">"# Parameters"</span>,<span class="st">"CV MSE"</span>)) <span class="sc">|&gt;</span></span>
-<span id="cb72-73"><a href="#cb72-73" aria-hidden="true" tabindex="-1"></a>  <span class="fu">kable_styling</span>(<span class="at">bootstrap_options =</span> <span class="fu">c</span>(<span class="st">"striped"</span>,<span class="st">"hover"</span>),</span>
-<span id="cb72-74"><a href="#cb72-74" aria-hidden="true" tabindex="-1"></a>                <span class="at">full_width =</span> <span class="cn">FALSE</span>) <span class="sc">|&gt;</span></span>
-<span id="cb72-75"><a href="#cb72-75" aria-hidden="true" tabindex="-1"></a>  <span class="fu">row_spec</span>(<span class="dv">1</span>, <span class="at">bold =</span> <span class="cn">TRUE</span>, <span class="at">background =</span> <span class="st">"#EEF2FF"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb72-48"><a href="#cb72-48" aria-hidden="true" tabindex="-1"></a>  <span class="co"># </span><span class="al">NOTE</span><span class="co">: for the GAM, we use effective degrees of freedom (edf), not</span></span>
+<span id="cb72-49"><a href="#cb72-49" aria-hidden="true" tabindex="-1"></a>  <span class="co"># raw coef() count. coef() on a mgcv::gam object returns every spline</span></span>
+<span id="cb72-50"><a href="#cb72-50" aria-hidden="true" tabindex="-1"></a>  <span class="co"># basis coefficient, which vastly overstates model complexity since</span></span>
+<span id="cb72-51"><a href="#cb72-51" aria-hidden="true" tabindex="-1"></a>  <span class="co"># penalization shrinks most of that basis flexibility away. edf is</span></span>
+<span id="cb72-52"><a href="#cb72-52" aria-hidden="true" tabindex="-1"></a>  <span class="co"># the honest measure of how many "parameters worth" of flexibility</span></span>
+<span id="cb72-53"><a href="#cb72-53" aria-hidden="true" tabindex="-1"></a>  <span class="co"># the fitted GAM is actually using.</span></span>
+<span id="cb72-54"><a href="#cb72-54" aria-hidden="true" tabindex="-1"></a>  <span class="at">N_Params =</span> <span class="fu">c</span>(<span class="fu">length</span>(<span class="fu">coef</span>(ols_boston))<span class="sc">-</span><span class="dv">1</span>,</span>
+<span id="cb72-55"><a href="#cb72-55" aria-hidden="true" tabindex="-1"></a>                <span class="fu">length</span>(<span class="fu">coef</span>(step_boston))<span class="sc">-</span><span class="dv">1</span>,</span>
+<span id="cb72-56"><a href="#cb72-56" aria-hidden="true" tabindex="-1"></a>                <span class="fu">sum</span>(<span class="fu">coef</span>(cv_l,</span>
+<span id="cb72-57"><a href="#cb72-57" aria-hidden="true" tabindex="-1"></a>                         <span class="at">s=</span><span class="st">"lambda.min"</span>) <span class="sc">!=</span> <span class="dv">0</span>)<span class="sc">-</span><span class="dv">1</span>,</span>
+<span id="cb72-58"><a href="#cb72-58" aria-hidden="true" tabindex="-1"></a>                <span class="fu">length</span>(<span class="fu">coef</span>(cv_r,</span>
+<span id="cb72-59"><a href="#cb72-59" aria-hidden="true" tabindex="-1"></a>                         <span class="at">s=</span><span class="st">"lambda.min"</span>))<span class="sc">-</span><span class="dv">1</span>,</span>
+<span id="cb72-60"><a href="#cb72-60" aria-hidden="true" tabindex="-1"></a>                <span class="fu">round</span>(<span class="fu">sum</span>(gam_boston<span class="sc">$</span>edf), <span class="dv">1</span>)),</span>
+<span id="cb72-61"><a href="#cb72-61" aria-hidden="true" tabindex="-1"></a>  <span class="at">CV_MSE   =</span> <span class="fu">round</span>(<span class="fu">c</span>(</span>
+<span id="cb72-62"><a href="#cb72-62" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cv_mse_model</span>(ols_boston, Boston),</span>
+<span id="cb72-63"><a href="#cb72-63" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cv_mse_model</span>(step_boston, Boston),</span>
+<span id="cb72-64"><a href="#cb72-64" aria-hidden="true" tabindex="-1"></a>    lasso_cv_mse,</span>
+<span id="cb72-65"><a href="#cb72-65" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mean</span>(<span class="fu">sapply</span>(folds_b, <span class="cf">function</span>(idx) {</span>
+<span id="cb72-66"><a href="#cb72-66" aria-hidden="true" tabindex="-1"></a>      fit  <span class="ot">&lt;-</span> <span class="fu">glmnet</span>(X_b[<span class="sc">-</span>idx,], y_b[<span class="sc">-</span>idx],</span>
+<span id="cb72-67"><a href="#cb72-67" aria-hidden="true" tabindex="-1"></a>                      <span class="at">alpha =</span> <span class="dv">0</span>,</span>
+<span id="cb72-68"><a href="#cb72-68" aria-hidden="true" tabindex="-1"></a>                      <span class="at">lambda =</span> cv_r<span class="sc">$</span>lambda.min)</span>
+<span id="cb72-69"><a href="#cb72-69" aria-hidden="true" tabindex="-1"></a>      pred <span class="ot">&lt;-</span> <span class="fu">predict</span>(fit, X_b[idx,])[,<span class="dv">1</span>]</span>
+<span id="cb72-70"><a href="#cb72-70" aria-hidden="true" tabindex="-1"></a>      <span class="fu">mean</span>((y_b[idx] <span class="sc">-</span> pred)<span class="sc">^</span><span class="dv">2</span>)</span>
+<span id="cb72-71"><a href="#cb72-71" aria-hidden="true" tabindex="-1"></a>    })),</span>
+<span id="cb72-72"><a href="#cb72-72" aria-hidden="true" tabindex="-1"></a>    <span class="fu">cv_mse_model</span>(gam_boston, Boston)</span>
+<span id="cb72-73"><a href="#cb72-73" aria-hidden="true" tabindex="-1"></a>  ), <span class="dv">3</span>)</span>
+<span id="cb72-74"><a href="#cb72-74" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb72-75"><a href="#cb72-75" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb72-76"><a href="#cb72-76" aria-hidden="true" tabindex="-1"></a><span class="fu">kable</span>(final_comparison <span class="sc">|&gt;</span> <span class="fu">arrange</span>(CV_MSE),</span>
+<span id="cb72-77"><a href="#cb72-77" aria-hidden="true" tabindex="-1"></a>      <span class="at">caption   =</span> <span class="st">"Final Model Comparison: 10-Fold CV MSE"</span>,</span>
+<span id="cb72-78"><a href="#cb72-78" aria-hidden="true" tabindex="-1"></a>      <span class="at">col.names =</span> <span class="fu">c</span>(<span class="st">"Model"</span>,<span class="st">"# Parameters"</span>,<span class="st">"CV MSE"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb72-79"><a href="#cb72-79" aria-hidden="true" tabindex="-1"></a>  <span class="fu">kable_styling</span>(<span class="at">bootstrap_options =</span> <span class="fu">c</span>(<span class="st">"striped"</span>,<span class="st">"hover"</span>),</span>
+<span id="cb72-80"><a href="#cb72-80" aria-hidden="true" tabindex="-1"></a>                <span class="at">full_width =</span> <span class="cn">FALSE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb72-81"><a href="#cb72-81" aria-hidden="true" tabindex="-1"></a>  <span class="fu">row_spec</span>(<span class="dv">1</span>, <span class="at">bold =</span> <span class="cn">TRUE</span>, <span class="at">background =</span> <span class="st">"#EEF2FF"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output-display">
 <table class="table table-striped table-hover caption-top table-sm small">
@@ -2865,7 +2873,7 @@ $ medv    &lt;dbl&gt; 24.0, 21.6, 34.7, 33.4, 36.2, 28.7, 22.9, 27.1, 16.5, 18.9
 <tbody>
 <tr class="odd">
 <td style="text-align: left; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">GAM</td>
-<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">104</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">51</td>
 <td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">8.962</td>
 </tr>
 <tr class="even">
@@ -2936,7 +2944,7 @@ $ medv    &lt;dbl&gt; 24.0, 21.6, 34.7, 33.4, 36.2, 28.7, 22.9, 27.1, 16.5, 18.9
 <h2 class="anchored" data-anchor-id="summary">Summary</h2>
 <p>This final chapter completed the regression toolkit from foundations to advanced methods:</p>
 <ul>
-<li><strong>Simple linear regression</strong> — OLS estimation, slope interpretation, <span class="math inline">\(R^2\)</span>, confidence vs.&nbsp;prediction intervals; the Gauss-Markov theorem justifies OLS under the LINE assumptions.</li>
+<li><strong>Simple linear regression</strong> — OLS estimation, slope interpretation, <span class="math inline">\(R^2\)</span>, confidence vs.&nbsp;prediction intervals; the Gauss-Markov theorem justifies OLS as BLUE under Linearity, Independence, and Equal variance (<strong>not</strong> Normality — Normality is needed only for exact small-sample t/F inference).</li>
 <li><strong>Multiple regression</strong> — partial effects, adjusted <span class="math inline">\(R^2\)</span>, F-test, multicollinearity (VIF), and the importance of controlling for confounders in observational data.</li>
 <li><strong>Regression diagnostics</strong> — the four diagnostic plots, formal tests (Shapiro-Wilk, Breusch-Pagan, RESET), Cook’s distance; transformations and robust SE as remedies.</li>
 <li><strong>Variable selection</strong> — AIC, BIC, stepwise methods, and cross-validation; stepwise has known statistical problems; CV is more principled.</li>
