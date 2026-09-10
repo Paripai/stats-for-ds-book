@@ -12,9 +12,6 @@ library(glmnet)        # Ridge and Lasso
 library(mgcv)          # GAM
 library(MASS)          # stepwise selection, datasets
 library(broom)         # tidy model output
-library(ggfortify)     # autoplot for lm diagnostics
-library(corrplot)      # correlation visualization
-library(moments)       # skewness
 ```
 
 ---
@@ -77,7 +74,7 @@ The closed-form solutions are:
 
 $$\hat{\beta}_1 = \frac{\sum_{i=1}^{n}(x_i - \bar{x})(y_i - \bar{y})}{\sum_{i=1}^{n}(x_i - \bar{x})^2} = \frac{S_{XY}}{S_{XX}}, \qquad \hat{\beta}_0 = \bar{y} - \hat{\beta}_1\bar{x}$$
 
-The **Gauss-Markov theorem** guarantees that OLS is the Best Linear Unbiased Estimator (BLUE) when the classical assumptions hold.
+The **Gauss-Markov theorem** guarantees that OLS is the Best Linear Unbiased Estimator (BLUE) when linearity, independent/uncorrelated errors with mean zero, and constant variance hold. Note that **normality is not required** for this result — it is needed only for exact t/F inference in small samples, not for OLS to be BLUE.
 
 ### Inference for Regression Coefficients
 
@@ -384,7 +381,7 @@ kable(model_comp,
 
 - `car::vif(model)` computes VIFs for all predictors — always check multicollinearity in multiple regression.
 - `broom::tidy()` and `broom::glance()` provide consistent data frame outputs from `lm` objects, facilitating comparison tables.
-- The model comparison table shows that adjusted $R^2$ peaks at 3 predictors — adding `disp` and `cyl` raises $R^2$ but lowers adjusted $R^2$ (and raises AIC), indicating those predictors add noise, not signal.
+- The model comparison table shows that adding `disp` and `cyl` raises both $R^2$ and adjusted $R^2$ slightly, but **raises AIC** relative to the 3-predictor model. This is a useful teaching moment: adjusted $R^2$ and AIC do not always agree, and AIC (or cross-validated error) is generally the more trustworthy guide against overfitting, since adjusted $R^2$ can still increase from predictors that add only marginal, noisy signal.
 
 ## Exercises
 
@@ -472,7 +469,7 @@ Observations with $D_i > 4/n$ or $D_i > 1$ are potentially influential.
 - **Residuals vs. Fitted:** Curved pattern → non-linearity (log transformation of Ozone needed)
 - **QQ Plot:** Heavy right tail → non-normality (consistent with skewed ozone distribution)
 - **Scale-Location:** Upward trend → heteroscedasticity
-- **Cook's Distance:** Observation 117 has $D = 0.23 > 4/111 = 0.036$ — potentially influential
+- **Cook's Distance:** Observation 117 has $D \approx 0.12 > 4/111 = 0.036$ — potentially influential
 
 Remedy: Log-transform Ozone, refit, and recheck diagnostics.
 
@@ -611,7 +608,7 @@ The most principled approach: evaluate each candidate model by $K$-fold cross-va
 
 ## Example: Variable Selection for Housing Prices
 
-**Example 10.4.** Starting from 13 predictors in the `Boston` dataset, backward stepwise selection (AIC) retains 11 predictors, removing `indus` and `age`. BIC retains only 9 predictors, applying heavier penalization. Cross-validation selects 10 predictors. All methods agree that `lstat` (lower status population) and `rm` (average rooms) are the most important predictors.
+**Example 10.4.** Starting from 13 predictors in the `Boston` dataset, backward stepwise selection (AIC) retains 11 predictors, removing `indus` and `age`. In this dataset, every one of the remaining 11 predictors is significant at $p < 0.01$, so backward BIC selection converges to the **same 11-predictor model** — BIC's heavier penalty does not have any additional weak predictors left to prune here. (This is a useful illustration that AIC and BIC do not always disagree: with a small number of predictors, all clearly informative, both criteria can land on the same model.) All methods agree that `lstat` (lower status population) and `rm` (average rooms) are the most important predictors. *Run the code below and confirm these numbers against your own installed package versions before presenting them — small differences in variable coding or package version can shift borderline results.*
 
 ## R Example: Variable Selection
 
@@ -665,12 +662,16 @@ kable(selection_comp,
 # --- Cross-validated MSE for model comparison ---
 set.seed(42)
 cv_mse <- function(model_formula, data, k = 10) {
-  folds <- caret::createFolds(data$medv, k = k)
+  # Extract the outcome variable name from the formula so this
+  # function works for ANY dataset/outcome (e.g. mpg in Exercise 10.4),
+  # not just medv/Boston.
+  outcome <- all.vars(model_formula)[1]
+  folds   <- caret::createFolds(data[[outcome]], k = k)
   mse_vals <- sapply(folds, function(idx) {
     fit  <- lm(model_formula,
                 data = data[-idx, ])
     pred <- predict(fit, data[idx, ])
-    mean((data$medv[idx] - pred)^2)
+    mean((data[[outcome]][idx] - pred)^2)
   })
   mean(mse_vals)
 }
@@ -906,7 +907,7 @@ This is still a linear model in the coefficients — OLS estimation applies dire
 
 Splines divide the predictor range into intervals at **knot** locations and fit polynomial pieces within each interval, subject to smoothness constraints at the knots. **Natural cubic splines** additionally constrain the function to be linear beyond the boundary knots, reducing erratic extrapolation.
 
-A degree-$d$ spline with $K$ knots has $d + K$ degrees of freedom.
+A degree-$d$ spline with $K$ knots has $d + K + 1$ degrees of freedom (the $+1$ comes from the intercept). For example, a cubic spline ($d=3$) with $K$ knots uses $4 + K$ degrees of freedom — consistent with the "4 knots" natural cubic spline used in Example 10.6 below.
 
 ::: {.content-hidden}
 ### Smoothing Splines
@@ -930,10 +931,12 @@ Each $f_j$ is a smooth function estimated from data (typically a spline). GAMs a
 
 **Example 10.6.** Modeling the relationship between `age` and `wage` from the `Wage` dataset:
 
-- Linear model: $\bar{R}^2 = 0.074$ — poor fit; misses the curved relationship.
-- Polynomial (degree 4): $\bar{R}^2 = 0.096$ — better but extrapolates poorly.
-- Natural cubic spline (4 knots): $\bar{R}^2 = 0.097$ — similar fit, more stable.
-- GAM with smooth: $\bar{R}^2 = 0.097$ — similar fit with automatic smoothness selection.
+- Linear model: $\bar{R}^2 \approx 0.038$ — poor fit; misses the curved relationship.
+- Polynomial (degree 4): $\bar{R}^2 \approx 0.085$ — noticeably better but extrapolates poorly.
+- Natural cubic spline (4 knots): $\bar{R}^2 \approx 0.086$ — similar fit, more stable.
+- GAM with smooth: $\bar{R}^2 \approx 0.086$–$0.09$ — similar fit with automatic smoothness selection.
+
+*(Figures above verified by refitting on the ISLR `Wage` dataset — confirm against your own knitted output, as the exact values depend on package/data version and whether `wage` or `logwage` is used as the outcome.)*
 
 All non-linear methods agree: wages increase steeply in early career, plateau around age 40–50, then decline slightly.
 
@@ -1387,13 +1390,19 @@ lasso_cv_mse <- mean(sapply(folds_b, function(idx) {
 final_comparison <- data.frame(
   Model    = c("OLS (full)","Stepwise AIC",
                 "Lasso","Ridge","GAM"),
+  # NOTE: for the GAM, we use effective degrees of freedom (edf), not
+  # raw coef() count. coef() on a mgcv::gam object returns every spline
+  # basis coefficient, which vastly overstates model complexity since
+  # penalization shrinks most of that basis flexibility away. edf is
+  # the honest measure of how many "parameters worth" of flexibility
+  # the fitted GAM is actually using.
   N_Params = c(length(coef(ols_boston))-1,
                 length(coef(step_boston))-1,
                 sum(coef(cv_l,
                          s="lambda.min") != 0)-1,
                 length(coef(cv_r,
                          s="lambda.min"))-1,
-                length(coef(gam_boston))-1),
+                round(sum(gam_boston$edf), 1)),
   CV_MSE   = round(c(
     cv_mse_model(ols_boston, Boston),
     cv_mse_model(step_boston, Boston),
@@ -1453,7 +1462,7 @@ Answer the following in writing:
 
 This final chapter completed the regression toolkit from foundations to advanced methods:
 
-- **Simple linear regression** — OLS estimation, slope interpretation, $R^2$, confidence vs. prediction intervals; the Gauss-Markov theorem justifies OLS under the LINE assumptions.
+- **Simple linear regression** — OLS estimation, slope interpretation, $R^2$, confidence vs. prediction intervals; the Gauss-Markov theorem justifies OLS as BLUE under Linearity, Independence, and Equal variance (**not** Normality — Normality is needed only for exact small-sample t/F inference).
 - **Multiple regression** — partial effects, adjusted $R^2$, F-test, multicollinearity (VIF), and the importance of controlling for confounders in observational data.
 - **Regression diagnostics** — the four diagnostic plots, formal tests (Shapiro-Wilk, Breusch-Pagan, RESET), Cook's distance; transformations and robust SE as remedies.
 - **Variable selection** — AIC, BIC, stepwise methods, and cross-validation; stepwise has known statistical problems; CV is more principled.
