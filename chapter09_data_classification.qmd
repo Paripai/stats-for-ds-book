@@ -12,9 +12,7 @@ library(rpart.plot)    # tree visualization
 library(randomForest)  # random forest
 library(pROC)          # ROC curves
 library(class)         # KNN
-library(e1071)         # SVM (optional comparison)
 library(MASS)          # datasets
-library(MLmetrics)     # additional metrics
 ```
 
 ---
@@ -88,6 +86,11 @@ A fundamental principle: **never evaluate a model on the data used to train it**
 $$\text{Dataset} \xrightarrow{\text{split}} \begin{cases} \text{Training set (70-80\%)} & \text{fit model} \\ \text{Test set (20-30\%)} & \text{evaluate model} \end{cases}$$
 
 In practice, a **validation set** or **cross-validation** is used for hyperparameter tuning, with the test set reserved for final evaluation only.
+
+::: {.callout-note}
+## A Note on This Chapter's Example Dataset
+The `Pima.tr` / `Pima.te` split shipped with the `MASS` package is **200 training / 332 test observations — 37.6% train, 62.4% test**, the reverse of the 70-80%/20-30% guideline above. This is a historical artifact of how the data was originally partitioned (Ripley, *Pattern Recognition and Neural Networks*, 1996), not a split you would choose deliberately. We use it throughout this chapter because it is a convenient, well-known built-in dataset, but **do not treat this split as a template** — for your own projects, create the partition yourself (e.g., with `caret::createDataPartition()`) using the 70-80%/20-30% guideline.
+:::
 
 ### The Bayes Error Rate
 
@@ -227,11 +230,19 @@ $$P(Y = k \mid \mathbf{x}) = \frac{e^{\boldsymbol{\beta}_k^T\mathbf{x}}}{\sum_{j
 
 One class is set as reference; $K-1$ sets of coefficients are estimated.
 
+### Regularized Logistic Regression
+
+With many features (or features that are correlated), unregularized MLE coefficients can become unstable or overfit. **Regularization** adds a penalty on coefficient size to the loss being minimized:
+
+$$\text{Ridge (L2):} \quad \ell(\boldsymbol{\beta}) - \lambda \sum_{j=1}^{p}\beta_j^2 \qquad \text{Lasso (L1):} \quad \ell(\boldsymbol{\beta}) - \lambda \sum_{j=1}^{p}|\beta_j|$$
+
+Ridge shrinks all coefficients toward zero without eliminating any; lasso can shrink coefficients exactly to zero, performing automatic feature selection. The penalty strength $\lambda$ is chosen by cross-validation. In R, `glmnet::glmnet(x, y, family = "binomial", alpha = 0)` fits ridge (`alpha = 1` for lasso, values in between for elastic net). For a data science project with dozens or hundreds of candidate predictors, regularized logistic regression is usually preferable to the plain `glm()` fit shown below.
+
 ## Example: Logistic Regression for Diabetes Prediction
 
-**Example 9.2.** Using the Pima dataset, a logistic regression predicts diabetes from glucose level, BMI, and age. Coefficient for glucose: $\hat{\beta} = 0.038$, $e^{\hat{\beta}} = 1.039$. 
+**Example 9.2.** Using the Pima dataset, a logistic regression predicts diabetes from glucose level, BMI, age, and diabetes pedigree function (matching the model fit in the R example below). Coefficient for glucose: $\hat{\beta} = 0.031$, $e^{\hat{\beta}} = 1.032$.
 
-**Interpretation:** For each 1 mg/dL increase in glucose concentration, the odds of diabetes increase by 3.9%, holding BMI and age constant. This is statistically significant ($z = 8.2$, $p < 0.001$).
+**Interpretation:** For each 1 mg/dL increase in glucose concentration, the odds of diabetes increase by 3.2%, holding BMI, age, and pedigree function constant. This is statistically significant ($z = 4.72$, $p < 0.001$).
 
 ## R Example: Logistic Regression
 
@@ -389,7 +400,7 @@ This reduces the influence of distant neighbors and often improves performance n
 
 ## Example: KNN Decision Boundary
 
-**Example 9.3.** For the Pima dataset with $K = 1$: perfect training accuracy (each point is its own nearest neighbor), but poor test accuracy (overfitting). With $K = 21$: smoother boundary, better generalization. Cross-validation identifies $K = 15$ as optimal, achieving 76% test accuracy.
+**Example 9.3.** For the Pima dataset with $K = 1$: perfect training accuracy (100%, each point is its own nearest neighbor), but weaker test accuracy (69.9%) — a classic overfitting signature. With $K = 21$: a smoother boundary generalizes better (79.5% test accuracy). Five-fold cross-validation on the training set (using the *same* folds for every candidate $K$, as in the corrected R code below) identifies $K = 23$ as optimal (CV accuracy ≈ 75%), achieving 77.7% test accuracy. Note that the CV-accuracy curve is fairly flat for $K$ between roughly 15 and 29 (all within about 1 percentage point) — with only $n=200$ training observations, the "optimal" $K$ is not sharply defined, and a different random fold split could easily favor a neighboring value of $K$. In practice, any $K$ in that flat region is a reasonable, defensible choice.
 
 ## R Example: KNN Classification
 
@@ -405,9 +416,13 @@ test_y  <- Pima.te$type
 
 # Tune K via cross-validation
 set.seed(42)
-k_vals     <- seq(1, 31, by = 2)
-cv_acc     <- sapply(k_vals, function(k) {
-  folds <- createFolds(train_y, k = 5)
+# IMPORTANT: generate the folds ONCE and reuse them for every K.
+# Redrawing folds inside the loop (a common mistake) means each K is
+# evaluated on a different random split, adding noise that has nothing
+# to do with K itself and can shift which K looks "best".
+folds  <- createFolds(train_y, k = 5)
+k_vals <- seq(1, 31, by = 2)
+cv_acc <- sapply(k_vals, function(k) {
   fold_acc <- sapply(folds, function(idx) {
     knn_pred <- class::knn(train = train_x[-idx, ],
                             test  = train_x[idx, ],
@@ -465,7 +480,7 @@ ggplot(knn_df, aes(x = K, y = Accuracy)) +
 **Code explanation:**
 
 - `scale(test_x, center = ..., scale = ...)` applies training set scaling to test data — critical to prevent data leakage; always scale test using training set parameters.
-- `createFolds(y, k = 5)` creates stratified cross-validation folds, preserving class proportions in each fold.
+- `createFolds(y, k = 5)` creates stratified cross-validation folds, preserving class proportions in each fold. Generate the folds **once**, outside the loop over candidate hyperparameter values, and reuse the same folds for every value — this ensures each $K$ is compared on identical data, which is essential for a fair comparison.
 - `class::knn(..., prob = TRUE)` stores, via `attr(pred, "prob")`, the vote proportion for the *predicted (winning)* class — not the positive class. For ROC, convert it first: `ifelse(pred == "Yes", p, 1 - p)`.
 
 ## Exercises
@@ -512,13 +527,35 @@ $$E(t) = 1 - \max_k p_k(t)$$
 
 where $p_k(t)$ is the proportion of class $k$ observations at node $t$. All three are minimized when a node is pure (one class only). Gini and entropy are preferred for growing trees because they are more sensitive to impurity changes than misclassification rate.
 
-### The Information Gain
+### The Information Gain (and Gini Reduction)
 
-The quality of a split is measured by the **information gain** (reduction in entropy):
+The quality of a split is measured by how much it reduces impurity. With **entropy**, this is called the **information gain**:
 
 $$\text{IG}(t, x_j, s) = H(t) - \frac{n_L}{n}H(t_L) - \frac{n_R}{n}H(t_R)$$
 
-where $t_L$ and $t_R$ are the left and right child nodes.
+The identical idea applied to **Gini impurity** is usually just called the **Gini reduction** (or Gini gain) — same notation, $H$ replaced by $G$:
+
+$$\Delta G(t, x_j, s) = G(t) - \frac{n_L}{n}G(t_L) - \frac{n_R}{n}G(t_R)$$
+
+where $t_L$ and $t_R$ are the left and right child nodes produced by splitting node $t$ on feature $x_j$ at threshold $s$, and $n_L, n_R$ are the number of observations sent to each child ($n_L + n_R = n$). `rpart` (used in the R examples below) grows trees by choosing, at every node, the split $(x_j, s)$ that **maximizes** $\Delta G$.
+
+### Worked Example: Computing a Split's Gini Reduction
+
+Suppose a node $t$ has 8 observations with 2 features (`income`, `age`) and label `default` (4 Yes, 4 No):
+
+- **Before the split:** $p_{\text{Yes}} = p_{\text{No}} = 0.5 \Rightarrow G(t) = 1 - (0.5^2 + 0.5^2) = 0.5$.
+- **Splitting on `income` $\leq s$:** left child gets 5 obs (4 No, 1 Yes) $\Rightarrow G(t_L) = 1-(0.8^2+0.2^2) = 0.32$; right child gets 3 obs, all Yes $\Rightarrow G(t_R) = 0$ (pure).
+- **Gini reduction:** $\Delta G = 0.5 - \tfrac{5}{8}(0.32) - \tfrac{3}{8}(0) = 0.5 - 0.2 = 0.3$.
+
+If splitting on `age` at its best threshold gives a smaller $\Delta G$ (say 0.18), `income` is chosen for this node. This is exactly the calculation `rpart` performs — at every node, for every candidate feature and threshold — to pick each split, and it is the building block for the variable importance measure below.
+
+### Variable Importance in a Single Tree
+
+A feature's **importance** in a fitted tree is the total impurity reduction it is responsible for, summed over every node where it was used to split, weighted by how much of the data reached that node:
+
+$$\text{Importance}(x_j) = \sum_{t \,:\, \text{split variable at } t \,=\, x_j} \frac{n_t}{n}\,\Delta G(t, x_j, s_t^*)$$
+
+where the sum runs over all nodes $t$ that were split on $x_j$, $n_t$ is the number of training observations at node $t$, and $s_t^*$ is the threshold chosen at that node. A feature used in many splits, or in splits near the root (where $n_t$ is large), accumulates high importance; a feature never chosen for any split gets zero. This is precisely what `rpart` reports as `tree_pruned$variable.importance` in the R example below — now you can see where those numbers come from. (Two details worth knowing: `rpart` credits some importance to **surrogate splits** — backup variables highly correlated with the chosen splitter, used when the primary variable's value is missing — so its output can differ slightly from summing $\Delta G$ by hand; and this whole idea reappears, unchanged, as **Mean Decrease in Gini (MDG)** when we average it across all trees in a Random Forest later in this chapter — MDG is not a separate concept, just this same single-tree importance averaged over many trees.)
 
 ### Pruning
 
@@ -544,18 +581,20 @@ where $R(T)$ is the training error, $|T|$ is the number of leaves, and $\alpha \
 
 ## Example: Decision Tree for Diabetes Classification
 
-**Example 9.4.** A decision tree for the Pima dataset with maximum depth 3 produces rules like:
+**Example 9.4.** A decision tree for the Pima dataset with maximum depth 3 (`rpart.control(maxdepth = 3, cp = 0.001, minsplit = 10)`, `set.seed(42)`) produces:
 
 ```
-If glu <= 127.5:
-  If bmi <= 26.35: → No (82% accuracy in leaf)
-  If bmi >  26.35: → No (63% accuracy in leaf)
-If glu > 127.5:
-  If age <= 28.5:  → No (56% accuracy in leaf)
-  If age >  28.5:  → Yes (72% accuracy in leaf)
+If glu < 123.5:                        → No  (86% leaf purity)
+If glu >= 123.5:
+  If ped < 0.31:
+    If glu < 166:                      → No  (78% leaf purity)
+    If glu >= 166:                     → Yes (75% leaf purity)
+  If ped >= 0.31:
+    If bmi < 28.65:                    → No  (73% leaf purity)
+    If bmi >= 28.65:                   → Yes (84% leaf purity)
 ```
 
-The tree reveals that glucose level is the primary predictor, followed by BMI — consistent with medical knowledge. The leaf purity statistics show where the model is most and least confident.
+The tree reveals that glucose level is the primary predictor — consistent with medical knowledge. Once glucose is high (≥ 123.5), the diabetes pedigree function (`ped`) becomes the next most informative split, followed by BMI. Note that a decision tree's exact split points and structure are specific to the training sample and algorithm settings (`cp`, `minsplit`, `maxdepth`); rerunning this code is the best way to see the actual tree for your data — always prefer `rpart.plot()` output over a hand-copied rule list when reporting results.
 
 ## R Example: Decision Trees
 
@@ -660,7 +699,7 @@ A single decision tree has high variance — small perturbations in the training
 
 $$\hat{f}_{\text{bag}}(x) = \text{majority vote}\{\hat{f}_b(x)\}_{b=1}^{B}$$
 
-The key insight: averaging reduces variance by a factor of $B$ without increasing bias (for independent predictors). Trees trained on different bootstrap samples are not identical — their disagreement captures variance.
+The key insight: averaging reduces variance by a factor of $B$ without increasing bias **if the predictors were independent**. In practice they are not — every bootstrap sample is drawn from the *same* training set, so the resulting trees are positively correlated, and the achievable variance reduction is smaller than a full factor of $B$. The more correlated the trees, the less bagging helps. This is precisely the motivation for Random Forest's extra feature-randomization step below: by decorrelating the trees further, it recovers variance reduction that plain bagging leaves on the table.
 
 **Out-of-Bag (OOB) Error:** Each bootstrap sample omits approximately 37% of training observations. These out-of-bag observations can be used to estimate generalization error without a separate validation set.
 
@@ -675,13 +714,13 @@ This **decorrelates** the trees — even if one feature is very strong, it doesn
 **Variable Importance:**
 
 - **Mean Decrease in Accuracy (MDA):** Permute each feature and measure the drop in OOB accuracy.
-- **Mean Decrease in Gini (MDG):** Sum of Gini impurity decreases from splits on each feature across all trees.
+- **Mean Decrease in Gini (MDG):** The single-tree importance defined earlier ($\sum \tfrac{n_t}{n}\Delta G$ over the nodes split on $x_j$), averaged across all $B$ trees in the forest.
 
 MDA is more principled and robust; MDG is faster to compute.
 
 ### Boosting
 
-**Boosting** builds trees sequentially, with each tree fitting the **residuals** (errors) of the previous ones:
+**Boosting** builds trees sequentially, with each new tree focused on correcting the mistakes of the ensemble built so far. The exact mechanism differs by algorithm — AdaBoost reweights misclassified observations, while Gradient Boosting fits new trees to the ensemble's **residuals** (errors):
 
 **AdaBoost:** Increases weights of misclassified observations so subsequent trees focus on hard cases.
 
@@ -705,7 +744,7 @@ where $\eta$ is the learning rate and $h_m$ is the $m$-th tree fit to residuals.
 
 ## Example: Random Forest Feature Importance
 
-**Example 9.5.** Random forest on the Pima dataset ($B = 500$ trees, $m = 2$) identifies glucose as the most important feature by both MDA and MDG, followed by BMI, age, and diabetes pedigree function. This is consistent with medical knowledge and the logistic regression results — but the random forest captures non-linear interactions that logistic regression misses.
+**Example 9.5.** Random forest on the Pima dataset ($B = 500$ trees, $m = 2$) identifies glucose as the most important feature by both MDA and MDG — consistent with medical knowledge and the logistic regression results. Beyond glucose, though, **MDA and MDG disagree** on the ranking: by MDA, age and diabetes pedigree function (`ped`) outrank BMI, with BMI actually last; by MDG, `ped` and age again outrank BMI, but BMI outranks number of pregnancies (`npreg`). This is a known property of the two measures — MDG (based on impurity reduction) tends to favor continuous predictors with many possible split points, while MDA (based on permutation) is generally considered the more reliable measure of true predictive importance. The lesson: **check both importance measures rather than relying on either alone**, and don't expect them to agree exactly.
 
 ## R Example: Random Forest and Ensemble Methods
 
@@ -832,6 +871,11 @@ For binary classification (positive = 1, negative = 0):
 
 : Confusion matrix structure {.striped}
 
+::: {.callout-warning}
+## Watch the Orientation
+The layout above (rows = Predicted, columns = Actual) matches R's `table(Predicted = ..., Actual = ...)` used throughout this chapter. Python's `sklearn.metrics.confusion_matrix()` uses the **opposite** orientation by default (rows = Actual/true label, columns = Predicted). The formulas for precision, recall, etc. are the same either way, but if you read a confusion matrix off a plot or printout without checking which axis is which, you can flip precision and recall by mistake. Always check the axis labels.
+:::
+
 ### Derived Metrics
 
 $$\text{Accuracy} = \frac{TP + TN}{TP + TN + FP + FN}$$
@@ -877,6 +921,16 @@ When one class is rare, accuracy is misleading. Preferred metrics:
 $$\text{MCC} = \frac{TP \cdot TN - FP \cdot FN}{\sqrt{(TP+FP)(TP+FN)(TN+FP)(TN+FN)}}$$
 
 MCC ranges from $-1$ to $+1$; values near $+1$ indicate excellent classification.
+
+### Handling Imbalanced Classes
+
+Choosing the right metric only measures the problem — it doesn't fix it. When the minority class is rare, consider:
+
+- **Resampling the training data:** oversample the minority class (randomly, or synthetically with **SMOTE**, which generates new minority points by interpolating between existing ones), or undersample the majority class. `DMwR::SMOTE()` and `themis::step_smote()` (tidymodels) are common R implementations.
+- **Class weighting / cost-sensitive learning:** give a higher misclassification cost to the minority class during training (e.g., `class.weights` in `e1071::svm()`, `classwt` in `randomForest()`, or `weight` in `glm()`).
+- **Threshold moving:** keep the model as-is but choose a classification threshold below 0.5 to trade precision for recall (see the threshold-analysis example in the chapter lab).
+
+Resampling changes what the model *learns*; threshold moving changes only how its output probabilities are *converted to labels* — the two are complementary, and it's a common mistake to use only one when both are appropriate.
 
 ## Example: Why Accuracy Alone is Insufficient
 
@@ -1092,16 +1146,21 @@ Beyond performance, consider:
 
 ## Example: Cross-Validated Model Comparison
 
-**Example 9.7.** Four classifiers are evaluated with 10-fold cross-validation on the Pima dataset. Results (mean AUC ± SD):
+**Example 9.7.** Four classifiers are evaluated with 10-fold cross-validation on the combined Pima dataset, **using the same 10 fold assignments for every model** (essential for a valid paired comparison — see the caution below). Results (mean AUC ± SD):
 
 | Model | Mean AUC | SD AUC |
 |-------|---------|--------|
-| Logistic Regression | 0.833 | 0.028 |
-| KNN ($K = 15$) | 0.801 | 0.041 |
-| Decision Tree | 0.782 | 0.052 |
-| Random Forest | 0.856 | 0.022 |
+| Logistic Regression | 0.843 | 0.080 |
+| KNN | 0.837 | 0.062 |
+| Random Forest | 0.836 | 0.068 |
+| Decision Tree | 0.790 | 0.072 |
 
-Random Forest has the highest mean AUC and the lowest variability. A paired t-test confirms Random Forest significantly outperforms KNN ($t_{\text{cal}} = 3.2$, $df = 9$, $p = 0.011$ — reported as $t(9) = 3.2$) and Decision Tree ($p = 0.003$), but does not significantly outperform Logistic Regression ($p = 0.12$). Given that Logistic Regression is nearly as accurate and far more interpretable, it may be preferred for a clinical deployment.
+Logistic Regression, KNN, and Random Forest achieve statistically indistinguishable mean AUC (all pairwise comparisons $p > 0.05$ after Bonferroni correction). The single Decision Tree, however, performs significantly worse than both Logistic Regression ($p = 0.031$) and Random Forest ($p = 0.022$) — consistent with the theory that a single tree has higher variance than an ensemble or a low-variance linear model. Because Logistic Regression is *at least as accurate* as the more complex KNN and Random Forest models here, and is far more interpretable, it is a strong candidate for clinical deployment — a case where the simplest adequate model wins.
+
+::: {.callout-warning}
+## A Common and Serious Mistake: Mismatched CV Folds
+If each model in a comparison is cross-validated with its *own*, independently drawn set of folds, the resulting scores are **not paired** — fold 3 for Model A and fold 3 for Model B are different subsets of data. Running a paired t-test (or `caret::diff(resamples(...))`) on such scores silently violates the test's assumptions and can produce misleading conclusions about which model is better. Always fix the fold assignments once and pass them to every model (e.g., via `trainControl(index = ...)` in `caret`) before comparing.
+:::
 
 ## R Example: Cross-Validation and Model Comparison
 
@@ -1111,9 +1170,17 @@ set.seed(42)
 pima_all <- bind_rows(Pima.tr, Pima.te)
 
 # Define CV control
+# IMPORTANT: pre-generate the 10 fold assignments ONCE and pass them via
+# `index =`. Without this, each call to train() below draws its own random
+# folds, so the four models are evaluated on DIFFERENT data splits. That
+# breaks the "paired" comparison that resamples()/diff() assumes, and can
+# flip which model looks best (see the callout box above).
+cv_folds <- createFolds(pima_all$type, k = 10, returnTrain = TRUE)
+
 ctrl_cv <- trainControl(
   method          = "cv",
   number          = 10,
+  index           = cv_folds,
   classProbs      = TRUE,
   summaryFunction = twoClassSummary,
   savePredictions = "final"
@@ -1213,6 +1280,7 @@ kable(cv_table,
 **Code explanation:**
 
 - `caret::train()` provides a unified interface to dozens of algorithms with consistent cross-validation. `method = "glm"`, `"knn"`, `"rpart"`, `"rf"` access different algorithms.
+- `trainControl(index = cv_folds, ...)` fixes the same 10 fold assignments across every model in the comparison — without this, `train()` draws a fresh random split for each model, invalidating the paired comparison used below.
 - `trainControl(summaryFunction = twoClassSummary, metric = "ROC")` evaluates models by AUC rather than accuracy — critical for imbalanced data.
 - `resamples(models_cv)` collects CV results from multiple models for comparison. `diff(cv_results)` computes pairwise differences with statistical tests.
 - `dotplot(cv_results)` from `lattice` produces a confidence-interval-based comparison plot — the standard visualization for comparing CV results.
