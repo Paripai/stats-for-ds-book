@@ -275,6 +275,7 @@ window.Quarto = {
   <li><a href="#parameter-estimation-maximum-likelihood" id="toc-parameter-estimation-maximum-likelihood" class="nav-link" data-scroll-target="#parameter-estimation-maximum-likelihood">Parameter Estimation: Maximum Likelihood</a></li>
   <li><a href="#hypothesis-testing-for-coefficients" id="toc-hypothesis-testing-for-coefficients" class="nav-link" data-scroll-target="#hypothesis-testing-for-coefficients">Hypothesis Testing for Coefficients</a></li>
   <li><a href="#multinomial-logistic-regression" id="toc-multinomial-logistic-regression" class="nav-link" data-scroll-target="#multinomial-logistic-regression">Multinomial Logistic Regression</a></li>
+  <li><a href="#regularized-logistic-regression" id="toc-regularized-logistic-regression" class="nav-link" data-scroll-target="#regularized-logistic-regression">Regularized Logistic Regression</a></li>
   </ul></li>
   <li><a href="#example-logistic-regression-for-diabetes-prediction" id="toc-example-logistic-regression-for-diabetes-prediction" class="nav-link" data-scroll-target="#example-logistic-regression-for-diabetes-prediction">Example: Logistic Regression for Diabetes Prediction</a></li>
   <li><a href="#r-example-logistic-regression" id="toc-r-example-logistic-regression" class="nav-link" data-scroll-target="#r-example-logistic-regression">R Example: Logistic Regression</a></li>
@@ -302,7 +303,9 @@ window.Quarto = {
   <ul class="collapse">
   <li><a href="#tree-construction-recursive-binary-splitting" id="toc-tree-construction-recursive-binary-splitting" class="nav-link" data-scroll-target="#tree-construction-recursive-binary-splitting">Tree Construction: Recursive Binary Splitting</a></li>
   <li><a href="#impurity-measures" id="toc-impurity-measures" class="nav-link" data-scroll-target="#impurity-measures">Impurity Measures</a></li>
-  <li><a href="#the-information-gain" id="toc-the-information-gain" class="nav-link" data-scroll-target="#the-information-gain">The Information Gain</a></li>
+  <li><a href="#the-information-gain-and-gini-reduction" id="toc-the-information-gain-and-gini-reduction" class="nav-link" data-scroll-target="#the-information-gain-and-gini-reduction">The Information Gain (and Gini Reduction)</a></li>
+  <li><a href="#worked-example-computing-a-splits-gini-reduction" id="toc-worked-example-computing-a-splits-gini-reduction" class="nav-link" data-scroll-target="#worked-example-computing-a-splits-gini-reduction">Worked Example: Computing a Split’s Gini Reduction</a></li>
+  <li><a href="#variable-importance-in-a-single-tree" id="toc-variable-importance-in-a-single-tree" class="nav-link" data-scroll-target="#variable-importance-in-a-single-tree">Variable Importance in a Single Tree</a></li>
   <li><a href="#pruning" id="toc-pruning" class="nav-link" data-scroll-target="#pruning">Pruning</a></li>
   <li><a href="#advantages-and-limitations" id="toc-advantages-and-limitations" class="nav-link" data-scroll-target="#advantages-and-limitations">Advantages and Limitations</a></li>
   </ul></li>
@@ -334,6 +337,7 @@ window.Quarto = {
   <li><a href="#the-precision-recall-tradeoff" id="toc-the-precision-recall-tradeoff" class="nav-link" data-scroll-target="#the-precision-recall-tradeoff">The Precision-Recall Tradeoff</a></li>
   <li><a href="#roc-curve-and-auc" id="toc-roc-curve-and-auc" class="nav-link" data-scroll-target="#roc-curve-and-auc">ROC Curve and AUC</a></li>
   <li><a href="#metrics-for-imbalanced-classes" id="toc-metrics-for-imbalanced-classes" class="nav-link" data-scroll-target="#metrics-for-imbalanced-classes">Metrics for Imbalanced Classes</a></li>
+  <li><a href="#handling-imbalanced-classes" id="toc-handling-imbalanced-classes" class="nav-link" data-scroll-target="#handling-imbalanced-classes">Handling Imbalanced Classes</a></li>
   </ul></li>
   <li><a href="#example-why-accuracy-alone-is-insufficient" id="toc-example-why-accuracy-alone-is-insufficient" class="nav-link" data-scroll-target="#example-why-accuracy-alone-is-insufficient">Example: Why Accuracy Alone is Insufficient</a></li>
   <li><a href="#r-example-comprehensive-model-evaluation" id="toc-r-example-comprehensive-model-evaluation" class="nav-link" data-scroll-target="#r-example-comprehensive-model-evaluation">R Example: Comprehensive Model Evaluation</a></li>
@@ -408,9 +412,7 @@ window.Quarto = {
 <span id="cb1-9"><a href="#cb1-9" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(randomForest)  <span class="co"># random forest</span></span>
 <span id="cb1-10"><a href="#cb1-10" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(pROC)          <span class="co"># ROC curves</span></span>
 <span id="cb1-11"><a href="#cb1-11" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(class)         <span class="co"># KNN</span></span>
-<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(e1071)         <span class="co"># SVM (optional comparison)</span></span>
-<span id="cb1-13"><a href="#cb1-13" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(MASS)          <span class="co"># datasets</span></span>
-<span id="cb1-14"><a href="#cb1-14" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(MLmetrics)     <span class="co"># additional metrics</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb1-12"><a href="#cb1-12" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(MASS)          <span class="co"># datasets</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
 <hr>
@@ -519,6 +521,19 @@ window.Quarto = {
 <p>A fundamental principle: <strong>never evaluate a model on the data used to train it</strong>. The training set is used to fit the model; the <strong>test set</strong> (held out before training) provides an unbiased estimate of generalization performance.</p>
 <p><span class="math display">\[\text{Dataset} \xrightarrow{\text{split}} \begin{cases} \text{Training set (70-80\%)} &amp; \text{fit model} \\ \text{Test set (20-30\%)} &amp; \text{evaluate model} \end{cases}\]</span></p>
 <p>In practice, a <strong>validation set</strong> or <strong>cross-validation</strong> is used for hyperparameter tuning, with the test set reserved for final evaluation only.</p>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>A Note on This Chapter’s Example Dataset
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The <code>Pima.tr</code> / <code>Pima.te</code> split shipped with the <code>MASS</code> package is <strong>200 training / 332 test observations — 37.6% train, 62.4% test</strong>, the reverse of the 70-80%/20-30% guideline above. This is a historical artifact of how the data was originally partitioned (Ripley, <em>Pattern Recognition and Neural Networks</em>, 1996), not a split you would choose deliberately. We use it throughout this chapter because it is a convenient, well-known built-in dataset, but <strong>do not treat this split as a template</strong> — for your own projects, create the partition yourself (e.g., with <code>caret::createDataPartition()</code>) using the 70-80%/20-30% guideline.</p>
+</div>
+</div>
 </section>
 <section id="the-bayes-error-rate" class="level3">
 <h3 class="anchored" data-anchor-id="the-bayes-error-rate">The Bayes Error Rate</h3>
@@ -708,11 +723,17 @@ $ set   &lt;chr&gt; "train", "train", "train", "train", "train", "train", "train
 <p><span class="math display">\[P(Y = k \mid \mathbf{x}) = \frac{e^{\boldsymbol{\beta}_k^T\mathbf{x}}}{\sum_{j=1}^{K} e^{\boldsymbol{\beta}_j^T\mathbf{x}}}\]</span></p>
 <p>One class is set as reference; <span class="math inline">\(K-1\)</span> sets of coefficients are estimated.</p>
 </section>
+<section id="regularized-logistic-regression" class="level3">
+<h3 class="anchored" data-anchor-id="regularized-logistic-regression">Regularized Logistic Regression</h3>
+<p>With many features (or features that are correlated), unregularized MLE coefficients can become unstable or overfit. <strong>Regularization</strong> adds a penalty on coefficient size to the loss being minimized:</p>
+<p><span class="math display">\[\text{Ridge (L2):} \quad \ell(\boldsymbol{\beta}) - \lambda \sum_{j=1}^{p}\beta_j^2 \qquad \text{Lasso (L1):} \quad \ell(\boldsymbol{\beta}) - \lambda \sum_{j=1}^{p}|\beta_j|\]</span></p>
+<p>Ridge shrinks all coefficients toward zero without eliminating any; lasso can shrink coefficients exactly to zero, performing automatic feature selection. The penalty strength <span class="math inline">\(\lambda\)</span> is chosen by cross-validation. In R, <code>glmnet::glmnet(x, y, family = "binomial", alpha = 0)</code> fits ridge (<code>alpha = 1</code> for lasso, values in between for elastic net). For a data science project with dozens or hundreds of candidate predictors, regularized logistic regression is usually preferable to the plain <code>glm()</code> fit shown below.</p>
+</section>
 </section>
 <section id="example-logistic-regression-for-diabetes-prediction" class="level2">
 <h2 class="anchored" data-anchor-id="example-logistic-regression-for-diabetes-prediction">Example: Logistic Regression for Diabetes Prediction</h2>
-<p><strong>Example 9.2.</strong> Using the Pima dataset, a logistic regression predicts diabetes from glucose level, BMI, and age. Coefficient for glucose: <span class="math inline">\(\hat{\beta} = 0.038\)</span>, <span class="math inline">\(e^{\hat{\beta}} = 1.039\)</span>.</p>
-<p><strong>Interpretation:</strong> For each 1 mg/dL increase in glucose concentration, the odds of diabetes increase by 3.9%, holding BMI and age constant. This is statistically significant (<span class="math inline">\(z = 8.2\)</span>, <span class="math inline">\(p &lt; 0.001\)</span>).</p>
+<p><strong>Example 9.2.</strong> Using the Pima dataset, a logistic regression predicts diabetes from glucose level, BMI, age, and diabetes pedigree function (matching the model fit in the R example below). Coefficient for glucose: <span class="math inline">\(\hat{\beta} = 0.031\)</span>, <span class="math inline">\(e^{\hat{\beta}} = 1.032\)</span>.</p>
+<p><strong>Interpretation:</strong> For each 1 mg/dL increase in glucose concentration, the odds of diabetes increase by 3.2%, holding BMI, age, and pedigree function constant. This is statistically significant (<span class="math inline">\(z = 4.72\)</span>, <span class="math inline">\(p &lt; 0.001\)</span>).</p>
 </section>
 <section id="r-example-logistic-regression" class="level2">
 <h2 class="anchored" data-anchor-id="r-example-logistic-regression">R Example: Logistic Regression</h2>
@@ -994,7 +1015,7 @@ Number of Fisher Scoring iterations: 5</code></pre>
 </section>
 <section id="example-knn-decision-boundary" class="level2">
 <h2 class="anchored" data-anchor-id="example-knn-decision-boundary">Example: KNN Decision Boundary</h2>
-<p><strong>Example 9.3.</strong> For the Pima dataset with <span class="math inline">\(K = 1\)</span>: perfect training accuracy (each point is its own nearest neighbor), but poor test accuracy (overfitting). With <span class="math inline">\(K = 21\)</span>: smoother boundary, better generalization. Cross-validation identifies <span class="math inline">\(K = 15\)</span> as optimal, achieving 76% test accuracy.</p>
+<p><strong>Example 9.3.</strong> For the Pima dataset with <span class="math inline">\(K = 1\)</span>: perfect training accuracy (100%, each point is its own nearest neighbor), but weaker test accuracy (69.9%) — a classic overfitting signature. With <span class="math inline">\(K = 21\)</span>: a smoother boundary generalizes better (79.5% test accuracy). Five-fold cross-validation on the training set (using the <em>same</em> folds for every candidate <span class="math inline">\(K\)</span>, as in the corrected R code below) identifies <span class="math inline">\(K = 23\)</span> as optimal (CV accuracy ≈ 75%), achieving 77.7% test accuracy. Note that the CV-accuracy curve is fairly flat for <span class="math inline">\(K\)</span> between roughly 15 and 29 (all within about 1 percentage point) — with only <span class="math inline">\(n=200\)</span> training observations, the “optimal” <span class="math inline">\(K\)</span> is not sharply defined, and a different random fold split could easily favor a neighboring value of <span class="math inline">\(K\)</span>. In practice, any <span class="math inline">\(K\)</span> in that flat region is a reasonable, defensible choice.</p>
 </section>
 <section id="r-example-knn-classification" class="level2">
 <h2 class="anchored" data-anchor-id="r-example-knn-classification">R Example: KNN Classification</h2>
@@ -1012,24 +1033,28 @@ Number of Fisher Scoring iterations: 5</code></pre>
 <span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Tune K via cross-validation</span></span>
 <span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">42</span>)</span>
-<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>k_vals     <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="dv">1</span>, <span class="dv">31</span>, <span class="at">by =</span> <span class="dv">2</span>)</span>
-<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a>cv_acc     <span class="ot">&lt;-</span> <span class="fu">sapply</span>(k_vals, <span class="cf">function</span>(k) {</span>
-<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a>  folds <span class="ot">&lt;-</span> <span class="fu">createFolds</span>(train_y, <span class="at">k =</span> <span class="dv">5</span>)</span>
-<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a>  fold_acc <span class="ot">&lt;-</span> <span class="fu">sapply</span>(folds, <span class="cf">function</span>(idx) {</span>
-<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>    knn_pred <span class="ot">&lt;-</span> class<span class="sc">::</span><span class="fu">knn</span>(<span class="at">train =</span> train_x[<span class="sc">-</span>idx, ],</span>
-<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a>                            <span class="at">test  =</span> train_x[idx, ],</span>
-<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>                            <span class="at">cl    =</span> train_y[<span class="sc">-</span>idx],</span>
-<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a>                            <span class="at">k     =</span> k)</span>
-<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mean</span>(knn_pred <span class="sc">==</span> train_y[idx])</span>
-<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a>  })</span>
-<span id="cb20-22"><a href="#cb20-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(fold_acc)</span>
-<span id="cb20-23"><a href="#cb20-23" aria-hidden="true" tabindex="-1"></a>})</span>
-<span id="cb20-24"><a href="#cb20-24" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb20-25"><a href="#cb20-25" aria-hidden="true" tabindex="-1"></a>optimal_k_knn <span class="ot">&lt;-</span> k_vals[<span class="fu">which.max</span>(cv_acc)]</span>
-<span id="cb20-26"><a href="#cb20-26" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Optimal K:"</span>, optimal_k_knn, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a><span class="co"># IMPORTANT: generate the folds ONCE and reuse them for every K.</span></span>
+<span id="cb20-13"><a href="#cb20-13" aria-hidden="true" tabindex="-1"></a><span class="co"># Redrawing folds inside the loop (a common mistake) means each K is</span></span>
+<span id="cb20-14"><a href="#cb20-14" aria-hidden="true" tabindex="-1"></a><span class="co"># evaluated on a different random split, adding noise that has nothing</span></span>
+<span id="cb20-15"><a href="#cb20-15" aria-hidden="true" tabindex="-1"></a><span class="co"># to do with K itself and can shift which K looks "best".</span></span>
+<span id="cb20-16"><a href="#cb20-16" aria-hidden="true" tabindex="-1"></a>folds  <span class="ot">&lt;-</span> <span class="fu">createFolds</span>(train_y, <span class="at">k =</span> <span class="dv">5</span>)</span>
+<span id="cb20-17"><a href="#cb20-17" aria-hidden="true" tabindex="-1"></a>k_vals <span class="ot">&lt;-</span> <span class="fu">seq</span>(<span class="dv">1</span>, <span class="dv">31</span>, <span class="at">by =</span> <span class="dv">2</span>)</span>
+<span id="cb20-18"><a href="#cb20-18" aria-hidden="true" tabindex="-1"></a>cv_acc <span class="ot">&lt;-</span> <span class="fu">sapply</span>(k_vals, <span class="cf">function</span>(k) {</span>
+<span id="cb20-19"><a href="#cb20-19" aria-hidden="true" tabindex="-1"></a>  fold_acc <span class="ot">&lt;-</span> <span class="fu">sapply</span>(folds, <span class="cf">function</span>(idx) {</span>
+<span id="cb20-20"><a href="#cb20-20" aria-hidden="true" tabindex="-1"></a>    knn_pred <span class="ot">&lt;-</span> class<span class="sc">::</span><span class="fu">knn</span>(<span class="at">train =</span> train_x[<span class="sc">-</span>idx, ],</span>
+<span id="cb20-21"><a href="#cb20-21" aria-hidden="true" tabindex="-1"></a>                            <span class="at">test  =</span> train_x[idx, ],</span>
+<span id="cb20-22"><a href="#cb20-22" aria-hidden="true" tabindex="-1"></a>                            <span class="at">cl    =</span> train_y[<span class="sc">-</span>idx],</span>
+<span id="cb20-23"><a href="#cb20-23" aria-hidden="true" tabindex="-1"></a>                            <span class="at">k     =</span> k)</span>
+<span id="cb20-24"><a href="#cb20-24" aria-hidden="true" tabindex="-1"></a>    <span class="fu">mean</span>(knn_pred <span class="sc">==</span> train_y[idx])</span>
+<span id="cb20-25"><a href="#cb20-25" aria-hidden="true" tabindex="-1"></a>  })</span>
+<span id="cb20-26"><a href="#cb20-26" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>(fold_acc)</span>
+<span id="cb20-27"><a href="#cb20-27" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb20-28"><a href="#cb20-28" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-29"><a href="#cb20-29" aria-hidden="true" tabindex="-1"></a>optimal_k_knn <span class="ot">&lt;-</span> k_vals[<span class="fu">which.max</span>(cv_acc)]</span>
+<span id="cb20-30"><a href="#cb20-30" aria-hidden="true" tabindex="-1"></a><span class="fu">cat</span>(<span class="st">"Optimal K:"</span>, optimal_k_knn, <span class="st">"</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output cell-output-stdout">
-<pre><code>Optimal K: 11 </code></pre>
+<pre><code>Optimal K: 23 </code></pre>
 </div>
 </div>
 <div class="cell">
@@ -1048,7 +1073,7 @@ Number of Fisher Scoring iterations: 5</code></pre>
 <span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>    <span class="fu">round</span>(knn_acc <span class="sc">*</span> <span class="dv">100</span>, <span class="dv">1</span>), <span class="st">"%</span><span class="sc">\n</span><span class="st">"</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output cell-output-stdout">
-<pre><code>KNN Test Accuracy (K= 11 ): 77.7 %</code></pre>
+<pre><code>KNN Test Accuracy (K= 23 ): 77.7 %</code></pre>
 </div>
 <details class="code-fold">
 <summary>Show the R code</summary>
@@ -1057,8 +1082,8 @@ Number of Fisher Scoring iterations: 5</code></pre>
 <div class="cell-output cell-output-stdout">
 <pre><code>         Actual
 Predicted  No Yes
-      No  197  48
-      Yes  26  61</code></pre>
+      No  200  51
+      Yes  23  58</code></pre>
 </div>
 </div>
 <div class="cell">
@@ -1097,7 +1122,7 @@ Predicted  No Yes
 <p><strong>Code explanation:</strong></p>
 <ul>
 <li><code>scale(test_x, center = ..., scale = ...)</code> applies training set scaling to test data — critical to prevent data leakage; always scale test using training set parameters.</li>
-<li><code>createFolds(y, k = 5)</code> creates stratified cross-validation folds, preserving class proportions in each fold.</li>
+<li><code>createFolds(y, k = 5)</code> creates stratified cross-validation folds, preserving class proportions in each fold. Generate the folds <strong>once</strong>, outside the loop over candidate hyperparameter values, and reuse the same folds for every value — this ensures each <span class="math inline">\(K\)</span> is compared on identical data, which is essential for a fair comparison.</li>
 <li><code>class::knn(..., prob = TRUE)</code> stores, via <code>attr(pred, "prob")</code>, the vote proportion for the <em>predicted (winning)</em> class — not the positive class. For ROC, convert it first: <code>ifelse(pred == "Yes", p, 1 - p)</code>.</li>
 </ul>
 </section>
@@ -1150,11 +1175,29 @@ Predicted  No Yes
 <p><strong>Misclassification rate:</strong> <span class="math display">\[E(t) = 1 - \max_k p_k(t)\]</span></p>
 <p>where <span class="math inline">\(p_k(t)\)</span> is the proportion of class <span class="math inline">\(k\)</span> observations at node <span class="math inline">\(t\)</span>. All three are minimized when a node is pure (one class only). Gini and entropy are preferred for growing trees because they are more sensitive to impurity changes than misclassification rate.</p>
 </section>
-<section id="the-information-gain" class="level3">
-<h3 class="anchored" data-anchor-id="the-information-gain">The Information Gain</h3>
-<p>The quality of a split is measured by the <strong>information gain</strong> (reduction in entropy):</p>
+<section id="the-information-gain-and-gini-reduction" class="level3">
+<h3 class="anchored" data-anchor-id="the-information-gain-and-gini-reduction">The Information Gain (and Gini Reduction)</h3>
+<p>The quality of a split is measured by how much it reduces impurity. With <strong>entropy</strong>, this is called the <strong>information gain</strong>:</p>
 <p><span class="math display">\[\text{IG}(t, x_j, s) = H(t) - \frac{n_L}{n}H(t_L) - \frac{n_R}{n}H(t_R)\]</span></p>
-<p>where <span class="math inline">\(t_L\)</span> and <span class="math inline">\(t_R\)</span> are the left and right child nodes.</p>
+<p>The identical idea applied to <strong>Gini impurity</strong> is usually just called the <strong>Gini reduction</strong> (or Gini gain) — same notation, <span class="math inline">\(H\)</span> replaced by <span class="math inline">\(G\)</span>:</p>
+<p><span class="math display">\[\Delta G(t, x_j, s) = G(t) - \frac{n_L}{n}G(t_L) - \frac{n_R}{n}G(t_R)\]</span></p>
+<p>where <span class="math inline">\(t_L\)</span> and <span class="math inline">\(t_R\)</span> are the left and right child nodes produced by splitting node <span class="math inline">\(t\)</span> on feature <span class="math inline">\(x_j\)</span> at threshold <span class="math inline">\(s\)</span>, and <span class="math inline">\(n_L, n_R\)</span> are the number of observations sent to each child (<span class="math inline">\(n_L + n_R = n\)</span>). <code>rpart</code> (used in the R examples below) grows trees by choosing, at every node, the split <span class="math inline">\((x_j, s)\)</span> that <strong>maximizes</strong> <span class="math inline">\(\Delta G\)</span>.</p>
+</section>
+<section id="worked-example-computing-a-splits-gini-reduction" class="level3">
+<h3 class="anchored" data-anchor-id="worked-example-computing-a-splits-gini-reduction">Worked Example: Computing a Split’s Gini Reduction</h3>
+<p>Suppose a node <span class="math inline">\(t\)</span> has 8 observations with 2 features (<code>income</code>, <code>age</code>) and label <code>default</code> (4 Yes, 4 No):</p>
+<ul>
+<li><strong>Before the split:</strong> <span class="math inline">\(p_{\text{Yes}} = p_{\text{No}} = 0.5 \Rightarrow G(t) = 1 - (0.5^2 + 0.5^2) = 0.5\)</span>.</li>
+<li><strong>Splitting on <code>income</code> <span class="math inline">\(\leq s\)</span>:</strong> left child gets 5 obs (4 No, 1 Yes) <span class="math inline">\(\Rightarrow G(t_L) = 1-(0.8^2+0.2^2) = 0.32\)</span>; right child gets 3 obs, all Yes <span class="math inline">\(\Rightarrow G(t_R) = 0\)</span> (pure).</li>
+<li><strong>Gini reduction:</strong> <span class="math inline">\(\Delta G = 0.5 - \tfrac{5}{8}(0.32) - \tfrac{3}{8}(0) = 0.5 - 0.2 = 0.3\)</span>.</li>
+</ul>
+<p>If splitting on <code>age</code> at its best threshold gives a smaller <span class="math inline">\(\Delta G\)</span> (say 0.18), <code>income</code> is chosen for this node. This is exactly the calculation <code>rpart</code> performs — at every node, for every candidate feature and threshold — to pick each split, and it is the building block for the variable importance measure below.</p>
+</section>
+<section id="variable-importance-in-a-single-tree" class="level3">
+<h3 class="anchored" data-anchor-id="variable-importance-in-a-single-tree">Variable Importance in a Single Tree</h3>
+<p>A feature’s <strong>importance</strong> in a fitted tree is the total impurity reduction it is responsible for, summed over every node where it was used to split, weighted by how much of the data reached that node:</p>
+<p><span class="math display">\[\text{Importance}(x_j) = \sum_{t \,:\, \text{split variable at } t \,=\, x_j} \frac{n_t}{n}\,\Delta G(t, x_j, s_t^*)\]</span></p>
+<p>where the sum runs over all nodes <span class="math inline">\(t\)</span> that were split on <span class="math inline">\(x_j\)</span>, <span class="math inline">\(n_t\)</span> is the number of training observations at node <span class="math inline">\(t\)</span>, and <span class="math inline">\(s_t^*\)</span> is the threshold chosen at that node. A feature used in many splits, or in splits near the root (where <span class="math inline">\(n_t\)</span> is large), accumulates high importance; a feature never chosen for any split gets zero. This is precisely what <code>rpart</code> reports as <code>tree_pruned$variable.importance</code> in the R example below — now you can see where those numbers come from. (Two details worth knowing: <code>rpart</code> credits some importance to <strong>surrogate splits</strong> — backup variables highly correlated with the chosen splitter, used when the primary variable’s value is missing — so its output can differ slightly from summing <span class="math inline">\(\Delta G\)</span> by hand; and this whole idea reappears, unchanged, as <strong>Mean Decrease in Gini (MDG)</strong> when we average it across all trees in a Random Forest later in this chapter — MDG is not a separate concept, just this same single-tree importance averaged over many trees.)</p>
 </section>
 <section id="pruning" class="level3">
 <h3 class="anchored" data-anchor-id="pruning">Pruning</h3>
@@ -1170,14 +1213,16 @@ Predicted  No Yes
 </section>
 <section id="example-decision-tree-for-diabetes-classification" class="level2">
 <h2 class="anchored" data-anchor-id="example-decision-tree-for-diabetes-classification">Example: Decision Tree for Diabetes Classification</h2>
-<p><strong>Example 9.4.</strong> A decision tree for the Pima dataset with maximum depth 3 produces rules like:</p>
-<pre><code>If glu &lt;= 127.5:
-  If bmi &lt;= 26.35: → No (82% accuracy in leaf)
-  If bmi &gt;  26.35: → No (63% accuracy in leaf)
-If glu &gt; 127.5:
-  If age &lt;= 28.5:  → No (56% accuracy in leaf)
-  If age &gt;  28.5:  → Yes (72% accuracy in leaf)</code></pre>
-<p>The tree reveals that glucose level is the primary predictor, followed by BMI — consistent with medical knowledge. The leaf purity statistics show where the model is most and least confident.</p>
+<p><strong>Example 9.4.</strong> A decision tree for the Pima dataset with maximum depth 3 (<code>rpart.control(maxdepth = 3, cp = 0.001, minsplit = 10)</code>, <code>set.seed(42)</code>) produces:</p>
+<pre><code>If glu &lt; 123.5:                        → No  (86% leaf purity)
+If glu &gt;= 123.5:
+  If ped &lt; 0.31:
+    If glu &lt; 166:                      → No  (78% leaf purity)
+    If glu &gt;= 166:                     → Yes (75% leaf purity)
+  If ped &gt;= 0.31:
+    If bmi &lt; 28.65:                    → No  (73% leaf purity)
+    If bmi &gt;= 28.65:                   → Yes (84% leaf purity)</code></pre>
+<p>The tree reveals that glucose level is the primary predictor — consistent with medical knowledge. Once glucose is high (≥ 123.5), the diabetes pedigree function (<code>ped</code>) becomes the next most informative split, followed by BMI. Note that a decision tree’s exact split points and structure are specific to the training sample and algorithm settings (<code>cp</code>, <code>minsplit</code>, <code>maxdepth</code>); rerunning this code is the best way to see the actual tree for your data — always prefer <code>rpart.plot()</code> output over a hand-copied rule list when reporting results.</p>
 </section>
 <section id="r-example-decision-trees" class="level2">
 <h2 class="anchored" data-anchor-id="r-example-decision-trees">R Example: Decision Trees</h2>
@@ -1400,7 +1445,7 @@ Pruned Tree Test Accuracy: 75.6 %</code></pre>
 <h3 class="anchored" data-anchor-id="bagging-bootstrap-aggregating">Bagging (Bootstrap Aggregating)</h3>
 <p><strong>Bagging</strong> trains <span class="math inline">\(B\)</span> decision trees on <span class="math inline">\(B\)</span> bootstrap samples of the training data, then aggregates predictions by majority vote (classification) or mean (regression):</p>
 <p><span class="math display">\[\hat{f}_{\text{bag}}(x) = \text{majority vote}\{\hat{f}_b(x)\}_{b=1}^{B}\]</span></p>
-<p>The key insight: averaging reduces variance by a factor of <span class="math inline">\(B\)</span> without increasing bias (for independent predictors). Trees trained on different bootstrap samples are not identical — their disagreement captures variance.</p>
+<p>The key insight: averaging reduces variance by a factor of <span class="math inline">\(B\)</span> without increasing bias <strong>if the predictors were independent</strong>. In practice they are not — every bootstrap sample is drawn from the <em>same</em> training set, so the resulting trees are positively correlated, and the achievable variance reduction is smaller than a full factor of <span class="math inline">\(B\)</span>. The more correlated the trees, the less bagging helps. This is precisely the motivation for Random Forest’s extra feature-randomization step below: by decorrelating the trees further, it recovers variance reduction that plain bagging leaves on the table.</p>
 <p><strong>Out-of-Bag (OOB) Error:</strong> Each bootstrap sample omits approximately 37% of training observations. These out-of-bag observations can be used to estimate generalization error without a separate validation set.</p>
 </section>
 <section id="random-forest" class="level3">
@@ -1411,13 +1456,13 @@ Pruned Tree Test Accuracy: 75.6 %</code></pre>
 <p><strong>Variable Importance:</strong></p>
 <ul>
 <li><strong>Mean Decrease in Accuracy (MDA):</strong> Permute each feature and measure the drop in OOB accuracy.</li>
-<li><strong>Mean Decrease in Gini (MDG):</strong> Sum of Gini impurity decreases from splits on each feature across all trees.</li>
+<li><strong>Mean Decrease in Gini (MDG):</strong> The single-tree importance defined earlier (<span class="math inline">\(\sum \tfrac{n_t}{n}\Delta G\)</span> over the nodes split on <span class="math inline">\(x_j\)</span>), averaged across all <span class="math inline">\(B\)</span> trees in the forest.</li>
 </ul>
 <p>MDA is more principled and robust; MDG is faster to compute.</p>
 </section>
 <section id="boosting" class="level3">
 <h3 class="anchored" data-anchor-id="boosting">Boosting</h3>
-<p><strong>Boosting</strong> builds trees sequentially, with each tree fitting the <strong>residuals</strong> (errors) of the previous ones:</p>
+<p><strong>Boosting</strong> builds trees sequentially, with each new tree focused on correcting the mistakes of the ensemble built so far. The exact mechanism differs by algorithm — AdaBoost reweights misclassified observations, while Gradient Boosting fits new trees to the ensemble’s <strong>residuals</strong> (errors):</p>
 <p><strong>AdaBoost:</strong> Increases weights of misclassified observations so subsequent trees focus on hard cases.</p>
 <p><strong>Gradient Boosting (GBM):</strong> Fits each tree to the negative gradient of the loss function — a generalization of residual fitting.</p>
 <p><span class="math display">\[F_m(x) = F_{m-1}(x) + \eta \cdot h_m(x)\]</span></p>
@@ -1466,7 +1511,7 @@ Pruned Tree Test Accuracy: 75.6 %</code></pre>
 </section>
 <section id="example-random-forest-feature-importance" class="level2">
 <h2 class="anchored" data-anchor-id="example-random-forest-feature-importance">Example: Random Forest Feature Importance</h2>
-<p><strong>Example 9.5.</strong> Random forest on the Pima dataset (<span class="math inline">\(B = 500\)</span> trees, <span class="math inline">\(m = 2\)</span>) identifies glucose as the most important feature by both MDA and MDG, followed by BMI, age, and diabetes pedigree function. This is consistent with medical knowledge and the logistic regression results — but the random forest captures non-linear interactions that logistic regression misses.</p>
+<p><strong>Example 9.5.</strong> Random forest on the Pima dataset (<span class="math inline">\(B = 500\)</span> trees, <span class="math inline">\(m = 2\)</span>) identifies glucose as the most important feature by both MDA and MDG — consistent with medical knowledge and the logistic regression results. Beyond glucose, though, <strong>MDA and MDG disagree</strong> on the ranking: by MDA, age and diabetes pedigree function (<code>ped</code>) outrank BMI, with BMI actually last; by MDG, <code>ped</code> and age again outrank BMI, but BMI outranks number of pregnancies (<code>npreg</code>). This is a known property of the two measures — MDG (based on impurity reduction) tends to favor continuous predictors with many possible split points, while MDA (based on permutation) is generally considered the more reliable measure of true predictive importance. The lesson: <strong>check both importance measures rather than relying on either alone</strong>, and don’t expect them to agree exactly.</p>
 </section>
 <section id="r-example-random-forest-and-ensemble-methods" class="level2">
 <h2 class="anchored" data-anchor-id="r-example-random-forest-and-ensemble-methods">R Example: Random Forest and Ensemble Methods</h2>
@@ -1698,6 +1743,19 @@ Yes  30  38   0.4411765</code></pre>
 </tr>
 </tbody>
 </table>
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Warning</span>Watch the Orientation
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The layout above (rows = Predicted, columns = Actual) matches R’s <code>table(Predicted = ..., Actual = ...)</code> used throughout this chapter. Python’s <code>sklearn.metrics.confusion_matrix()</code> uses the <strong>opposite</strong> orientation by default (rows = Actual/true label, columns = Predicted). The formulas for precision, recall, etc. are the same either way, but if you read a confusion matrix off a plot or printout without checking which axis is which, you can flip precision and recall by mistake. Always check the axis labels.</p>
+</div>
+</div>
 </section>
 <section id="derived-metrics" class="level3">
 <h3 class="anchored" data-anchor-id="derived-metrics">Derived Metrics</h3>
@@ -1754,6 +1812,16 @@ Yes  30  38   0.4411765</code></pre>
 </table>
 <p><span class="math display">\[\text{MCC} = \frac{TP \cdot TN - FP \cdot FN}{\sqrt{(TP+FP)(TP+FN)(TN+FP)(TN+FN)}}\]</span></p>
 <p>MCC ranges from <span class="math inline">\(-1\)</span> to <span class="math inline">\(+1\)</span>; values near <span class="math inline">\(+1\)</span> indicate excellent classification.</p>
+</section>
+<section id="handling-imbalanced-classes" class="level3">
+<h3 class="anchored" data-anchor-id="handling-imbalanced-classes">Handling Imbalanced Classes</h3>
+<p>Choosing the right metric only measures the problem — it doesn’t fix it. When the minority class is rare, consider:</p>
+<ul>
+<li><strong>Resampling the training data:</strong> oversample the minority class (randomly, or synthetically with <strong>SMOTE</strong>, which generates new minority points by interpolating between existing ones), or undersample the majority class. <code>DMwR::SMOTE()</code> and <code>themis::step_smote()</code> (tidymodels) are common R implementations.</li>
+<li><strong>Class weighting / cost-sensitive learning:</strong> give a higher misclassification cost to the minority class during training (e.g., <code>class.weights</code> in <code>e1071::svm()</code>, <code>classwt</code> in <code>randomForest()</code>, or <code>weight</code> in <code>glm()</code>).</li>
+<li><strong>Threshold moving:</strong> keep the model as-is but choose a classification threshold below 0.5 to trade precision for recall (see the threshold-analysis example in the chapter lab).</li>
+</ul>
+<p>Resampling changes what the model <em>learns</em>; threshold moving changes only how its output probabilities are <em>converted to labels</em> — the two are complementary, and it’s a common mistake to use only one when both are appropriate.</p>
 </section>
 </section>
 <section id="example-why-accuracy-alone-is-insufficient" class="level2">
@@ -1865,12 +1933,12 @@ Yes  30  38   0.4411765</code></pre>
 <tr class="even">
 <td style="text-align: left;">KNN</td>
 <td style="text-align: right;">0.7771</td>
-<td style="text-align: right;">0.7011</td>
-<td style="text-align: right;">0.5596</td>
-<td style="text-align: right;">0.8834</td>
-<td style="text-align: right;">0.6224</td>
-<td style="text-align: right;">0.4731</td>
-<td style="text-align: right; font-weight: bold; color: steelblue !important;">0.8447</td>
+<td style="text-align: right;">0.7160</td>
+<td style="text-align: right;">0.5321</td>
+<td style="text-align: right;">0.8969</td>
+<td style="text-align: right;">0.6105</td>
+<td style="text-align: right;">0.4690</td>
+<td style="text-align: right; font-weight: bold; color: steelblue !important;">0.8495</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Decision Tree</td>
@@ -2096,7 +2164,7 @@ Yes  30  38   0.4411765</code></pre>
 </section>
 <section id="example-cross-validated-model-comparison" class="level2">
 <h2 class="anchored" data-anchor-id="example-cross-validated-model-comparison">Example: Cross-Validated Model Comparison</h2>
-<p><strong>Example 9.7.</strong> Four classifiers are evaluated with 10-fold cross-validation on the Pima dataset. Results (mean AUC ± SD):</p>
+<p><strong>Example 9.7.</strong> Four classifiers are evaluated with 10-fold cross-validation on the combined Pima dataset, <strong>using the same 10 fold assignments for every model</strong> (essential for a valid paired comparison — see the caution below). Results (mean AUC ± SD):</p>
 <table class="caption-top table">
 <thead>
 <tr class="header">
@@ -2108,27 +2176,40 @@ Yes  30  38   0.4411765</code></pre>
 <tbody>
 <tr class="odd">
 <td>Logistic Regression</td>
-<td>0.833</td>
-<td>0.028</td>
+<td>0.843</td>
+<td>0.080</td>
 </tr>
 <tr class="even">
-<td>KNN (<span class="math inline">\(K = 15\)</span>)</td>
-<td>0.801</td>
-<td>0.041</td>
+<td>KNN</td>
+<td>0.837</td>
+<td>0.062</td>
 </tr>
 <tr class="odd">
-<td>Decision Tree</td>
-<td>0.782</td>
-<td>0.052</td>
+<td>Random Forest</td>
+<td>0.836</td>
+<td>0.068</td>
 </tr>
 <tr class="even">
-<td>Random Forest</td>
-<td>0.856</td>
-<td>0.022</td>
+<td>Decision Tree</td>
+<td>0.790</td>
+<td>0.072</td>
 </tr>
 </tbody>
 </table>
-<p>Random Forest has the highest mean AUC and the lowest variability. A paired t-test confirms Random Forest significantly outperforms KNN (<span class="math inline">\(t_{\text{cal}} = 3.2\)</span>, <span class="math inline">\(df = 9\)</span>, <span class="math inline">\(p = 0.011\)</span> — reported as <span class="math inline">\(t(9) = 3.2\)</span>) and Decision Tree (<span class="math inline">\(p = 0.003\)</span>), but does not significantly outperform Logistic Regression (<span class="math inline">\(p = 0.12\)</span>). Given that Logistic Regression is nearly as accurate and far more interpretable, it may be preferred for a clinical deployment.</p>
+<p>Logistic Regression, KNN, and Random Forest achieve statistically indistinguishable mean AUC (all pairwise comparisons <span class="math inline">\(p &gt; 0.05\)</span> after Bonferroni correction). The single Decision Tree, however, performs significantly worse than both Logistic Regression (<span class="math inline">\(p = 0.031\)</span>) and Random Forest (<span class="math inline">\(p = 0.022\)</span>) — consistent with the theory that a single tree has higher variance than an ensemble or a low-variance linear model. Because Logistic Regression is <em>at least as accurate</em> as the more complex KNN and Random Forest models here, and is far more interpretable, it is a strong candidate for clinical deployment — a case where the simplest adequate model wins.</p>
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Warning</span>A Common and Serious Mistake: Mismatched CV Folds
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>If each model in a comparison is cross-validated with its <em>own</em>, independently drawn set of folds, the resulting scores are <strong>not paired</strong> — fold 3 for Model A and fold 3 for Model B are different subsets of data. Running a paired t-test (or <code>caret::diff(resamples(...))</code>) on such scores silently violates the test’s assumptions and can produce misleading conclusions about which model is better. Always fix the fold assignments once and pass them to every model (e.g., via <code>trainControl(index = ...)</code> in <code>caret</code>) before comparing.</p>
+</div>
+</div>
 </section>
 <section id="r-example-cross-validation-and-model-comparison" class="level2">
 <h2 class="anchored" data-anchor-id="r-example-cross-validation-and-model-comparison">R Example: Cross-Validation and Model Comparison</h2>
@@ -2140,61 +2221,69 @@ Yes  30  38   0.4411765</code></pre>
 <span id="cb49-3"><a href="#cb49-3" aria-hidden="true" tabindex="-1"></a>pima_all <span class="ot">&lt;-</span> <span class="fu">bind_rows</span>(Pima.tr, Pima.te)</span>
 <span id="cb49-4"><a href="#cb49-4" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb49-5"><a href="#cb49-5" aria-hidden="true" tabindex="-1"></a><span class="co"># Define CV control</span></span>
-<span id="cb49-6"><a href="#cb49-6" aria-hidden="true" tabindex="-1"></a>ctrl_cv <span class="ot">&lt;-</span> <span class="fu">trainControl</span>(</span>
-<span id="cb49-7"><a href="#cb49-7" aria-hidden="true" tabindex="-1"></a>  <span class="at">method          =</span> <span class="st">"cv"</span>,</span>
-<span id="cb49-8"><a href="#cb49-8" aria-hidden="true" tabindex="-1"></a>  <span class="at">number          =</span> <span class="dv">10</span>,</span>
-<span id="cb49-9"><a href="#cb49-9" aria-hidden="true" tabindex="-1"></a>  <span class="at">classProbs      =</span> <span class="cn">TRUE</span>,</span>
-<span id="cb49-10"><a href="#cb49-10" aria-hidden="true" tabindex="-1"></a>  <span class="at">summaryFunction =</span> twoClassSummary,</span>
-<span id="cb49-11"><a href="#cb49-11" aria-hidden="true" tabindex="-1"></a>  <span class="at">savePredictions =</span> <span class="st">"final"</span></span>
-<span id="cb49-12"><a href="#cb49-12" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb49-13"><a href="#cb49-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb49-14"><a href="#cb49-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Train all models with caret</span></span>
-<span id="cb49-15"><a href="#cb49-15" aria-hidden="true" tabindex="-1"></a>models_cv <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
-<span id="cb49-16"><a href="#cb49-16" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb49-17"><a href="#cb49-17" aria-hidden="true" tabindex="-1"></a><span class="co"># Logistic Regression</span></span>
-<span id="cb49-18"><a href="#cb49-18" aria-hidden="true" tabindex="-1"></a>models_cv<span class="sc">$</span>LR <span class="ot">&lt;-</span> <span class="fu">train</span>(</span>
-<span id="cb49-19"><a href="#cb49-19" aria-hidden="true" tabindex="-1"></a>  type <span class="sc">~</span> glu <span class="sc">+</span> bmi <span class="sc">+</span> age <span class="sc">+</span> ped <span class="sc">+</span> npreg,</span>
-<span id="cb49-20"><a href="#cb49-20" aria-hidden="true" tabindex="-1"></a>  <span class="at">data      =</span> pima_all,</span>
-<span id="cb49-21"><a href="#cb49-21" aria-hidden="true" tabindex="-1"></a>  <span class="at">method    =</span> <span class="st">"glm"</span>,</span>
-<span id="cb49-22"><a href="#cb49-22" aria-hidden="true" tabindex="-1"></a>  <span class="at">family    =</span> <span class="st">"binomial"</span>,</span>
-<span id="cb49-23"><a href="#cb49-23" aria-hidden="true" tabindex="-1"></a>  <span class="at">trControl =</span> ctrl_cv,</span>
-<span id="cb49-24"><a href="#cb49-24" aria-hidden="true" tabindex="-1"></a>  <span class="at">metric    =</span> <span class="st">"ROC"</span></span>
-<span id="cb49-25"><a href="#cb49-25" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb49-26"><a href="#cb49-26" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb49-27"><a href="#cb49-27" aria-hidden="true" tabindex="-1"></a><span class="co"># KNN</span></span>
-<span id="cb49-28"><a href="#cb49-28" aria-hidden="true" tabindex="-1"></a>models_cv<span class="sc">$</span>KNN <span class="ot">&lt;-</span> <span class="fu">train</span>(</span>
-<span id="cb49-29"><a href="#cb49-29" aria-hidden="true" tabindex="-1"></a>  type <span class="sc">~</span> glu <span class="sc">+</span> bmi <span class="sc">+</span> age <span class="sc">+</span> ped <span class="sc">+</span> npreg,</span>
-<span id="cb49-30"><a href="#cb49-30" aria-hidden="true" tabindex="-1"></a>  <span class="at">data      =</span> pima_all,</span>
-<span id="cb49-31"><a href="#cb49-31" aria-hidden="true" tabindex="-1"></a>  <span class="at">method    =</span> <span class="st">"knn"</span>,</span>
-<span id="cb49-32"><a href="#cb49-32" aria-hidden="true" tabindex="-1"></a>  <span class="at">trControl =</span> ctrl_cv,</span>
-<span id="cb49-33"><a href="#cb49-33" aria-hidden="true" tabindex="-1"></a>  <span class="at">tuneGrid  =</span> <span class="fu">data.frame</span>(<span class="at">k =</span> <span class="fu">c</span>(<span class="dv">5</span>,<span class="dv">9</span>,<span class="dv">13</span>,<span class="dv">17</span>,<span class="dv">21</span>)),</span>
-<span id="cb49-34"><a href="#cb49-34" aria-hidden="true" tabindex="-1"></a>  <span class="at">metric    =</span> <span class="st">"ROC"</span>,</span>
-<span id="cb49-35"><a href="#cb49-35" aria-hidden="true" tabindex="-1"></a>  <span class="at">preProcess =</span> <span class="fu">c</span>(<span class="st">"center"</span>,<span class="st">"scale"</span>)</span>
-<span id="cb49-36"><a href="#cb49-36" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb49-37"><a href="#cb49-37" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb49-38"><a href="#cb49-38" aria-hidden="true" tabindex="-1"></a><span class="co"># Decision Tree</span></span>
-<span id="cb49-39"><a href="#cb49-39" aria-hidden="true" tabindex="-1"></a>models_cv<span class="sc">$</span>Tree <span class="ot">&lt;-</span> <span class="fu">train</span>(</span>
-<span id="cb49-40"><a href="#cb49-40" aria-hidden="true" tabindex="-1"></a>  type <span class="sc">~</span> glu <span class="sc">+</span> bmi <span class="sc">+</span> age <span class="sc">+</span> ped <span class="sc">+</span> npreg,</span>
-<span id="cb49-41"><a href="#cb49-41" aria-hidden="true" tabindex="-1"></a>  <span class="at">data      =</span> pima_all,</span>
-<span id="cb49-42"><a href="#cb49-42" aria-hidden="true" tabindex="-1"></a>  <span class="at">method    =</span> <span class="st">"rpart"</span>,</span>
-<span id="cb49-43"><a href="#cb49-43" aria-hidden="true" tabindex="-1"></a>  <span class="at">trControl =</span> ctrl_cv,</span>
-<span id="cb49-44"><a href="#cb49-44" aria-hidden="true" tabindex="-1"></a>  <span class="at">tuneLength =</span> <span class="dv">10</span>,</span>
-<span id="cb49-45"><a href="#cb49-45" aria-hidden="true" tabindex="-1"></a>  <span class="at">metric    =</span> <span class="st">"ROC"</span></span>
-<span id="cb49-46"><a href="#cb49-46" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb49-47"><a href="#cb49-47" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb49-48"><a href="#cb49-48" aria-hidden="true" tabindex="-1"></a><span class="co"># Random Forest</span></span>
-<span id="cb49-49"><a href="#cb49-49" aria-hidden="true" tabindex="-1"></a>models_cv<span class="sc">$</span>RF <span class="ot">&lt;-</span> <span class="fu">train</span>(</span>
-<span id="cb49-50"><a href="#cb49-50" aria-hidden="true" tabindex="-1"></a>  type <span class="sc">~</span> glu <span class="sc">+</span> bmi <span class="sc">+</span> age <span class="sc">+</span> ped <span class="sc">+</span> npreg,</span>
-<span id="cb49-51"><a href="#cb49-51" aria-hidden="true" tabindex="-1"></a>  <span class="at">data      =</span> pima_all,</span>
-<span id="cb49-52"><a href="#cb49-52" aria-hidden="true" tabindex="-1"></a>  <span class="at">method    =</span> <span class="st">"rf"</span>,</span>
-<span id="cb49-53"><a href="#cb49-53" aria-hidden="true" tabindex="-1"></a>  <span class="at">trControl =</span> ctrl_cv,</span>
-<span id="cb49-54"><a href="#cb49-54" aria-hidden="true" tabindex="-1"></a>  <span class="at">tuneGrid  =</span> <span class="fu">data.frame</span>(<span class="at">mtry =</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>,<span class="dv">4</span>)),</span>
-<span id="cb49-55"><a href="#cb49-55" aria-hidden="true" tabindex="-1"></a>  <span class="at">metric    =</span> <span class="st">"ROC"</span></span>
-<span id="cb49-56"><a href="#cb49-56" aria-hidden="true" tabindex="-1"></a>)</span>
-<span id="cb49-57"><a href="#cb49-57" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb49-58"><a href="#cb49-58" aria-hidden="true" tabindex="-1"></a><span class="co"># Compare results</span></span>
-<span id="cb49-59"><a href="#cb49-59" aria-hidden="true" tabindex="-1"></a>cv_results <span class="ot">&lt;-</span> <span class="fu">resamples</span>(models_cv)</span>
-<span id="cb49-60"><a href="#cb49-60" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(cv_results)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb49-6"><a href="#cb49-6" aria-hidden="true" tabindex="-1"></a><span class="co"># IMPORTANT: pre-generate the 10 fold assignments ONCE and pass them via</span></span>
+<span id="cb49-7"><a href="#cb49-7" aria-hidden="true" tabindex="-1"></a><span class="co"># `index =`. Without this, each call to train() below draws its own random</span></span>
+<span id="cb49-8"><a href="#cb49-8" aria-hidden="true" tabindex="-1"></a><span class="co"># folds, so the four models are evaluated on DIFFERENT data splits. That</span></span>
+<span id="cb49-9"><a href="#cb49-9" aria-hidden="true" tabindex="-1"></a><span class="co"># breaks the "paired" comparison that resamples()/diff() assumes, and can</span></span>
+<span id="cb49-10"><a href="#cb49-10" aria-hidden="true" tabindex="-1"></a><span class="co"># flip which model looks best (see the callout box above).</span></span>
+<span id="cb49-11"><a href="#cb49-11" aria-hidden="true" tabindex="-1"></a>cv_folds <span class="ot">&lt;-</span> <span class="fu">createFolds</span>(pima_all<span class="sc">$</span>type, <span class="at">k =</span> <span class="dv">10</span>, <span class="at">returnTrain =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb49-12"><a href="#cb49-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-13"><a href="#cb49-13" aria-hidden="true" tabindex="-1"></a>ctrl_cv <span class="ot">&lt;-</span> <span class="fu">trainControl</span>(</span>
+<span id="cb49-14"><a href="#cb49-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">method          =</span> <span class="st">"cv"</span>,</span>
+<span id="cb49-15"><a href="#cb49-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">number          =</span> <span class="dv">10</span>,</span>
+<span id="cb49-16"><a href="#cb49-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">index           =</span> cv_folds,</span>
+<span id="cb49-17"><a href="#cb49-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">classProbs      =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb49-18"><a href="#cb49-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">summaryFunction =</span> twoClassSummary,</span>
+<span id="cb49-19"><a href="#cb49-19" aria-hidden="true" tabindex="-1"></a>  <span class="at">savePredictions =</span> <span class="st">"final"</span></span>
+<span id="cb49-20"><a href="#cb49-20" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb49-21"><a href="#cb49-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-22"><a href="#cb49-22" aria-hidden="true" tabindex="-1"></a><span class="co"># Train all models with caret</span></span>
+<span id="cb49-23"><a href="#cb49-23" aria-hidden="true" tabindex="-1"></a>models_cv <span class="ot">&lt;-</span> <span class="fu">list</span>()</span>
+<span id="cb49-24"><a href="#cb49-24" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-25"><a href="#cb49-25" aria-hidden="true" tabindex="-1"></a><span class="co"># Logistic Regression</span></span>
+<span id="cb49-26"><a href="#cb49-26" aria-hidden="true" tabindex="-1"></a>models_cv<span class="sc">$</span>LR <span class="ot">&lt;-</span> <span class="fu">train</span>(</span>
+<span id="cb49-27"><a href="#cb49-27" aria-hidden="true" tabindex="-1"></a>  type <span class="sc">~</span> glu <span class="sc">+</span> bmi <span class="sc">+</span> age <span class="sc">+</span> ped <span class="sc">+</span> npreg,</span>
+<span id="cb49-28"><a href="#cb49-28" aria-hidden="true" tabindex="-1"></a>  <span class="at">data      =</span> pima_all,</span>
+<span id="cb49-29"><a href="#cb49-29" aria-hidden="true" tabindex="-1"></a>  <span class="at">method    =</span> <span class="st">"glm"</span>,</span>
+<span id="cb49-30"><a href="#cb49-30" aria-hidden="true" tabindex="-1"></a>  <span class="at">family    =</span> <span class="st">"binomial"</span>,</span>
+<span id="cb49-31"><a href="#cb49-31" aria-hidden="true" tabindex="-1"></a>  <span class="at">trControl =</span> ctrl_cv,</span>
+<span id="cb49-32"><a href="#cb49-32" aria-hidden="true" tabindex="-1"></a>  <span class="at">metric    =</span> <span class="st">"ROC"</span></span>
+<span id="cb49-33"><a href="#cb49-33" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb49-34"><a href="#cb49-34" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-35"><a href="#cb49-35" aria-hidden="true" tabindex="-1"></a><span class="co"># KNN</span></span>
+<span id="cb49-36"><a href="#cb49-36" aria-hidden="true" tabindex="-1"></a>models_cv<span class="sc">$</span>KNN <span class="ot">&lt;-</span> <span class="fu">train</span>(</span>
+<span id="cb49-37"><a href="#cb49-37" aria-hidden="true" tabindex="-1"></a>  type <span class="sc">~</span> glu <span class="sc">+</span> bmi <span class="sc">+</span> age <span class="sc">+</span> ped <span class="sc">+</span> npreg,</span>
+<span id="cb49-38"><a href="#cb49-38" aria-hidden="true" tabindex="-1"></a>  <span class="at">data      =</span> pima_all,</span>
+<span id="cb49-39"><a href="#cb49-39" aria-hidden="true" tabindex="-1"></a>  <span class="at">method    =</span> <span class="st">"knn"</span>,</span>
+<span id="cb49-40"><a href="#cb49-40" aria-hidden="true" tabindex="-1"></a>  <span class="at">trControl =</span> ctrl_cv,</span>
+<span id="cb49-41"><a href="#cb49-41" aria-hidden="true" tabindex="-1"></a>  <span class="at">tuneGrid  =</span> <span class="fu">data.frame</span>(<span class="at">k =</span> <span class="fu">c</span>(<span class="dv">5</span>,<span class="dv">9</span>,<span class="dv">13</span>,<span class="dv">17</span>,<span class="dv">21</span>)),</span>
+<span id="cb49-42"><a href="#cb49-42" aria-hidden="true" tabindex="-1"></a>  <span class="at">metric    =</span> <span class="st">"ROC"</span>,</span>
+<span id="cb49-43"><a href="#cb49-43" aria-hidden="true" tabindex="-1"></a>  <span class="at">preProcess =</span> <span class="fu">c</span>(<span class="st">"center"</span>,<span class="st">"scale"</span>)</span>
+<span id="cb49-44"><a href="#cb49-44" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb49-45"><a href="#cb49-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-46"><a href="#cb49-46" aria-hidden="true" tabindex="-1"></a><span class="co"># Decision Tree</span></span>
+<span id="cb49-47"><a href="#cb49-47" aria-hidden="true" tabindex="-1"></a>models_cv<span class="sc">$</span>Tree <span class="ot">&lt;-</span> <span class="fu">train</span>(</span>
+<span id="cb49-48"><a href="#cb49-48" aria-hidden="true" tabindex="-1"></a>  type <span class="sc">~</span> glu <span class="sc">+</span> bmi <span class="sc">+</span> age <span class="sc">+</span> ped <span class="sc">+</span> npreg,</span>
+<span id="cb49-49"><a href="#cb49-49" aria-hidden="true" tabindex="-1"></a>  <span class="at">data      =</span> pima_all,</span>
+<span id="cb49-50"><a href="#cb49-50" aria-hidden="true" tabindex="-1"></a>  <span class="at">method    =</span> <span class="st">"rpart"</span>,</span>
+<span id="cb49-51"><a href="#cb49-51" aria-hidden="true" tabindex="-1"></a>  <span class="at">trControl =</span> ctrl_cv,</span>
+<span id="cb49-52"><a href="#cb49-52" aria-hidden="true" tabindex="-1"></a>  <span class="at">tuneLength =</span> <span class="dv">10</span>,</span>
+<span id="cb49-53"><a href="#cb49-53" aria-hidden="true" tabindex="-1"></a>  <span class="at">metric    =</span> <span class="st">"ROC"</span></span>
+<span id="cb49-54"><a href="#cb49-54" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb49-55"><a href="#cb49-55" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-56"><a href="#cb49-56" aria-hidden="true" tabindex="-1"></a><span class="co"># Random Forest</span></span>
+<span id="cb49-57"><a href="#cb49-57" aria-hidden="true" tabindex="-1"></a>models_cv<span class="sc">$</span>RF <span class="ot">&lt;-</span> <span class="fu">train</span>(</span>
+<span id="cb49-58"><a href="#cb49-58" aria-hidden="true" tabindex="-1"></a>  type <span class="sc">~</span> glu <span class="sc">+</span> bmi <span class="sc">+</span> age <span class="sc">+</span> ped <span class="sc">+</span> npreg,</span>
+<span id="cb49-59"><a href="#cb49-59" aria-hidden="true" tabindex="-1"></a>  <span class="at">data      =</span> pima_all,</span>
+<span id="cb49-60"><a href="#cb49-60" aria-hidden="true" tabindex="-1"></a>  <span class="at">method    =</span> <span class="st">"rf"</span>,</span>
+<span id="cb49-61"><a href="#cb49-61" aria-hidden="true" tabindex="-1"></a>  <span class="at">trControl =</span> ctrl_cv,</span>
+<span id="cb49-62"><a href="#cb49-62" aria-hidden="true" tabindex="-1"></a>  <span class="at">tuneGrid  =</span> <span class="fu">data.frame</span>(<span class="at">mtry =</span> <span class="fu">c</span>(<span class="dv">1</span>,<span class="dv">2</span>,<span class="dv">3</span>,<span class="dv">4</span>)),</span>
+<span id="cb49-63"><a href="#cb49-63" aria-hidden="true" tabindex="-1"></a>  <span class="at">metric    =</span> <span class="st">"ROC"</span></span>
+<span id="cb49-64"><a href="#cb49-64" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb49-65"><a href="#cb49-65" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb49-66"><a href="#cb49-66" aria-hidden="true" tabindex="-1"></a><span class="co"># Compare results</span></span>
+<span id="cb49-67"><a href="#cb49-67" aria-hidden="true" tabindex="-1"></a>cv_results <span class="ot">&lt;-</span> <span class="fu">resamples</span>(models_cv)</span>
+<span id="cb49-68"><a href="#cb49-68" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(cv_results)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 <div class="cell-output cell-output-stdout">
 <pre><code>
@@ -2206,24 +2295,24 @@ Number of resamples: 10
 
 ROC 
           Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
-LR   0.7512605 0.8351631 0.8744061 0.8589314 0.8873457 0.9253968    0
-KNN  0.7055556 0.8262605 0.8460538 0.8340669 0.8621437 0.8785714    0
-Tree 0.6873016 0.7657388 0.8044001 0.8003485 0.8381559 0.9151235    0
-RF   0.7589869 0.8013062 0.8542134 0.8407354 0.8817460 0.8986928    0
+LR   0.6466049 0.8211835 0.8638228 0.8433204 0.8864749 0.9367284    0
+KNN  0.6944444 0.8318394 0.8511016 0.8374926 0.8672619 0.9228395    0
+Tree 0.6504630 0.7675881 0.7922386 0.7897734 0.8120370 0.9074074    0
+RF   0.6682099 0.8247899 0.8518298 0.8361464 0.8730159 0.9205247    0
 
 Sens 
           Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
-LR   0.7777778 0.8642857 0.8873016 0.8899206 0.9363095 1.0000000    0
-KNN  0.8571429 0.8857143 0.8888889 0.8928571 0.9079365 0.9166667    0
-Tree 0.6000000 0.7799603 0.8472222 0.8134921 0.8857143 0.8888889    0
-RF   0.6944444 0.8581349 0.9000000 0.8764286 0.9357143 0.9722222    0
+LR   0.7500000 0.8297619 0.9011905 0.8788095 0.9428571 0.9722222    0
+KNN  0.8000000 0.8650794 0.9015873 0.8929365 0.9160714 0.9722222    0
+Tree 0.7142857 0.7777778 0.8170635 0.8280952 0.8809524 0.9428571    0
+RF   0.6666667 0.8581349 0.8857143 0.8705556 0.9097222 0.9722222    0
 
 Spec 
           Min.   1st Qu.    Median      Mean   3rd Qu.      Max. NA's
-LR   0.4705882 0.5073529 0.5996732 0.5866013 0.6111111 0.7777778    0
-KNN  0.3333333 0.4779412 0.5555556 0.5480392 0.5882353 0.7222222    0
-Tree 0.3888889 0.6111111 0.6290850 0.6163399 0.6666667 0.8235294    0
-RF   0.4117647 0.5138889 0.5555556 0.5754902 0.6666667 0.7058824    0</code></pre>
+LR   0.3888889 0.4918301 0.5882353 0.5702614 0.6111111 0.7777778    0
+KNN  0.2941176 0.4583333 0.5294118 0.5408497 0.6111111 0.7777778    0
+Tree 0.4444444 0.5555556 0.5718954 0.6042484 0.6960784 0.7777778    0
+RF   0.4705882 0.5555556 0.5718954 0.6140523 0.7222222 0.7777778    0</code></pre>
 </div>
 </div>
 <div class="cell">
@@ -2258,25 +2347,25 @@ Upper diagonal: estimates of the difference
 Lower diagonal: p-value for H0: difference = 0
 
 ROC 
-     LR     KNN       Tree      RF       
-LR           0.024864  0.058583  0.018196
-KNN  1.0000            0.033718 -0.006668
-Tree 0.2397 1.0000              -0.040387
-RF   1.0000 1.0000    1.0000             
+     LR      KNN       Tree      RF       
+LR            0.005828  0.053547  0.007174
+KNN  1.00000            0.047719  0.001346
+Tree 0.03084 0.05979             -0.046373
+RF   1.00000 1.00000   0.02195            
 
 Sens 
-     LR     KNN       Tree      RF       
-LR          -0.002937  0.076429  0.013492
-KNN  1.0000            0.079365  0.016429
-Tree 0.4779 0.1897              -0.062937
-RF   1.0000 1.0000    0.8945             
+     LR      KNN       Tree      RF       
+LR           -0.014127  0.050714  0.008254
+KNN  1.00000            0.064841  0.022381
+Tree 0.41435 0.02937             -0.042460
+RF   1.00000 1.00000   0.59448            
 
 Spec 
-     LR KNN      Tree     RF      
-LR       0.03856 -0.02974  0.01111
-KNN  1           -0.06830 -0.02745
-Tree 1  1                  0.04085
-RF   1  1        1                </code></pre>
+     LR      KNN       Tree      RF       
+LR            0.029412 -0.033987 -0.043791
+KNN  1.00000           -0.063399 -0.073203
+Tree 1.00000 0.23777             -0.009804
+RF   1.00000 0.04223   1.00000            </code></pre>
 </div>
 </div>
 <div class="cell">
@@ -2327,34 +2416,34 @@ RF   1  1        1                </code></pre>
 <tr class="odd">
 <td style="text-align: left; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">LR</td>
 <td style="text-align: left; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">LR</td>
-<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">0.8589</td>
-<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">0.0519</td>
-<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">0.7513</td>
-<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">0.9254</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">0.8433</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">0.0801</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">0.6466</td>
+<td style="text-align: right; font-weight: bold; background-color: rgba(238, 242, 255, 1) !important;">0.9367</td>
 </tr>
 <tr class="even">
-<td style="text-align: left;">RF</td>
-<td style="text-align: left;">RF</td>
-<td style="text-align: right;">0.8407</td>
-<td style="text-align: right;">0.0520</td>
-<td style="text-align: right;">0.7590</td>
-<td style="text-align: right;">0.8987</td>
+<td style="text-align: left;">KNN</td>
+<td style="text-align: left;">KNN</td>
+<td style="text-align: right;">0.8375</td>
+<td style="text-align: right;">0.0620</td>
+<td style="text-align: right;">0.6944</td>
+<td style="text-align: right;">0.9228</td>
 </tr>
 <tr class="odd">
-<td style="text-align: left;">KNN</td>
-<td style="text-align: left;">KNN</td>
-<td style="text-align: right;">0.8341</td>
-<td style="text-align: right;">0.0493</td>
-<td style="text-align: right;">0.7056</td>
-<td style="text-align: right;">0.8786</td>
+<td style="text-align: left;">RF</td>
+<td style="text-align: left;">RF</td>
+<td style="text-align: right;">0.8361</td>
+<td style="text-align: right;">0.0682</td>
+<td style="text-align: right;">0.6682</td>
+<td style="text-align: right;">0.9205</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Tree</td>
 <td style="text-align: left;">Tree</td>
-<td style="text-align: right;">0.8003</td>
-<td style="text-align: right;">0.0669</td>
-<td style="text-align: right;">0.6873</td>
-<td style="text-align: right;">0.9151</td>
+<td style="text-align: right;">0.7898</td>
+<td style="text-align: right;">0.0724</td>
+<td style="text-align: right;">0.6505</td>
+<td style="text-align: right;">0.9074</td>
 </tr>
 </tbody>
 </table>
@@ -2363,6 +2452,7 @@ RF   1  1        1                </code></pre>
 <p><strong>Code explanation:</strong></p>
 <ul>
 <li><code>caret::train()</code> provides a unified interface to dozens of algorithms with consistent cross-validation. <code>method = "glm"</code>, <code>"knn"</code>, <code>"rpart"</code>, <code>"rf"</code> access different algorithms.</li>
+<li><code>trainControl(index = cv_folds, ...)</code> fixes the same 10 fold assignments across every model in the comparison — without this, <code>train()</code> draws a fresh random split for each model, invalidating the paired comparison used below.</li>
 <li><code>trainControl(summaryFunction = twoClassSummary, metric = "ROC")</code> evaluates models by AUC rather than accuracy — critical for imbalanced data.</li>
 <li><code>resamples(models_cv)</code> collects CV results from multiple models for comparison. <code>diff(cv_results)</code> computes pairwise differences with statistical tests.</li>
 <li><code>dotplot(cv_results)</code> from <code>lattice</code> produces a confidence-interval-based comparison plot — the standard visualization for comparing CV results.</li>
