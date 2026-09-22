@@ -437,7 +437,7 @@ A **dendrogram** displays the hierarchical cluster structure:
 
 ### Divisive Clustering (Top-Down)
 
-**DIANA (DIvisive ANAlysis):** Starts with all observations in one cluster, then recursively splits the most heterogeneous cluster. Computationally expensive ($O(2^n)$ exact); rarely used in large datasets.
+**DIANA (DIvisive ANAlysis):** Starts with all observations in one cluster, then recursively splits the most heterogeneous cluster. An *exhaustive* search over all possible 2-way splits of a cluster is $O(2^n)$; in practice, implementations (e.g. `cluster::diana()`) use heuristics to avoid full enumeration, but divisive methods are still markedly more expensive than agglomerative ones and are rarely used on large datasets.
 
 ## Example: Hierarchical Clustering of Countries
 
@@ -800,7 +800,7 @@ Range: $[-1, 1]$. ARI = 1 means perfect agreement; ARI = 0 means random (no bett
 **Normalized Mutual Information (NMI):**
 $$\text{NMI} = \frac{2 \cdot I(C; T)}{H(C) + H(T)}$$
 
-where $I(C;T)$ is mutual information between clusters and true labels, $H$ is entropy. Range: $[0, 1]$. Higher is better.
+where $I(C;T)$ is mutual information between clusters and true labels, $H$ is entropy. Range: $[0, 1]$. Higher is better. (Note: this "sum" normalization is one of several conventions in the literature — other common variants normalize by $\sqrt{H(C)H(T)}$ or $\max(H(C),H(T))$, which can give slightly different numeric values for the same clustering.)
 
 ### Stability-Based Validation
 
@@ -1044,7 +1044,7 @@ p1 + p2
 **Code explanation:**
 
 - `mclust::Mclust(x, G)` automatically searches over a range of $K$ values and covariance models, selecting the best by BIC.
-- `gmm_result$uncertainty` gives the classification uncertainty for each observation — the probability of the second-best class assignment.
+- `gmm_result$uncertainty` gives the classification uncertainty for each observation, defined as $1 - \max_k z_{ik}$ — one minus the probability of the *most likely* (winning) cluster. **Common misconception:** this is *not* the same as "the probability of the second-best cluster" except in the special case of exactly $K=2$ components — with $K>2$, the remaining probability mass $1-\max_k z_{ik}$ is spread across all $K-1$ other clusters, not concentrated in the runner-up.
 - `gmm_result$z` is the $n \times K$ matrix of posterior probabilities — the soft assignments that distinguish GMM from K-Means.
 - Sizing points by uncertainty (Panel A) immediately identifies which observations are most ambiguously assigned.
 
