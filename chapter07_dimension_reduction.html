@@ -470,12 +470,38 @@ window.Quarto = {
 <p>In high dimensions, all pairwise distances between random points converge to the same value:</p>
 <p><span class="math display">\[\frac{\max_{\mathbf{x},\mathbf{y}} d(\mathbf{x},\mathbf{y}) - \min_{\mathbf{x},\mathbf{y}} d(\mathbf{x},\mathbf{y})}{\min_{\mathbf{x},\mathbf{y}} d(\mathbf{x},\mathbf{y})} \to 0 \quad \text{as } p \to \infty\]</span></p>
 <p>When all distances are nearly equal, the concept of “nearest neighbor” becomes meaningless. KNN classification, K-means clustering, and any distance-based method degrades catastrophically.</p>
+<div class="callout callout-style-default callout-important callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Important</span>Caveat: this is not a universal law
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Distance concentration is sharpest when the <span class="math inline">\(p\)</span> features are close to independent and identically distributed (the “random noise” setting simulated below). Real datasets are rarely like this — features are usually correlated, and the data often lie near a much lower-dimensional manifold embedded in the <span class="math inline">\(p\)</span>-dimensional space (its <strong>intrinsic dimensionality</strong> is lower than <span class="math inline">\(p\)</span>). In that case distances stay far more informative than this formula suggests. This is precisely <em>why</em> dimension reduction (PCA, t-SNE, etc.) works in practice: it recovers the low intrinsic dimensionality hiding inside a high nominal dimensionality.</p>
+</div>
+</div>
 </section>
 <section id="the-sample-size-requirement" class="level3">
 <h3 class="anchored" data-anchor-id="the-sample-size-requirement">The Sample Size Requirement</h3>
 <p>To maintain a fixed density of observations in <span class="math inline">\(p\)</span>-dimensional space, the required sample size grows <strong>exponentially</strong> with <span class="math inline">\(p\)</span>:</p>
 <p><span class="math display">\[n \propto c^p\]</span></p>
 <p>To have 10 observations per unit cell in 1D requires <span class="math inline">\(n = 10\)</span>; in 10D requires <span class="math inline">\(n = 10^{10}\)</span>; in 20D requires <span class="math inline">\(n = 10^{20}\)</span>. Most real datasets are <strong>severely undersampled</strong> relative to their dimensionality.</p>
+<div class="callout callout-style-default callout-important callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Important</span>Caveat: this applies to <em>local, non-parametric</em> methods
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The exponential-sample-size argument above applies to methods that estimate quantities locally (KNN, kernel density/regression, histogram-based estimators), where every “cell” of the space needs its own observations. It is <strong>not</strong> a universal law for every statistical method. Regularized/structured models — Ridge and, especially, <strong>Lasso regression</strong> (Chapter 10) — are explicitly designed to work well even when <span class="math inline">\(p &gt; n\)</span>, by exploiting an assumption of <em>sparsity</em> (only a few predictors truly matter) rather than trying to fill every cell of the feature space with data. Keep this in mind when we reach Chapter 10: seeing Lasso perform well with many predictors and few observations is not a contradiction of the curse of dimensionality — it is a demonstration of how structural assumptions can partially escape it.</p>
+</div>
+</div>
 </section>
 <section id="practical-consequences" class="level3">
 <h3 class="anchored" data-anchor-id="practical-consequences">Practical Consequences</h3>
@@ -698,6 +724,19 @@ window.Quarto = {
 <li>PCA is <strong>scale-sensitive</strong>: always standardize variables (Z-score) before PCA unless all variables are measured in the same units.</li>
 <li>The components are ordered by variance explained, not by interpretability.</li>
 </ul>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Note</span>Common point of confusion: sign ambiguity
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>The <strong>sign</strong> of a loading vector <span class="math inline">\(\mathbf{w}_k\)</span> (and hence of its scores) is not identified: if <span class="math inline">\(\mathbf{w}_k\)</span> maximizes variance, so does <span class="math inline">\(-\mathbf{w}_k\)</span>, and both are equally valid solutions. Different software, different R package versions, or even the same code re-run on slightly perturbed data can flip the sign of a component. This does <strong>not</strong> change the interpretation (a PC that separates “high scorers” from “low scorers” is the same finding whether high scorers get positive or negative scores) — but it does mean you should never be alarmed if your PC1 looks like the mirror image of a classmate’s or a textbook’s PC1.</p>
+</div>
+</div>
 </section>
 <section id="loadings-vs.-scores" class="level3">
 <h3 class="anchored" data-anchor-id="loadings-vs.-scores">Loadings vs.&nbsp;Scores</h3>
@@ -1111,7 +1150,7 @@ Cumulative Proportion  0.7296 0.9581 0.99482 1.00000</code></pre>
 </tr>
 </tbody>
 </table>
-<p>Parallel analysis is the most defensible criterion and is recommended for research purposes.</p>
+<p>Parallel analysis is the most defensible criterion and is recommended for research purposes. Note that Kaiser’s criterion was originally derived for <strong>PCA</strong> on a correlation matrix (where each standardized variable has variance 1); applying it to common <strong>factor analysis</strong> — which analyzes a <em>reduced</em> correlation matrix with communalities (not 1s) on the diagonal — is more contested in the literature and is well documented to often over-extract factors. Treat it as a rough starting point, not a rule to rely on alone.</p>
 </section>
 </section>
 <section id="example-factor-analysis-of-a-psychological-scale" class="level2">
@@ -1149,7 +1188,7 @@ Cumulative Proportion  0.7296 0.9581 0.99482 1.00000</code></pre>
 </div>
 </div>
 <div class="cell-output cell-output-stdout">
-<pre><code>Parallel analysis suggests that the number of factors =  2  and the number of components =  NA </code></pre>
+<pre><code>Parallel analysis suggests that the number of factors =  1  and the number of components =  NA </code></pre>
 </div>
 </div>
 <div class="cell">
@@ -1356,7 +1395,7 @@ Cumulative Var 0.569 0.859</code></pre>
 <ol type="1">
 <li>Observations within each class follow a multivariate normal distribution.</li>
 <li>All classes share the same covariance matrix (homoscedasticity).</li>
-<li>Variables are linearly related to the discriminant scores.</li>
+<li>Predictors are not severely multicollinear, and observations are independent — needed for <span class="math inline">\(\mathbf{S}_W\)</span> to be invertible and for the scatter-matrix estimates to be stable.</li>
 </ol>
 <p><strong>Quadratic Discriminant Analysis (QDA)</strong> relaxes assumption 2, allowing class-specific covariance matrices, at the cost of more parameters.</p>
 </section>
@@ -1385,7 +1424,7 @@ Cumulative Var 0.569 0.859</code></pre>
 <tr class="odd">
 <td>Max dimensions</td>
 <td><span class="math inline">\(p\)</span></td>
-<td><span class="math inline">\(K-1\)</span></td>
+<td><span class="math inline">\(\min(K-1,\ p)\)</span></td>
 </tr>
 <tr class="even">
 <td>Best when</td>
@@ -1818,7 +1857,7 @@ Proportion of trace:
 <h3 class="anchored" data-anchor-id="filter-methods">Filter Methods</h3>
 <p>Filter methods assess the relevance of each feature <strong>independently of any model</strong>, using statistical measures. They are fast and scalable but ignore feature interactions.</p>
 <p><strong>Variance threshold:</strong> Remove features with near-zero variance — they carry little information.</p>
-<p><strong>Correlation filter:</strong> Remove one variable from each highly correlated pair (<span class="math inline">\(|r| &gt; 0.90\)</span>).</p>
+<p><strong>Correlation filter:</strong> Remove one variable from each highly correlated pair (<span class="math inline">\(|r| &gt; 0.85\)</span>; the exact threshold is a judgment call — common choices range from 0.80 to 0.90).</p>
 <p><strong>Statistical tests:</strong> - ANOVA F-test or mutual information for continuous features vs.&nbsp;categorical outcome. - Chi-square test for categorical feature vs.&nbsp;categorical outcome. - Spearman correlation for continuous feature vs.&nbsp;continuous outcome.</p>
 </section>
 <section id="wrapper-methods" class="level3">
@@ -2061,7 +2100,7 @@ Optimal number of features: 3 </code></pre>
 <ul>
 <li><code>rfe(x, y, sizes, rfeControl)</code> runs Recursive Feature Elimination using cross-validation. <code>lmFuncs</code> specifies linear regression as the model.</li>
 <li><code>cv.glmnet(X, y, alpha=1)</code> fits LASSO with cross-validated lambda selection. <code>alpha=1</code> is LASSO; <code>alpha=0</code> is Ridge; values between are Elastic Net.</li>
-<li><code>randomForest(formula, importance=TRUE)</code> computes permutation-based variable importance — the gold standard for non-linear feature ranking.</li>
+<li><code>randomForest(formula, importance=TRUE)</code> computes permutation-based variable importance — a widely used approach for ranking features that may interact non-linearly (though not the only option; SHAP values and other permutation-importance variants are also common alternatives worth knowing about).</li>
 </ul>
 </section>
 <section id="exercises-5" class="level2">
@@ -2115,9 +2154,24 @@ Optimal number of features: 3 </code></pre>
 </section>
 <section id="reconstruction-error" class="level3">
 <h3 class="anchored" data-anchor-id="reconstruction-error">Reconstruction Error</h3>
-<p>The <strong>reconstruction error</strong> measures how well the reduced representation can recreate the original data:</p>
-<p><span class="math display">\[\text{RE}(k) = \frac{1}{n} \|\mathbf{X} - \hat{\mathbf{X}}_k\|_F^2 = \sum_{j=k+1}^{p} \lambda_j\]</span></p>
-<p>where <span class="math inline">\(\hat{\mathbf{X}}_k = \mathbf{Z}_k \mathbf{W}_k^T\)</span> is the rank-<span class="math inline">\(k\)</span> approximation. The reconstruction error equals the sum of discarded eigenvalues — confirming that PCA is the optimal linear reconstruction.</p>
+<p>The <strong>reconstruction error</strong> measures how well the reduced representation can recreate the original data. Using the covariance definition from this chapter, <span class="math inline">\(\mathbf{S} = \frac{1}{n-1}\mathbf{X}^T\mathbf{X}\)</span>, the <em>sum-of-squares</em> version of the reconstruction error is:</p>
+<p><span class="math display">\[\text{SSE}(k) = \|\mathbf{X} - \hat{\mathbf{X}}_k\|_F^2 = (n-1)\sum_{j=k+1}^{p} \lambda_j\]</span></p>
+<p>where <span class="math inline">\(\hat{\mathbf{X}}_k = \mathbf{Z}_k \mathbf{W}_k^T\)</span> is the rank-<span class="math inline">\(k\)</span> approximation. Dividing by <span class="math inline">\((n-1)\)</span> gives the <strong>mean reconstruction error per unit of total variance</strong>:</p>
+<p><span class="math display">\[\text{RE}(k) = \frac{\text{SSE}(k)}{n-1} = \sum_{j=k+1}^{p} \lambda_j\]</span></p>
+<p>so RE<span class="math inline">\((k)\)</span> (not SSE<span class="math inline">\((k)\)</span>) is what equals the sum of the discarded eigenvalues — confirming that PCA is the optimal linear reconstruction (Eckart–Young theorem).</p>
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+<span class="screen-reader-only">Warning</span>Watch the normalization when you compute this in R
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>It’s easy to introduce an off-by-a-constant error here. <code>mean((X - X_hat)^2)</code> in R averages over <strong>all <span class="math inline">\(n \times p\)</span> matrix entries</strong>, i.e.&nbsp;it divides <code>SSE(k)</code> by <span class="math inline">\(n p\)</span>, not by <span class="math inline">\((n-1)\)</span>. That is a <em>different, smaller</em> number than RE<span class="math inline">\((k)\)</span> above by a factor of roughly <span class="math inline">\(p\)</span>. If you want your computed reconstruction error to numerically match <span class="math inline">\(\sum_{j=k+1}^p \lambda_j\)</span>, divide by <span class="math inline">\((n-1)\)</span> explicitly — see the corrected R code below.</p>
+</div>
+</div>
 </section>
 <section id="parallel-analysis" class="level3">
 <h3 class="anchored" data-anchor-id="parallel-analysis">Parallel Analysis</h3>
@@ -2161,7 +2215,7 @@ Optimal number of features: 3 </code></pre>
 </tr>
 </tbody>
 </table>
-<p>Most criteria agree on 3–4 components. The final choice of <span class="math inline">\(k = 4\)</span> is justified by the 80% variance threshold, confirmed by parallel analysis suggesting 3 (conservative) and cross-validation suggesting 4 (predictive).</p>
+<p>Most criteria cluster around 3–4 components, but they do not all agree: parallel analysis and the elbow rule point to the more conservative <span class="math inline">\(k=3\)</span>, while the 80% variance threshold and cross-validation point to <span class="math inline">\(k=4\)</span>. There is no single “correct” answer here — it is a trade-off. Because the purpose in this scenario is a downstream classification model (where cross-validated predictive performance is the most directly relevant criterion), we choose <span class="math inline">\(k=4\)</span>, accepting one extra dimension in exchange for the measured gain in predictive accuracy. Had the goal instead been a parsimonious 2D visualization, <span class="math inline">\(k=3\)</span> from parallel analysis would be the more defensible choice. The lesson: report <em>which</em> criteria you used and <em>why</em> you weighted one over another, rather than implying they all agreed.</p>
 </section>
 <section id="r-example-evaluating-dimension-reduction" class="level2">
 <h2 class="anchored" data-anchor-id="r-example-evaluating-dimension-reduction">R Example: Evaluating Dimension Reduction</h2>
@@ -2286,16 +2340,29 @@ Optimal number of features: 3 </code></pre>
 <span id="cb40-3"><a href="#cb40-3" aria-hidden="true" tabindex="-1"></a>W     <span class="ot">&lt;-</span> pca_eval<span class="sc">$</span>rotation</span>
 <span id="cb40-4"><a href="#cb40-4" aria-hidden="true" tabindex="-1"></a>Z     <span class="ot">&lt;-</span> pca_eval<span class="sc">$</span>x</span>
 <span id="cb40-5"><a href="#cb40-5" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a>recon_error <span class="ot">&lt;-</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="fu">ncol</span>(mtcars), <span class="cf">function</span>(k) {</span>
-<span id="cb40-7"><a href="#cb40-7" aria-hidden="true" tabindex="-1"></a>  X_hat <span class="ot">&lt;-</span> Z[, <span class="dv">1</span><span class="sc">:</span>k, drop<span class="ot">=</span><span class="cn">FALSE</span>] <span class="sc">%*%</span> <span class="fu">t</span>(W[, <span class="dv">1</span><span class="sc">:</span>k, <span class="at">drop=</span><span class="cn">FALSE</span>])</span>
-<span id="cb40-8"><a href="#cb40-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mean</span>((X <span class="sc">-</span> X_hat)<span class="sc">^</span><span class="dv">2</span>)</span>
-<span id="cb40-9"><a href="#cb40-9" aria-hidden="true" tabindex="-1"></a>})</span>
-<span id="cb40-10"><a href="#cb40-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb40-11"><a href="#cb40-11" aria-hidden="true" tabindex="-1"></a>recon_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
-<span id="cb40-12"><a href="#cb40-12" aria-hidden="true" tabindex="-1"></a>  <span class="at">k     =</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">ncol</span>(mtcars),</span>
-<span id="cb40-13"><a href="#cb40-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">error =</span> <span class="fu">round</span>(recon_error, <span class="dv">4</span>),</span>
-<span id="cb40-14"><a href="#cb40-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">pve   =</span> eval_df<span class="sc">$</span>Cum_PVE</span>
-<span id="cb40-15"><a href="#cb40-15" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+<span id="cb40-6"><a href="#cb40-6" aria-hidden="true" tabindex="-1"></a>n_obs <span class="ot">&lt;-</span> <span class="fu">nrow</span>(mtcars)</span>
+<span id="cb40-7"><a href="#cb40-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-8"><a href="#cb40-8" aria-hidden="true" tabindex="-1"></a>recon_error <span class="ot">&lt;-</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="fu">ncol</span>(mtcars), <span class="cf">function</span>(k) {</span>
+<span id="cb40-9"><a href="#cb40-9" aria-hidden="true" tabindex="-1"></a>  X_hat <span class="ot">&lt;-</span> Z[, <span class="dv">1</span><span class="sc">:</span>k, drop<span class="ot">=</span><span class="cn">FALSE</span>] <span class="sc">%*%</span> <span class="fu">t</span>(W[, <span class="dv">1</span><span class="sc">:</span>k, <span class="at">drop=</span><span class="cn">FALSE</span>])</span>
+<span id="cb40-10"><a href="#cb40-10" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Divide by (n - 1), matching the S = X'X/(n-1) convention used</span></span>
+<span id="cb40-11"><a href="#cb40-11" aria-hidden="true" tabindex="-1"></a>  <span class="co"># throughout this chapter -- NOT mean(), which divides by n*p and</span></span>
+<span id="cb40-12"><a href="#cb40-12" aria-hidden="true" tabindex="-1"></a>  <span class="co"># would silently rescale the result by a factor of p.</span></span>
+<span id="cb40-13"><a href="#cb40-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">sum</span>((X <span class="sc">-</span> X_hat)<span class="sc">^</span><span class="dv">2</span>) <span class="sc">/</span> (n_obs <span class="sc">-</span> <span class="dv">1</span>)</span>
+<span id="cb40-14"><a href="#cb40-14" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb40-15"><a href="#cb40-15" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-16"><a href="#cb40-16" aria-hidden="true" tabindex="-1"></a>recon_df <span class="ot">&lt;-</span> <span class="fu">data.frame</span>(</span>
+<span id="cb40-17"><a href="#cb40-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">k     =</span> <span class="dv">1</span><span class="sc">:</span><span class="fu">ncol</span>(mtcars),</span>
+<span id="cb40-18"><a href="#cb40-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">error =</span> <span class="fu">round</span>(recon_error, <span class="dv">4</span>),</span>
+<span id="cb40-19"><a href="#cb40-19" aria-hidden="true" tabindex="-1"></a>  <span class="at">pve   =</span> eval_df<span class="sc">$</span>Cum_PVE</span>
+<span id="cb40-20"><a href="#cb40-20" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb40-21"><a href="#cb40-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb40-22"><a href="#cb40-22" aria-hidden="true" tabindex="-1"></a><span class="co"># Sanity check: RE(k) should equal the sum of the discarded eigenvalues,</span></span>
+<span id="cb40-23"><a href="#cb40-23" aria-hidden="true" tabindex="-1"></a><span class="co"># sum_{j=k+1}^{p} lambda_j (0 once k = p, i.e. nothing left to discard)</span></span>
+<span id="cb40-24"><a href="#cb40-24" aria-hidden="true" tabindex="-1"></a>eigenvalues   <span class="ot">&lt;-</span> pca_eval<span class="sc">$</span>sdev<span class="sc">^</span><span class="dv">2</span></span>
+<span id="cb40-25"><a href="#cb40-25" aria-hidden="true" tabindex="-1"></a>discarded_sum <span class="ot">&lt;-</span> <span class="fu">sapply</span>(<span class="dv">1</span><span class="sc">:</span><span class="fu">ncol</span>(mtcars), <span class="cf">function</span>(k) {</span>
+<span id="cb40-26"><a href="#cb40-26" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (k <span class="sc">==</span> <span class="fu">ncol</span>(mtcars)) <span class="dv">0</span> <span class="cf">else</span> <span class="fu">sum</span>(eigenvalues[(k<span class="sc">+</span><span class="dv">1</span>)<span class="sc">:</span><span class="fu">ncol</span>(mtcars)])</span>
+<span id="cb40-27"><a href="#cb40-27" aria-hidden="true" tabindex="-1"></a>})</span>
+<span id="cb40-28"><a href="#cb40-28" aria-hidden="true" tabindex="-1"></a><span class="fu">stopifnot</span>(<span class="fu">all.equal</span>(recon_error, discarded_sum, <span class="at">tolerance =</span> <span class="fl">1e-8</span>))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
 </details>
 </div>
 <div class="cell">
@@ -3026,7 +3093,7 @@ Optimal number of features: 3 </code></pre>
 </div>
 <div class="callout-body-container callout-body">
 <p><strong>PCA Eigendecomposition:</strong> <span class="math display">\[\mathbf{S}\mathbf{w}_k = \lambda_k \mathbf{w}_k, \quad \text{PVE}_k = \frac{\lambda_k}{\sum_j \lambda_j}\]</span></p>
-<p><strong>Reconstruction Error:</strong> <span class="math display">\[\text{RE}(k) = \sum_{j=k+1}^{p} \lambda_j\]</span></p>
+<p><strong>Reconstruction Error</strong> (with <span class="math inline">\(\mathbf{S}=\mathbf{X}^T\mathbf{X}/(n-1)\)</span>): <span class="math display">\[\text{RE}(k) = \frac{\|\mathbf{X}-\hat{\mathbf{X}}_k\|_F^2}{n-1} = \sum_{j=k+1}^{p} \lambda_j \quad \left(\text{in R: } \texttt{sum(...)}/(n{-}1),\ \textbf{not}\ \texttt{mean(...)}\right)\]</span></p>
 <p><strong>Fisher’s LDA Criterion:</strong> <span class="math display">\[J(\mathbf{w}) = \frac{\mathbf{w}^T \mathbf{S}_B \mathbf{w}}{\mathbf{w}^T \mathbf{S}_W \mathbf{w}}\]</span></p>
 <p><strong>Factor Model:</strong> <span class="math display">\[x_j = \sum_{k=1}^{m} \lambda_{jk}F_k + \varepsilon_j, \quad h_j^2 = \sum_{k=1}^{m}\lambda_{jk}^2\]</span></p>
 <p><strong>t-SNE KL Divergence:</strong> <span class="math display">\[\text{KL}(P \| Q) = \sum_{i \neq j} p_{ij} \log \frac{p_{ij}}{q_{ij}}\]</span></p>

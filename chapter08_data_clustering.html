@@ -983,7 +983,7 @@ Cluster setosa versicolor virginica
 </section>
 <section id="divisive-clustering-top-down" class="level3">
 <h3 class="anchored" data-anchor-id="divisive-clustering-top-down">Divisive Clustering (Top-Down)</h3>
-<p><strong>DIANA (DIvisive ANAlysis):</strong> Starts with all observations in one cluster, then recursively splits the most heterogeneous cluster. Computationally expensive (<span class="math inline">\(O(2^n)\)</span> exact); rarely used in large datasets.</p>
+<p><strong>DIANA (DIvisive ANAlysis):</strong> Starts with all observations in one cluster, then recursively splits the most heterogeneous cluster. An <em>exhaustive</em> search over all possible 2-way splits of a cluster is <span class="math inline">\(O(2^n)\)</span>; in practice, implementations (e.g.&nbsp;<code>cluster::diana()</code>) use heuristics to avoid full enumeration, but divisive methods are still markedly more expensive than agglomerative ones and are rarely used on large datasets.</p>
 </section>
 </section>
 <section id="example-hierarchical-clustering-of-countries" class="level2">
@@ -1552,7 +1552,7 @@ DBSCAN setosa versicolor virginica
 <p><strong>Adjusted Rand Index (ARI):</strong> <span class="math display">\[\text{ARI} = \frac{\text{RI} - E[\text{RI}]}{\max(\text{RI}) - E[\text{RI}]}\]</span></p>
 <p>Range: <span class="math inline">\([-1, 1]\)</span>. ARI = 1 means perfect agreement; ARI = 0 means random (no better than chance); ARI &lt; 0 means worse than random. Corrects for agreement due to chance.</p>
 <p><strong>Normalized Mutual Information (NMI):</strong> <span class="math display">\[\text{NMI} = \frac{2 \cdot I(C; T)}{H(C) + H(T)}\]</span></p>
-<p>where <span class="math inline">\(I(C;T)\)</span> is mutual information between clusters and true labels, <span class="math inline">\(H\)</span> is entropy. Range: <span class="math inline">\([0, 1]\)</span>. Higher is better.</p>
+<p>where <span class="math inline">\(I(C;T)\)</span> is mutual information between clusters and true labels, <span class="math inline">\(H\)</span> is entropy. Range: <span class="math inline">\([0, 1]\)</span>. Higher is better. (Note: this “sum” normalization is one of several conventions in the literature — other common variants normalize by <span class="math inline">\(\sqrt{H(C)H(T)}\)</span> or <span class="math inline">\(\max(H(C),H(T))\)</span>, which can give slightly different numeric values for the same clustering.)</p>
 </section>
 <section id="stability-based-validation" class="level3">
 <h3 class="anchored" data-anchor-id="stability-based-validation">Stability-Based Validation</h3>
@@ -1970,7 +1970,7 @@ GMM setosa versicolor virginica
 <p><strong>Code explanation:</strong></p>
 <ul>
 <li><code>mclust::Mclust(x, G)</code> automatically searches over a range of <span class="math inline">\(K\)</span> values and covariance models, selecting the best by BIC.</li>
-<li><code>gmm_result$uncertainty</code> gives the classification uncertainty for each observation — the probability of the second-best class assignment.</li>
+<li><code>gmm_result$uncertainty</code> gives the classification uncertainty for each observation, defined as <span class="math inline">\(1 - \max_k z_{ik}\)</span> — one minus the probability of the <em>most likely</em> (winning) cluster. <strong>Common misconception:</strong> this is <em>not</em> the same as “the probability of the second-best cluster” except in the special case of exactly <span class="math inline">\(K=2\)</span> components — with <span class="math inline">\(K&gt;2\)</span>, the remaining probability mass <span class="math inline">\(1-\max_k z_{ik}\)</span> is spread across all <span class="math inline">\(K-1\)</span> other clusters, not concentrated in the runner-up.</li>
 <li><code>gmm_result$z</code> is the <span class="math inline">\(n \times K\)</span> matrix of posterior probabilities — the soft assignments that distinguish GMM from K-Means.</li>
 <li>Sizing points by uncertainty (Panel A) immediately identifies which observations are most ambiguously assigned.</li>
 </ul>
