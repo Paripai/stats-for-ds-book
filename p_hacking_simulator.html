@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>P-Hacking Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700;800&family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Noto Sans Thai","IBM Plex Sans",sans-serif; font-size: 18px; font-weight: 600; background: #f5f5f5; color: #1a1a1a; min-height: 100vh; }
+
+.header { background: #fff; border-bottom: 3px solid #1a1a1a; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.header-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.header h1 { font-size: 28px; font-weight: 800; }
+
+.home-btn { text-decoration: none; color: #6c757d; font-size: 15px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #dee2e6; border-radius: 6px; background: #fff; transition: all 0.2s; flex-shrink: 0; }
+.home-btn:hover { background: #f8f9fa; color: #0d6efd; }
+
+.lang-toggle { display: flex; border: 2px solid #1a1a1a; border-radius: 8px; overflow: hidden; }
+.lang-btn { font-family: inherit; font-size: 16px; font-weight: 700; padding: 6px 16px; border: none; cursor: pointer; background: #fff; color: #888; transition: all .12s; }
+.lang-btn.active { background: #1a1a1a; color: #fff; }
+
+.main { max-width: 1100px; margin: 24px auto; padding: 0 24px; }
+.card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+.card-title { font-size: 20px; font-weight: 800; margin-bottom: 14px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+
+.layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; }
+.layout > div { min-width: 0; }
+@media (max-width: 850px) { .layout { grid-template-columns: 1fr; } .main { padding: 0 12px; } .header { padding: 14px 16px; } }
+
+.seg { display: flex; border: 2px solid #1a1a1a; border-radius: 8px; overflow: hidden; margin-bottom: 6px; }
+.seg button { flex: 1; font-family: inherit; font-size: 15px; font-weight: 700; padding: 8px 4px; border: none; border-right: 2px solid #1a1a1a; cursor: pointer; background: #fff; color: #888; transition: all .12s; line-height: 1.3; }
+.seg button:last-child { border-right: none; }
+.seg button.active { background: #1a1a1a; color: #fff; }
+.field-label { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.sub-hint { font-size: 13px; font-weight: 600; color: #888; margin-top: 4px; line-height: 1.45; }
+
+.slider-group { margin-bottom: 18px; }
+.slider-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.slider-name { font-size: 16px; font-weight: 700; }
+.slider-val { font-size: 22px; font-weight: 800; min-width: 48px; text-align: right; }
+input[type=range] { width: 100%; cursor: pointer; accent-color: #1a1a1a; }
+
+.btn-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; margin-top: 4px; }
+.btn { display: inline-block; width: 100%; text-align: center; background: #0d6efd; color: #fff; border: none; font-family: inherit; font-size: 15px; font-weight: 700; padding: 10px 8px; border-radius: 8px; cursor: pointer; transition: background .2s; }
+.btn:hover { background: #0b5ed7; }
+.btn.gray { background: #6c757d; } .btn.gray:hover { background: #5a6268; }
+.btn.red { background: #dc3545; } .btn.red:hover { background: #bb2d3b; }
+.btn:disabled { opacity: .5; cursor: wait; }
+
+.tactic { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 2px solid #ddd; border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: all .12s; }
+.tactic.on { border-color: #dc3545; background: #fff6f6; }
+.tactic input { width: 20px; height: 20px; margin-top: 3px; accent-color: #dc3545; flex-shrink: 0; }
+.tactic .tname { font-size: 15px; font-weight: 800; }
+.tactic .tdesc { font-size: 13px; font-weight: 600; color: #777; line-height: 1.4; margin-top: 2px; }
+
+canvas { width: 100%; display: block; border-radius: 4px; background: #fff; }
+
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+.stat { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 12px; text-align: center; }
+.stat-val { font-size: 24px; font-weight: 800; }
+.stat-lbl { font-size: 14px; font-weight: 600; color: #555; margin-top: 2px; line-height: 1.3; }
+
+.legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; justify-content: center; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: #555; }
+.legend-color { width: 14px; height: 14px; border-radius: 3px; }
+
+.tiles-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 18px; }
+.tiles { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 10px; min-height: 30px; max-height: 190px; overflow: auto; padding: 8px; background: #fafafa; border: 1px solid #eee; border-radius: 6px; }
+.tile { width: 14px; height: 14px; border-radius: 3px; background: #d9d9d9; }
+.tile.sig { background: #dc3545; }
+.tile.hide { visibility: hidden; }
+.mini-check { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.mini-check input { width: 18px; height: 18px; accent-color: #dc3545; }
+
+.big { text-align: center; margin: 6px 0 4px; }
+.big .num { font-size: 56px; font-weight: 800; color: #dc3545; line-height: 1; }
+.big .lbl { font-size: 15px; font-weight: 700; color: #555; margin-top: 6px; }
+
+.hbar-row { display: grid; grid-template-columns: 170px 1fr 64px; gap: 10px; align-items: center; margin-bottom: 8px; font-size: 14px; font-weight: 700; }
+.hbar { position: relative; height: 22px; background: #f1f3f5; border-radius: 4px; overflow: hidden; }
+.hbar .fill { height: 100%; border-radius: 4px; }
+.hbar .alpha { position: absolute; top: -2px; bottom: -2px; width: 2px; background: #1a1a1a; }
+.hbar-val { text-align: right; font-family: "IBM Plex Sans",sans-serif; }
+@media (max-width: 500px) { .hbar-row { grid-template-columns: 110px 1fr 54px; font-size: 13px; } }
+
+.log { margin-top: 10px; max-height: 260px; overflow: auto; border: 1px solid #e0e0e0; border-radius: 6px; }
+.log table { border-collapse: collapse; width: 100%; font-family: "IBM Plex Sans","Noto Sans Thai",sans-serif; font-size: 14px; }
+.log th { position: sticky; top: 0; background: #f1f3f5; padding: 6px 8px; font-weight: 700; text-align: left; }
+.log td { padding: 4px 8px; border-top: 1px solid #f0f0f0; font-weight: 600; }
+.log tr.hit td { background: #fdecea; color: #b02a37; font-weight: 800; }
+
+.insight { font-size: 16px; font-weight: 600; color: #333; background: #f8f9fa; border-left: 4px solid #1a1a1a; padding: 12px 16px; border-radius: 0 6px 6px 0; margin-top: 16px; line-height: 1.6; }
+.insight.mis { border-left-color: #dc3545; background: #fff6f6; color: #7d2020; }
+.insight b { color: #1a1a1a; }
+.insight.mis b { color: #7d2020; }
+
+.questions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.q-chip { font-size: 15px; font-weight: 600; padding: 6px 14px; border: 1px solid #bbb; border-radius: 20px; color: #444; background: #fafafa; line-height: 1.4; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <a href="index.html" class="home-btn" data-th="← หน้าแรก" data-en="← Home">← Home</a>
+    <h1 data-th="P-Hacking (การปั่นค่า p)" data-en="P-Hacking Simulator">P-Hacking (การปั่นค่า p)</h1>
+  </div>
+  <div class="lang-toggle">
+    <button class="lang-btn active" onclick="setLang('th')">TH</button>
+    <button class="lang-btn" onclick="setLang('en')">EN</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="layout">
+
+    <!-- LEFT -->
+    <div>
+      <div class="card">
+        <div class="card-title" data-th="ตั้งค่าพารามิเตอร์" data-en="Adjust Parameters">ตั้งค่าพารามิเตอร์</div>
+        <div class="slider-group">
+          <div class="field-label" data-th="โหมด" data-en="Mode">โหมด</div>
+          <div class="seg" id="segMode">
+            <button data-mode="drawer" class="active" onclick="setMode('drawer')" data-th="① ลิ้นชักงานวิจัย" data-en="① File drawer">① ลิ้นชักงานวิจัย</button>
+            <button data-mode="hack" onclick="setMode('hack')" data-th="② เทคนิคปั่นค่า p" data-en="② Hacking tricks">② เทคนิคปั่นค่า p</button>
+          </div>
+          <div class="sub-hint" id="modeHint"></div>
+        </div>
+
+        <!-- drawer controls -->
+        <div id="ctrlDrawer">
+          <div class="slider-group">
+            <div class="slider-header"><span class="slider-name" data-th="ผลจริงของยา (Cohen's d)" data-en="True effect (Cohen's d)">ผลจริงของยา (Cohen's d)</span><span class="slider-val" id="dVal" style="color:#0d6efd">0.00</span></div>
+            <input type="range" id="dSlider" min="0" max="0.8" step="0.05" value="0" oninput="onDrawerParam()">
+            <div class="sub-hint" data-th="0 = ยาไม่มีผลจริง (H₀ จริง)" data-en="0 = the drug truly does nothing (H₀ true)">0 = ยาไม่มีผลจริง (H₀ จริง)</div>
+          </div>
+          <div class="slider-group">
+            <div class="slider-header"><span class="slider-name" data-th="ขนาดตัวอย่างต่อกลุ่ม n" data-en="Sample size per group n">ขนาดตัวอย่างต่อกลุ่ม n</span><span class="slider-val" id="nVal" style="color:#6c757d">20</span></div>
+            <input type="range" id="nSlider" min="5" max="100" step="5" value="20" oninput="onDrawerParam()">
+          </div>
+          <div class="field-label" data-th="ทำการทดลองซ้ำ" data-en="Run experiments">ทำการทดลองซ้ำ</div>
+          <div class="btn-row">
+            <button class="btn" onclick="runDrawer(1)">+1</button>
+            <button class="btn" onclick="runDrawer(20)">+20</button>
+            <button class="btn" onclick="runDrawer(100)">+100</button>
+          </div>
+          <button class="btn gray" style="margin-top:6px" onclick="resetDrawer()" data-th="↺ ล้างผล" data-en="↺ Reset">↺ ล้างผล</button>
+          <div class="sub-hint" data-th="ทุกการทดลอง: เทียบกลุ่มยา vs กลุ่มยาหลอกด้วย t-test สองทาง ที่ α = 0.05" data-en="Each experiment compares drug vs placebo with a two-sided t-test at α = 0.05.">ทุกการทดลอง: เทียบกลุ่มยา vs กลุ่มยาหลอกด้วย t-test สองทาง ที่ α = 0.05</div>
+        </div>
+
+        <!-- hack controls -->
+        <div id="ctrlHack" style="display:none">
+          <div class="sub-hint" style="margin:-4px 0 12px; color:#b02a37" data-th="ในโหมดนี้ <b>ยาไม่มีผลจริงเลย</b> (H₀ จริงเสมอ) — ทุก 'ผลที่มีนัยสำคัญ' จึงเป็นผลบวกลวง" data-en="In this mode the drug <b>truly does nothing</b> (H₀ always true) — every 'significant' result is a false positive.">ในโหมดนี้ <b>ยาไม่มีผลจริงเลย</b> (H₀ จริงเสมอ) — ทุก 'ผลที่มีนัยสำคัญ' จึงเป็นผลบวกลวง</div>
+
+          <div class="slider-group">
+            <div class="slider-header"><span class="slider-name" data-th="จำนวนตัวแปรผลลัพธ์ที่วัด" data-en="Outcome variables measured">จำนวนตัวแปรผลลัพธ์ที่วัด</span><span class="slider-val" id="kVal" style="color:#dc3545">1</span></div>
+            <input type="range" id="kSlider" min="1" max="10" step="1" value="1" oninput="onHackParam()">
+            <div class="sub-hint" data-th="วัดหลายอย่าง (ความดัน, น้ำหนัก, การนอน…) แล้วรายงานตัวที่ p &lt; 0.05" data-en="Measure many things (blood pressure, weight, sleep…) and report whichever has p &lt; 0.05">วัดหลายอย่าง (ความดัน, น้ำหนัก, การนอน…) แล้วรายงานตัวที่ p &lt; 0.05</div>
+          </div>
+
+          <label class="tactic" id="tStop"><input type="checkbox" id="cStop" onchange="onHackParam()"><div><div class="tname" data-th="แอบดูผลแล้วเก็บข้อมูลเพิ่ม" data-en="Peek and add more data">แอบดูผลแล้วเก็บข้อมูลเพิ่ม</div><div class="tdesc" data-th="ทดสอบทุก ๆ 10 คน ถ้ายังไม่ถึง 0.05 ก็เก็บต่อ เจอเมื่อไหร่หยุดทันที" data-en="Test after every 10 people; keep collecting until p &lt; 0.05, then stop.">ทดสอบทุก ๆ 10 คน ถ้ายังไม่ถึง 0.05 ก็เก็บต่อ เจอเมื่อไหร่หยุดทันที</div></div></label>
+          <label class="tactic" id="tOut"><input type="checkbox" id="cOut" onchange="onHackParam()"><div><div class="tname" data-th="ตัด outlier ทิ้ง ถ้าช่วยได้" data-en="Drop outliers if it helps">ตัด outlier ทิ้ง ถ้าช่วยได้</div><div class="tdesc" data-th="ลองตัดค่าที่ห่างค่าเฉลี่ยเกิน 2 SD แล้วทดสอบใหม่" data-en="Try removing values beyond 2 SD and test again.">ลองตัดค่าที่ห่างค่าเฉลี่ยเกิน 2 SD แล้วทดสอบใหม่</div></div></label>
+          <label class="tactic" id="tSub"><input type="checkbox" id="cSub" onchange="onHackParam()"><div><div class="tname" data-th="วิเคราะห์เฉพาะกลุ่มย่อย" data-en="Analyse subgroups">วิเคราะห์เฉพาะกลุ่มย่อย</div><div class="tdesc" data-th="ไม่เจอผลรวม? ลองดูเฉพาะผู้ชาย หรือเฉพาะผู้หญิง" data-en="No overall effect? Try men only, or women only.">ไม่เจอผลรวม? ลองดูเฉพาะผู้ชาย หรือเฉพาะผู้หญิง</div></div></label>
+
+          <div class="slider-group" style="margin-top:12px">
+            <div class="slider-header"><span class="slider-name" data-th="ขนาดตัวอย่างสูงสุดต่อกลุ่ม" data-en="Max sample size per group">ขนาดตัวอย่างสูงสุดต่อกลุ่ม</span><span class="slider-val" id="nmVal" style="color:#6c757d">40</span></div>
+            <input type="range" id="nmSlider" min="20" max="100" step="10" value="40" oninput="onHackParam()">
+          </div>
+
+          <div class="btn-row" style="grid-template-columns:1fr 1fr">
+            <button class="btn gray" onclick="presetHack('honest')" data-th="นักวิจัยซื่อตรง" data-en="Honest researcher">นักวิจัยซื่อตรง</button>
+            <button class="btn red" onclick="presetHack('all')" data-th="ปั่นเต็มที่" data-en="Hack everything">ปั่นเต็มที่</button>
+          </div>
+          <button class="btn" style="margin-top:6px" id="runHackBtn" onclick="runHack()" data-th="▶ จำลองงานวิจัย 1,000 ชิ้น" data-en="▶ Simulate 1,000 studies">▶ จำลองงานวิจัย 1,000 ชิ้น</button>
+          <button class="btn gray" style="margin-top:6px" onclick="runOne()" data-th="🔍 ดูงานวิจัย 1 ชิ้นแบบละเอียด" data-en="🔍 Inspect one study">🔍 ดูงานวิจัย 1 ชิ้นแบบละเอียด</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" data-th="คำถามชวนคิด" data-en="Discussion Questions">คำถามชวนคิด</div>
+        <div class="questions">
+          <div class="q-chip" data-th="ถ้ายาไม่มีผลจริง ทำการทดลอง 100 ครั้ง จะได้ p &lt; 0.05 ประมาณกี่ครั้ง?" data-en="If the drug does nothing, how many of 100 experiments give p &lt; 0.05?">ถ้ายาไม่มีผลจริง ทำการทดลอง 100 ครั้ง จะได้ p &lt; 0.05 ประมาณกี่ครั้ง?</div>
+          <div class="q-chip" data-th="ทำไม effect size ในงานที่ได้ตีพิมพ์จึงมักใหญ่เกินจริงเมื่อ n เล็ก?" data-en="Why are published effect sizes inflated when n is small?">ทำไม effect size ในงานที่ได้ตีพิมพ์จึงมักใหญ่เกินจริงเมื่อ n เล็ก?</div>
+          <div class="q-chip" data-th="แต่ละเทคนิคดูไม่ร้ายแรง แต่รวมกันแล้วอัตราผลบวกลวงเป็นเท่าไร?" data-en="Each trick looks harmless — what happens to the false positive rate when combined?">แต่ละเทคนิคดูไม่ร้ายแรง แต่รวมกันแล้วอัตราผลบวกลวงเป็นเท่าไร?</div>
+          <div class="q-chip" data-th="การลงทะเบียนแผนวิจัยล่วงหน้า (pre-registration) ป้องกันเทคนิคไหนได้บ้าง?" data-en="Which tricks does pre-registration prevent?">การลงทะเบียนแผนวิจัยล่วงหน้า (pre-registration) ป้องกันเทคนิคไหนได้บ้าง?</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div>
+      <!-- drawer panel -->
+      <div class="card" id="panelDrawer">
+        <div class="card-title" data-th="การแจกแจงของค่า p จากทุกการทดลอง" data-en="Distribution of p-values across experiments">การแจกแจงของค่า p จากทุกการทดลอง</div>
+        <canvas id="cvsD"></canvas>
+        <div class="legend">
+          <div class="legend-item"><div class="legend-color" style="background:#dc3545"></div><span data-th="p &lt; 0.05 → ได้ตีพิมพ์" data-en="p &lt; 0.05 → published">p &lt; 0.05 → ได้ตีพิมพ์</span></div>
+          <div class="legend-item"><div class="legend-color" style="background:#bbb"></div><span data-th="p ≥ 0.05 → เก็บเข้าลิ้นชัก" data-en="p ≥ 0.05 → file drawer">p ≥ 0.05 → เก็บเข้าลิ้นชัก</span></div>
+          <div class="legend-item"><div style="width:18px;border-top:2px dashed #1a1a1a"></div><span data-th="ที่คาดไว้ถ้า H₀ จริง" data-en="Expected if H₀ true">ที่คาดไว้ถ้า H₀ จริง</span></div>
+        </div>
+        <div class="stat-grid">
+          <div class="stat"><div class="stat-val" id="sRun">0</div><div class="stat-lbl" data-th="ทดลองไปแล้ว" data-en="Experiments run">ทดลองไปแล้ว</div></div>
+          <div class="stat" style="border-bottom:4px solid #dc3545"><div class="stat-val" id="sSig" style="color:#dc3545">–</div><div class="stat-lbl" data-th="ได้ p &lt; 0.05 (ได้ตีพิมพ์)" data-en="p &lt; 0.05 (published)">ได้ p &lt; 0.05 (ได้ตีพิมพ์)</div></div>
+          <div class="stat" style="border-bottom:4px solid #0d6efd"><div class="stat-val" id="sEff" style="color:#0d6efd">–</div><div class="stat-lbl" id="sEffLbl"></div></div>
+        </div>
+        <div class="tiles-head">
+          <div class="field-label" style="margin:0" data-th="งานวิจัยแต่ละชิ้น" data-en="Each experiment">งานวิจัยแต่ละชิ้น</div>
+          <label class="mini-check"><input type="checkbox" id="pubOnly" onchange="renderDrawer()"><span data-th="แสดงเฉพาะที่ได้ตีพิมพ์ (สิ่งที่ผู้อ่านเห็น)" data-en="Show only published (what readers see)">แสดงเฉพาะที่ได้ตีพิมพ์ (สิ่งที่ผู้อ่านเห็น)</span></label>
+        </div>
+        <div class="tiles" id="tiles"></div>
+        <div class="insight" id="storyD"></div>
+        <div class="insight mis" id="misD"></div>
+      </div>
+
+      <!-- hack panel -->
+      <div class="card" id="panelHack" style="display:none">
+        <div class="card-title" data-th="อัตราผลบวกลวง (False Positive Rate)" data-en="False positive rate">อัตราผลบวกลวง (False Positive Rate)</div>
+        <div class="big"><div class="num" id="fpr">–</div><div class="lbl" id="fprLbl"></div></div>
+        <div id="bars" style="margin-top:16px"></div>
+        <div class="sub-hint" data-th="เส้นดำ = α = 5% (อัตราที่ควรเป็น) · แต่ละแถวจำลอง 1,000 งานวิจัย" data-en="Black line = α = 5% (what it should be) · each row simulates 1,000 studies">เส้นดำ = α = 5% (อัตราที่ควรเป็น) · แต่ละแถวจำลอง 1,000 งานวิจัย</div>
+
+        <div class="card-title" style="margin-top:22px" data-th="เบื้องหลังงานวิจัย 1 ชิ้น" data-en="Inside one study">เบื้องหลังงานวิจัย 1 ชิ้น</div>
+        <div id="oneSummary" class="sub-hint" style="font-size:15px;color:#444"></div>
+        <div class="log" id="oneLog"></div>
+
+        <div class="insight" id="storyH"></div>
+        <div class="insight mis" id="misH"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ---------- language ---------- */
+var currentLang = 'th';
+function t(th, en){ return currentLang === 'en' ? en : th; }
+function setLang(lang){
+  currentLang = lang;
+  document.documentElement.lang = lang;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.textContent.trim().toLowerCase() === lang));
+  document.querySelectorAll('[data-th]').forEach(el => { var v = el.getAttribute('data-'+lang); if(v!==null) el.innerHTML = v; });
+  render();
+}
+
+/* ---------- math: t-test p-value ---------- */
+function lgamma(x){
+  const c=[76.18009172947146,-86.50532032941677,24.01409824083091,-1.231739572450155,0.1208650973866179e-2,-0.5395239384953e-5];
+  let y=x, tmp=x+5.5; tmp-=(x+0.5)*Math.log(tmp); let ser=1.000000000190015;
+  for(let j=0;j<6;j++){y++;ser+=c[j]/y;} return -tmp+Math.log(2.5066282746310005*ser/x);
+}
+function betacf(x,a,b){
+  const EPS=3e-12,FPMIN=1e-300,MAXIT=250; let qab=a+b,qap=a+1,qam=a-1,c=1,d=1-qab*x/qap;
+  if(Math.abs(d)<FPMIN)d=FPMIN; d=1/d; let h=d;
+  for(let m=1;m<=MAXIT;m++){ let m2=2*m;
+    let aa=m*(b-m)*x/((qam+m2)*(a+m2)); d=1+aa*d; if(Math.abs(d)<FPMIN)d=FPMIN; c=1+aa/c; if(Math.abs(c)<FPMIN)c=FPMIN; d=1/d; h*=d*c;
+    aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2)); d=1+aa*d; if(Math.abs(d)<FPMIN)d=FPMIN; c=1+aa/c; if(Math.abs(c)<FPMIN)c=FPMIN; d=1/d;
+    let del=d*c; h*=del; if(Math.abs(del-1)<EPS)break; }
+  return h;
+}
+function ibeta(x,a,b){
+  if(x<=0)return 0; if(x>=1)return 1;
+  const bt=Math.exp(lgamma(a+b)-lgamma(a)-lgamma(b)+a*Math.log(x)+b*Math.log(1-x));
+  if(x<(a+1)/(a+b+2))return bt*betacf(x,a,b)/a; return 1-bt*betacf(1-x,b,a)/b;
+}
+function randn(){ const u=Math.max(1e-12,Math.random()), v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); }
+/* two-sample pooled t-test (two-sided); returns {p, d} */
+function ttest(a,b){
+  const na=a.length, nb=b.length; if(na<2||nb<2) return {p:1,d:0};
+  let ma=0,mb=0; for(const v of a)ma+=v; for(const v of b)mb+=v; ma/=na; mb/=nb;
+  let va=0,vb=0; for(const v of a)va+=(v-ma)*(v-ma); for(const v of b)vb+=(v-mb)*(v-mb);
+  const df=na+nb-2, sp2=(va+vb)/df; if(sp2<=0) return {p:1,d:0};
+  const tt=(mb-ma)/Math.sqrt(sp2*(1/na+1/nb));
+  return { p: ibeta(df/(df+tt*tt), df/2, 0.5), d:(mb-ma)/Math.sqrt(sp2) };
+}
+const ALPHA=0.05;
+
+/* ---------- state ---------- */
+const S={ mode:'drawer', d:0, n:20, studies:[], k:1, stop:false, out:false, sub:false, nMax:40, hackRes:null, one:null };
+
+function setMode(m){
+  S.mode=m;
+  document.querySelectorAll('#segMode button').forEach(b=>b.classList.toggle('active', b.dataset.mode===m));
+  ['Drawer','Hack'].forEach(x=>{ const on=(m==='drawer')===(x==='Drawer');
+    document.getElementById('ctrl'+x).style.display=on?'block':'none'; document.getElementById('panel'+x).style.display=on?'block':'none'; });
+  if(m==='hack' && !S.hackRes) runHack(); else resizeCanvas();
+}
+
+/* ======================= ① FILE DRAWER ======================= */
+function onDrawerParam(){
+  const d=parseFloat(document.getElementById('dSlider').value), n=parseInt(document.getElementById('nSlider').value);
+  if(d!==S.d || n!==S.n){ S.studies=[]; }
+  S.d=d; S.n=n; render();
+}
+function resetDrawer(){ S.studies=[]; render(); }
+function runDrawer(k){
+  for(let i=0;i<k;i++){
+    const a=[], b=[];
+    for(let j=0;j<S.n;j++){ a.push(randn()); b.push(randn()+S.d); }
+    const r=ttest(a,b); S.studies.push({ p:r.p, d:r.d, sig:r.p<ALPHA });
+  }
+  render();
+}
+function renderDrawer(){
+  document.getElementById('dVal').textContent=S.d.toFixed(2);
+  document.getElementById('nVal').textContent=S.n;
+  const N=S.studies.length, sig=S.studies.filter(s=>s.sig), pubOnly=document.getElementById('pubOnly').checked;
+  document.getElementById('sRun').textContent=N;
+  document.getElementById('sSig').textContent= N? sig.length+' ('+(100*sig.length/N).toFixed(1)+'%)' : '–';
+  const meanPub = sig.length ? sig.reduce((s,x)=>s+Math.abs(x.d),0)/sig.length : NaN;
+  document.getElementById('sEff').textContent = sig.length ? meanPub.toFixed(2) : '–';
+  document.getElementById('sEffLbl').innerHTML = t('ขนาดผลเฉลี่ยที่ตีพิมพ์ (ผลจริง = '+S.d.toFixed(2)+')','Mean published effect (true = '+S.d.toFixed(2)+')');
+
+  // tiles (most recent 600)
+  const show=S.studies.slice(-600); let h='';
+  show.forEach(s=>{ h+='<div class="tile'+(s.sig?' sig':'')+(pubOnly&&!s.sig?' hide':'')+'" title="p = '+s.p.toFixed(4)+'"></div>'; });
+  document.getElementById('tiles').innerHTML = h || '<span class="sub-hint">'+t('กดปุ่ม +1, +20 หรือ +100 เพื่อเริ่มทำการทดลอง','Press +1, +20 or +100 to start running experiments')+'</span>';
+
+  document.getElementById('modeHint').innerHTML=t('ทำการทดลองซ้ำหลายครั้ง แล้วดูว่าถ้าตีพิมพ์เฉพาะงานที่ p &lt; 0.05 ผู้อ่านจะเห็นภาพแบบไหน','Repeat the experiment many times and see what readers get if only p &lt; 0.05 results are published.');
+
+  // story
+  let st;
+  if(!N) st=t('<b>เริ่มต้น:</b> สมมติว่ามีทีมวิจัยหลายทีมทดสอบยาตัวเดียวกัน แต่ละทีมได้ค่า p ของตัวเอง ลองกดทำการทดลองดู','<b>Start:</b> imagine many teams testing the same drug, each getting its own p-value. Run some experiments.');
+  else if(S.d===0) st=t('<b>ยาไม่มีผลจริง</b> แต่ยังมี '+sig.length+' จาก '+N+' การทดลอง ('+(100*sig.length/N).toFixed(1)+'%) ที่ได้ p &lt; 0.05 โดยบังเอิญ — ใกล้กับ α = 5% ตามทฤษฎี ภายใต้ H₀ ค่า p กระจาย<b>สม่ำเสมอ</b>ตั้งแต่ 0 ถึง 1 ถ้าตีพิมพ์เฉพาะงานสีแดง วรรณกรรมทั้งหมดจะเต็มไปด้วย<b>ผลบวกลวง</b> ส่วนงานสีเทาถูกเก็บเข้าลิ้นชัก (file drawer effect)',
+     '<b>The drug does nothing</b>, yet '+sig.length+' of '+N+' experiments ('+(100*sig.length/N).toFixed(1)+'%) reach p &lt; 0.05 by chance — close to α = 5%. Under H₀ p-values are <b>uniform</b> from 0 to 1. Publish only the red ones and the literature fills with <b>false positives</b>, while the grey ones sit in the file drawer.');
+  else st=t('<b>ยามีผลจริง d = '+S.d.toFixed(2)+'</b> ค่า p จึงกองอยู่ทางซ้าย '+(100*sig.length/N).toFixed(1)+'% ของการทดลองได้นัยสำคัญ (นี่คือ<b>อำนาจการทดสอบ</b>) แต่สังเกตว่าขนาดผลเฉลี่ยในงานที่ได้ตีพิมพ์คือ <b>'+(sig.length?meanPub.toFixed(2):'–')+'</b> '+(sig.length&&meanPub>S.d*1.15?'ซึ่ง<b>ใหญ่เกินจริง</b> เพราะงานที่บังเอิญได้ผลสูงเท่านั้นที่ผ่านเกณฑ์ (winner\'s curse) — ลองลด n แล้วดูว่าเกินจริงมากขึ้นไหม':'ใกล้ค่าจริง เพราะอำนาจการทดสอบสูงพอ'),
+     '<b>The drug truly works (d = '+S.d.toFixed(2)+')</b>, so p-values pile up on the left; '+(100*sig.length/N).toFixed(1)+'% are significant (this is <b>power</b>). But the mean published effect is <b>'+(sig.length?meanPub.toFixed(2):'–')+'</b>'+(sig.length&&meanPub>S.d*1.15?', <b>inflated</b> because only lucky high estimates pass the bar (winner\'s curse) — lower n and watch it grow.':', close to the truth because power is high.'));
+  document.getElementById('storyD').innerHTML=st;
+  document.getElementById('misD').innerHTML=t('<b>ระวังเข้าใจผิด:</b> "ได้ตีพิมพ์ = เป็นความจริง" ไม่เสมอไป ถ้าวารสารรับเฉพาะผลที่มีนัยสำคัญ งานที่ไม่พบผลจะหายไป ทำให้ผลรวมของวรรณกรรมเอนเอียง (publication bias) จำเป็นต้องดูการทำซ้ำ (replication) และงานที่ไม่พบผลด้วย',
+    '<b>Common misconception:</b> "published = true" is not guaranteed. If journals accept only significant results, null findings vanish and the literature is biased (publication bias). Replications and null results matter.');
+  drawHist(pubOnly);
+}
+function drawHist(pubOnly){
+  const cv=document.getElementById('cvsD'), ctx=cv.getContext('2d'); const W=cv.offsetWidth, H=cv.offsetHeight; if(!W) return;
+  ctx.clearRect(0,0,W,H);
+  const pad={top:16,bottom:40,left:44,right:12}, cw=W-pad.left-pad.right, ch=H-pad.top-pad.bottom, B=20;
+  const cnt=new Array(B).fill(0); S.studies.forEach(s=>{ if(pubOnly&&!s.sig) return; cnt[Math.min(B-1,Math.floor(s.p*B))]++; });
+  const N=S.studies.length, exp=N/B, ymax=Math.max(4, ...cnt, exp)*1.15;
+  const X=v=>pad.left+v*cw, Y=v=>pad.top+ch-v/ymax*ch;
+  const font=s=>s+'px "IBM Plex Sans","Noto Sans Thai",sans-serif';
+  const st=Math.max(1,Math.ceil(ymax/5/ (ymax>50?10:1))*(ymax>50?10:1));
+  ctx.font=font(13); ctx.textAlign='right';
+  for(let v=0; v<=ymax; v+=st){ ctx.strokeStyle='#f0f0f0'; ctx.beginPath(); ctx.moveTo(pad.left,Y(v)); ctx.lineTo(W-pad.right,Y(v)); ctx.stroke(); ctx.fillStyle='#999'; ctx.fillText(v,pad.left-6,Y(v)+4); }
+  cnt.forEach((c,i)=>{ ctx.fillStyle= i===0 ? '#dc3545' : '#bbb'; const x=X(i/B)+1, w=cw/B-2; ctx.fillRect(x,Y(c),w,Y(0)-Y(c)); });
+  if(N && !pubOnly){ ctx.setLineDash([6,4]); ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(X(0),Y(exp)); ctx.lineTo(X(1),Y(exp)); ctx.stroke(); ctx.setLineDash([]); }
+  ctx.strokeStyle='#888'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(pad.left,Y(0)); ctx.lineTo(W-pad.right,Y(0)); ctx.stroke();
+  ctx.fillStyle='#999'; ctx.textAlign='center'; ctx.font=font(13);
+  [0,0.05,0.2,0.4,0.6,0.8,1].forEach(v=>{ ctx.fillStyle=v===0.05?'#dc3545':'#999'; ctx.fillText(v,X(v),pad.top+ch+17); });
+  ctx.fillStyle='#666'; ctx.fillText(t('ค่า p','p-value'),pad.left+cw/2,H-4);
+  ctx.save(); ctx.translate(12,pad.top+ch/2); ctx.rotate(-Math.PI/2); ctx.fillText(t('จำนวนการทดลอง','Experiments'),0,0); ctx.restore();
+}
+
+/* ======================= ② HACKING TRICKS ======================= */
+function readHack(){
+  S.k=parseInt(document.getElementById('kSlider').value);
+  S.stop=document.getElementById('cStop').checked;
+  S.out=document.getElementById('cOut').checked;
+  S.sub=document.getElementById('cSub').checked;
+  S.nMax=parseInt(document.getElementById('nmSlider').value);
+}
+function onHackParam(){ readHack(); paintTactics(); S.hackRes=null; renderHackStatic(); clearTimeout(S._tm); S._tm=setTimeout(runHack, 250); }
+function presetHack(p){
+  const all=p==='all';
+  document.getElementById('kSlider').value= all?3:1;
+  document.getElementById('cStop').checked=all; document.getElementById('cOut').checked=all; document.getElementById('cSub').checked=all;
+  onHackParam();
+}
+function paintTactics(){
+  document.getElementById('tStop').classList.toggle('on',S.stop);
+  document.getElementById('tOut').classList.toggle('on',S.out);
+  document.getElementById('tSub').classList.toggle('on',S.sub);
+  document.getElementById('kVal').textContent=S.k;
+  document.getElementById('nmVal').textContent=S.nMax;
+}
+function trimmed(arr){ // drop |z| > 2 within the group
+  const n=arr.length; let m=0; for(const v of arr)m+=v; m/=n; let s=0; for(const v of arr)s+=(v-m)*(v-m); s=Math.sqrt(s/(n-1));
+  return arr.filter(v=>Math.abs(v-m)<=2*s);
+}
+/* one study under H0; returns {sig, tries, log?} */
+function hackStudy(opt, wantLog){
+  const nMax=opt.nMax, k=opt.k;
+  const A=[], B=[]; for(let j=0;j<k;j++){ const a=[],b=[]; for(let i=0;i<nMax;i++){ a.push(randn()); b.push(randn()); } A.push(a); B.push(b); }
+  const sexA=[], sexB=[]; for(let i=0;i<nMax;i++){ sexA.push(Math.random()<0.5?0:1); sexB.push(Math.random()<0.5?0:1); }
+  const cps=[]; if(opt.stop){ for(let n=10;n<nMax;n+=10) cps.push(n); } cps.push(nMax);
+  let tries=0; const log=[];
+  for(const n of cps){
+    for(let j=0;j<k;j++){
+      const a=A[j].slice(0,n), b=B[j].slice(0,n);
+      const variants=[{v:'all', a, b}];
+      if(opt.out){ const ta=trimmed(a), tb=trimmed(b); if(ta.length<a.length||tb.length<b.length) variants.push({v:'trim', a:ta, b:tb}); }
+      if(opt.sub){ for(const sx of [0,1]){ variants.push({v:sx?'f':'m', a:a.filter((_,i)=>sexA[i]===sx), b:b.filter((_,i)=>sexB[i]===sx)}); } }
+      for(const va of variants){
+        if(va.a.length<3||va.b.length<3) continue;
+        const r=ttest(va.a, va.b); tries++;
+        if(wantLog) log.push({n, j, v:va.v, p:r.p, na:va.a.length, nb:va.b.length});
+        if(r.p<ALPHA) return {sig:true, tries, log};
+      }
+    }
+  }
+  return {sig:false, tries, log};
+}
+function fprOf(opt, reps){ let s=0, tr=0; for(let i=0;i<reps;i++){ const r=hackStudy(opt,false); if(r.sig)s++; tr+=r.tries; } return {fpr:s/reps, tries:tr/reps}; }
+
+function runHack(){
+  readHack(); paintTactics();
+  const btn=document.getElementById('runHackBtn'); btn.disabled=true;
+  setTimeout(()=>{
+    const base={k:1, stop:false, out:false, sub:false, nMax:S.nMax}, R=1000, rows=[];
+    rows.push({key:'honest', o:base});
+    if(S.k>1) rows.push({key:'k', o:Object.assign({},base,{k:S.k})});
+    if(S.stop) rows.push({key:'stop', o:Object.assign({},base,{stop:true})});
+    if(S.out) rows.push({key:'out', o:Object.assign({},base,{out:true})});
+    if(S.sub) rows.push({key:'sub', o:Object.assign({},base,{sub:true})});
+    const cur={k:S.k, stop:S.stop, out:S.out, sub:S.sub, nMax:S.nMax};
+    const nOn=(S.k>1)+S.stop+S.out+S.sub;
+    if(nOn>1) rows.push({key:'all', o:cur});
+    rows.forEach(r=>{ Object.assign(r, fprOf(r.o, R)); });
+    S.hackRes={rows, cur: nOn===0 ? rows[0] : rows[rows.length-1], nOn};
+    S.one=hackStudy(cur,true);
+    btn.disabled=false; render();
+  }, 30);
+}
+function runOne(){ readHack(); S.one=hackStudy({k:S.k, stop:S.stop, out:S.out, sub:S.sub, nMax:S.nMax}, true); render(); }
+
+function rowName(key){
+  return key==='honest'?t('ซื่อตรง (แผนเดียว)','Honest (one plan)'):
+         key==='k'?t('วัด '+S.k+' ตัวแปร','Measure '+S.k+' outcomes'):
+         key==='stop'?t('แอบดูแล้วเก็บเพิ่ม','Peek & add data'):
+         key==='out'?t('ตัด outlier','Drop outliers'):
+         key==='sub'?t('ดูกลุ่มย่อย','Subgroups'): t('ทุกเทคนิครวมกัน','All tricks combined');
+}
+function vName(v){ return v==='all'?t('ทุกคน','everyone'):v==='trim'?t('ตัด outlier','outliers removed'):v==='m'?t('เฉพาะชาย','men only'):t('เฉพาะหญิง','women only'); }
+
+function renderHackStatic(){
+  document.getElementById('modeHint').innerHTML=t('นักวิจัยมี "ทางเลือก" ในการวิเคราะห์หลายทาง ลองเปิดเทคนิคทีละอย่างแล้วดูอัตราผลบวกลวง','Researchers have many analysis choices — switch tricks on one by one and watch the false positive rate.');
+  if(!S.hackRes){ document.getElementById('fpr').textContent='…'; }
+}
+function renderHack(){
+  paintTactics(); renderHackStatic();
+  const H=S.hackRes; if(!H) return;
+  const cur=H.cur;
+  document.getElementById('fpr').textContent=(100*cur.fpr).toFixed(1)+'%';
+  document.getElementById('fprLbl').innerHTML=t('ของงานวิจัยที่ยาไม่มีผลจริง กลับรายงานได้ว่า "มีนัยสำคัญ" (ควรเป็นแค่ 5%) · เฉลี่ยลองวิเคราะห์ '+cur.tries.toFixed(1)+' แบบต่องาน',
+    'of studies on a useless drug still report "significant" (should be 5%) · on average '+cur.tries.toFixed(1)+' analyses tried per study');
+  const maxv=Math.max(0.3, ...H.rows.map(r=>r.fpr))*1.05;
+  let bh='';
+  H.rows.forEach(r=>{
+    const col = r.key==='honest' ? '#20c997' : r.key==='all' ? '#b02a37' : '#f08c9a';
+    bh+='<div class="hbar-row"><div>'+rowName(r.key)+'</div><div class="hbar"><div class="fill" style="width:'+(r.fpr/maxv*100)+'%;background:'+col+'"></div><div class="alpha" style="left:'+(ALPHA/maxv*100)+'%"></div></div><div class="hbar-val">'+(100*r.fpr).toFixed(1)+'%</div></div>';
+  });
+  if(S.k>1) bh+='<div class="sub-hint" style="margin-bottom:8px">'+t('ทฤษฎี: วัด '+S.k+' ตัวแปรอิสระ → 1 − 0.95<sup>'+S.k+'</sup> = '+(100*(1-Math.pow(0.95,S.k))).toFixed(1)+'%','Theory: '+S.k+' independent outcomes → 1 − 0.95<sup>'+S.k+'</sup> = '+(100*(1-Math.pow(0.95,S.k))).toFixed(1)+'%')+'</div>';
+  document.getElementById('bars').innerHTML=bh;
+
+  // one study
+  const O=S.one;
+  if(O){
+    const hit=O.sig ? O.log[O.log.length-1] : null;
+    document.getElementById('oneSummary').innerHTML = O.sig
+      ? t('ลองวิเคราะห์ไป <b>'+O.tries+' แบบ</b> จนเจอ <b style="color:#b02a37">p = '+hit.p.toFixed(3)+'</b> → รายงานว่า "ยาได้ผลต่อตัวแปรที่ '+(hit.j+1)+' ('+vName(hit.v)+', n = '+hit.n+' ต่อกลุ่ม)" โดยไม่บอกว่าลองแบบอื่นมาแล้ว',
+          'Tried <b>'+O.tries+' analyses</b> until <b style="color:#b02a37">p = '+hit.p.toFixed(3)+'</b> → reported "the drug works on outcome '+(hit.j+1)+' ('+vName(hit.v)+', n = '+hit.n+' per group)" without mentioning the other attempts.')
+      : t('ลองวิเคราะห์ไป <b>'+O.tries+' แบบ</b> ไม่เจอ p &lt; 0.05 → งานนี้เข้าลิ้นชัก (กดอีกครั้งเพื่อสุ่มงานใหม่)','Tried <b>'+O.tries+' analyses</b>, none reached p &lt; 0.05 → into the file drawer (press again for a new study).');
+    let lg='<table><tr><th>#</th><th>n</th><th>'+t('ตัวแปร','Outcome')+'</th><th>'+t('ข้อมูลที่ใช้','Data used')+'</th><th>p</th></tr>';
+    O.log.forEach((r,i)=>{ lg+='<tr'+(r.p<ALPHA?' class="hit"':'')+'><td>'+(i+1)+'</td><td>'+r.n+'</td><td>Y'+(r.j+1)+'</td><td>'+vName(r.v)+'</td><td>'+r.p.toFixed(3)+(r.p<ALPHA?' ✓':'')+'</td></tr>'; });
+    document.getElementById('oneLog').innerHTML=lg+'</table>';
+  }
+
+  document.getElementById('storyH').innerHTML = H.nOn===0
+    ? t('<b>นักวิจัยซื่อตรง:</b> วางแผนไว้ก่อนว่าจะวัดตัวแปรเดียว เก็บข้อมูลครบ '+S.nMax+' คน แล้วทดสอบครั้งเดียว อัตราผลบวกลวงจึงอยู่ที่ประมาณ α = 5% ตามที่ควรเป็น ลองเปิดเทคนิคด้านซ้ายทีละอย่าง',
+        '<b>Honest researcher:</b> one pre-planned outcome, collect all '+S.nMax+' per group, test once. The false positive rate sits near α = 5%, as it should. Now switch on the tricks one at a time.')
+    : t('<b>แต่ละครั้งที่ "ลองวิเคราะห์อีกแบบ" คือการซื้อลอตเตอรี่เพิ่มอีกใบ:</b> ทุกการทดสอบมีโอกาส 5% ที่จะได้ p &lt; 0.05 โดยบังเอิญ ยิ่งลองหลายแบบ โอกาสที่จะเจออย่างน้อยหนึ่งแบบที่ "มีนัยสำคัญ" ยิ่งสูง ทั้งที่ยาไม่มีผลเลย ค่า p ที่รายงานจึงไม่มีความหมายเดิมอีกต่อไป',
+        '<b>Every "let\'s try another analysis" buys another lottery ticket:</b> each test has a 5% chance of p &lt; 0.05 by luck. The more you try, the likelier at least one "significant" result appears — though the drug does nothing. The reported p-value loses its meaning.');
+  document.getElementById('misH').innerHTML=t('<b>ระวังเข้าใจผิด:</b> p-hacking ส่วนใหญ่ไม่ได้เกิดจากการโกงโดยเจตนา แต่เกิดจาก "ทางเลือกที่ดูสมเหตุสมผล" หลายทางรวมกัน วิธีป้องกันคือ<b>ลงทะเบียนแผนวิเคราะห์ล่วงหน้า (pre-registration)</b> รายงานการวิเคราะห์ทั้งหมดที่ทำ และปรับค่า α เมื่อทดสอบหลายครั้ง (เช่น Bonferroni)',
+    '<b>Common misconception:</b> most p-hacking is not deliberate fraud — it is many "reasonable-looking" choices adding up. Defences: <b>pre-register the analysis plan</b>, report every analysis run, and adjust α for multiple tests (e.g. Bonferroni).');
+}
+
+/* ---------- canvas & render ---------- */
+function resizeCanvas(){
+  const cv=document.getElementById('cvsD'), W=cv.parentElement.clientWidth-40;
+  if(W>0){ cv.style.width=W+'px'; cv.style.height='300px'; cv.width=W*devicePixelRatio; cv.height=300*devicePixelRatio; cv.getContext('2d').setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0); }
+  render();
+}
+window.addEventListener('resize', resizeCanvas);
+function render(){ if(S.mode==='drawer') renderDrawer(); else renderHack(); }
+
+/* init */
+setLang('th');
+setTimeout(resizeCanvas, 50);
+</script>
+</body>
+</html>

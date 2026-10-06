@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simpson's Paradox</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@400;600;700;800&family=IBM+Plex+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: "Noto Sans Thai","IBM Plex Sans",sans-serif; font-size: 18px; font-weight: 600; background: #f5f5f5; color: #1a1a1a; min-height: 100vh; }
+
+.header { background: #fff; border-bottom: 3px solid #1a1a1a; padding: 16px 32px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.header-left { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.header h1 { font-size: 28px; font-weight: 800; }
+
+.home-btn { text-decoration: none; color: #6c757d; font-size: 15px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid #dee2e6; border-radius: 6px; background: #fff; transition: all 0.2s; flex-shrink: 0; }
+.home-btn:hover { background: #f8f9fa; color: #0d6efd; }
+
+.lang-toggle { display: flex; border: 2px solid #1a1a1a; border-radius: 8px; overflow: hidden; }
+.lang-btn { font-family: inherit; font-size: 16px; font-weight: 700; padding: 6px 16px; border: none; cursor: pointer; background: #fff; color: #888; transition: all .12s; }
+.lang-btn.active { background: #1a1a1a; color: #fff; }
+
+.main { max-width: 1100px; margin: 24px auto; padding: 0 24px; }
+.card { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 20px; margin-bottom: 16px; }
+.card-title { font-size: 20px; font-weight: 800; margin-bottom: 14px; border-bottom: 1px solid #eee; padding-bottom: 8px; }
+
+.layout { display: grid; grid-template-columns: 340px 1fr; gap: 20px; }
+.layout > div { min-width: 0; }
+@media (max-width: 850px) { .layout { grid-template-columns: 1fr; } .main { padding: 0 12px; } .header { padding: 14px 16px; } }
+
+.seg { display: flex; border: 2px solid #1a1a1a; border-radius: 8px; overflow: hidden; margin-bottom: 6px; }
+.seg button { flex: 1; font-family: inherit; font-size: 15px; font-weight: 700; padding: 8px 4px; border: none; border-right: 2px solid #1a1a1a; cursor: pointer; background: #fff; color: #888; transition: all .12s; line-height: 1.3; }
+.seg button:last-child { border-right: none; }
+.seg button.active { background: #1a1a1a; color: #fff; }
+.field-label { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.sub-hint { font-size: 13px; font-weight: 600; color: #888; margin-top: 4px; line-height: 1.45; }
+.sub-hint.err { color: #dc3545; }
+
+.slider-group { margin-bottom: 18px; }
+.slider-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.slider-name { font-size: 16px; font-weight: 700; }
+.slider-val { font-size: 22px; font-weight: 800; min-width: 48px; text-align: right; }
+input[type=range] { width: 100%; cursor: pointer; accent-color: #1a1a1a; }
+
+.check { display: flex; align-items: center; gap: 8px; font-size: 16px; font-weight: 700; margin: 4px 0 12px; cursor: pointer; padding: 10px 12px; border: 2px solid #1a1a1a; border-radius: 8px; }
+.check input { width: 20px; height: 20px; accent-color: #1a1a1a; }
+.check.on { background: #1a1a1a; color: #fff; }
+.btn { display: inline-block; width: 100%; text-align: center; background: #0d6efd; color: #fff; border: none; font-family: inherit; font-size: 15px; font-weight: 700; padding: 10px 14px; border-radius: 8px; cursor: pointer; transition: background .2s; }
+.btn:hover { background: #0b5ed7; }
+
+canvas { width: 100%; display: block; border-radius: 4px; background: #fff; }
+
+.stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+.stat { background: #f8f9fa; border: 1px solid #e0e0e0; border-radius: 6px; padding: 12px; text-align: center; }
+.stat-val { font-size: 24px; font-weight: 800; }
+.stat-lbl { font-size: 14px; font-weight: 600; color: #555; margin-top: 2px; }
+
+.legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; justify-content: center; }
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: #555; }
+.legend-dot { width: 12px; height: 12px; border-radius: 50%; }
+
+.banner { font-size: 17px; font-weight: 800; padding: 12px 16px; border-radius: 6px; margin-top: 16px; text-align: center; border: 2px solid; line-height: 1.45; }
+.banner.para { background: #fdecea; border-color: #dc3545; color: #b02a37; }
+.banner.ok { background: #e8f7f1; border-color: #20c997; color: #0f7a5a; }
+.banner.hide { background: #fff8e1; border-color: #f0ad00; color: #8a6100; }
+
+.insight { font-size: 16px; font-weight: 600; color: #333; background: #f8f9fa; border-left: 4px solid #1a1a1a; padding: 12px 16px; border-radius: 0 6px 6px 0; margin-top: 16px; line-height: 1.6; }
+.insight.mis { border-left-color: #dc3545; background: #fff6f6; color: #7d2020; }
+.insight b { color: #1a1a1a; }
+.insight.mis b { color: #7d2020; }
+
+table.calc { border-collapse: collapse; width: 100%; font-family: "IBM Plex Sans","Noto Sans Thai",sans-serif; font-size: 15px; margin-top: 14px; }
+table.calc th { background: #f1f3f5; padding: 7px 10px; font-weight: 700; text-align: center; }
+table.calc td { padding: 6px 10px; border-top: 1px solid #eee; font-weight: 600; text-align: center; }
+table.calc td:first-child, table.calc th:first-child { text-align: left; }
+table.calc tr.total td { border-top: 2px solid #1a1a1a; font-weight: 800; background: #fafafa; }
+.win { color: #0f7a5a; font-weight: 800; }
+.mdot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+
+.in-grid { width: 100%; border-collapse: collapse; font-size: 14px; }
+.in-grid th { font-weight: 700; color: #555; padding: 4px 2px; text-align: center; line-height: 1.25; }
+.in-grid td { padding: 3px 2px; text-align: center; }
+.in-grid td:first-child { font-weight: 800; font-size: 16px; }
+.in-grid input { width: 100%; font-family: "IBM Plex Sans",sans-serif; font-size: 15px; font-weight: 700; padding: 6px 4px; border: 1px solid #ccc; border-radius: 6px; text-align: center; }
+
+.wbar { display: flex; height: 26px; border-radius: 6px; overflow: hidden; border: 1px solid #ccc; margin: 4px 0 10px; }
+.wbar div { display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; }
+.wlabel { font-size: 15px; font-weight: 700; }
+.eq { font-family: "IBM Plex Sans", sans-serif; background: #eef4ff; padding: 1px 7px; border-radius: 4px; }
+
+.questions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.q-chip { font-size: 15px; font-weight: 600; padding: 6px 14px; border: 1px solid #bbb; border-radius: 20px; color: #444; background: #fafafa; line-height: 1.4; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-left">
+    <a href="index.html" class="home-btn" data-th="← หน้าแรก" data-en="← Home">← Home</a>
+    <h1 data-th="Simpson's Paradox (ปฏิทรรศน์ซิมป์สัน)" data-en="Simpson's Paradox">Simpson's Paradox (ปฏิทรรศน์ซิมป์สัน)</h1>
+  </div>
+  <div class="lang-toggle">
+    <button class="lang-btn active" onclick="setLang('th')">TH</button>
+    <button class="lang-btn" onclick="setLang('en')">EN</button>
+  </div>
+</div>
+
+<div class="main">
+  <div class="layout">
+
+    <!-- LEFT: CONTROLS -->
+    <div>
+      <div class="card">
+        <div class="card-title" data-th="ตั้งค่าพารามิเตอร์" data-en="Adjust Parameters">ตั้งค่าพารามิเตอร์</div>
+
+        <div class="slider-group">
+          <div class="field-label" data-th="รูปแบบข้อมูล" data-en="Data type">รูปแบบข้อมูล</div>
+          <div class="seg" id="segMode">
+            <button data-mode="scatter" class="active" onclick="setMode('scatter')" data-th="กราฟกระจาย" data-en="Scatter plot">กราฟกระจาย</button>
+            <button data-mode="table" onclick="setMode('table')" data-th="ตารางอัตราสำเร็จ" data-en="Rate table">ตารางอัตราสำเร็จ</button>
+          </div>
+        </div>
+
+        <!-- scatter controls -->
+        <div id="ctrlScatter">
+          <div class="sub-hint" style="margin:-6px 0 14px" data-th="สถานการณ์: X = ชั่วโมงอ่านหนังสือ, Y = คะแนนสอบ, กลุ่ม = ความยากของวิชา" data-en="Scenario: X = hours studied, Y = exam score, group = subject difficulty">สถานการณ์: X = ชั่วโมงอ่านหนังสือ, Y = คะแนนสอบ, กลุ่ม = ความยากของวิชา</div>
+
+          <label class="check" id="revealBox"><input type="checkbox" id="revealChk" onchange="onScatter()"><span data-th="เปิดเผยตัวแปรแฝง (แยกสีตามกลุ่ม)" data-en="Reveal the hidden variable (colour by group)">เปิดเผยตัวแปรแฝง (แยกสีตามกลุ่ม)</span></label>
+
+          <div class="slider-group">
+            <div class="slider-header"><span class="slider-name" data-th="ความชันภายในกลุ่ม" data-en="Within-group slope">ความชันภายในกลุ่ม</span><span class="slider-val" id="wVal" style="color:#0d6efd">4.0</span></div>
+            <input type="range" id="wSlider" min="-6" max="6" step="0.5" value="4" oninput="onScatter()">
+            <div class="sub-hint" data-th="อ่านเพิ่ม 1 ชม. คะแนนเปลี่ยนกี่คะแนน (ภายในวิชาเดียวกัน)" data-en="Score change per extra hour, within the same subject">อ่านเพิ่ม 1 ชม. คะแนนเปลี่ยนกี่คะแนน (ภายในวิชาเดียวกัน)</div>
+          </div>
+          <div class="slider-group">
+            <div class="slider-header"><span class="slider-name" data-th="ความแรงของตัวกวน" data-en="Confounder strength">ความแรงของตัวกวน</span><span class="slider-val" id="cVal" style="color:#dc3545">1.00</span></div>
+            <input type="range" id="cSlider" min="0" max="1" step="0.05" value="1" oninput="onScatter()">
+            <div class="sub-hint" data-th="วิชายากทำให้ทั้ง 'อ่านมากขึ้น' และ 'คะแนนต่ำลง' — 0 = ไม่มีผลเลย" data-en="Harder subjects make students study more AND score lower — 0 = no effect">วิชายากทำให้ทั้ง 'อ่านมากขึ้น' และ 'คะแนนต่ำลง' — 0 = ไม่มีผลเลย</div>
+          </div>
+          <div class="slider-group">
+            <div class="slider-header"><span class="slider-name" data-th="ความแปรปรวน (noise)" data-en="Noise">ความแปรปรวน (noise)</span><span class="slider-val" id="sVal" style="color:#6c757d">5</span></div>
+            <input type="range" id="sSlider" min="1" max="12" step="0.5" value="5" oninput="onScatter()">
+          </div>
+          <div class="slider-group">
+            <div class="slider-header"><span class="slider-name" data-th="จำนวนนักเรียนต่อกลุ่ม" data-en="Students per group">จำนวนนักเรียนต่อกลุ่ม</span><span class="slider-val" id="nVal" style="color:#6c757d">25</span></div>
+            <input type="range" id="nSlider" min="10" max="60" step="1" value="25" oninput="onScatter()">
+          </div>
+          <button class="btn" onclick="newSample()" data-th="🎲 สุ่มตัวอย่างใหม่" data-en="🎲 New random sample">🎲 สุ่มตัวอย่างใหม่</button>
+        </div>
+
+        <!-- table controls -->
+        <div id="ctrlTable" style="display:none">
+          <div class="field-label" data-th="ตัวอย่างจริง" data-en="Real-world example">ตัวอย่างจริง</div>
+          <div class="seg" id="segPreset">
+            <button data-p="kidney" class="active" onclick="setPreset('kidney')" data-th="รักษานิ่วในไต" data-en="Kidney stones">รักษานิ่วในไต</button>
+            <button data-p="admit" onclick="setPreset('admit')" data-th="รับเข้าเรียน" data-en="Admissions">รับเข้าเรียน</button>
+          </div>
+          <div class="sub-hint" id="presetNote" style="margin-bottom:14px"></div>
+
+          <div class="field-label" data-th="แก้ตัวเลขได้" data-en="Edit the counts">แก้ตัวเลขได้</div>
+          <table class="in-grid">
+            <tr><th></th><th id="hG1s"></th><th id="hG1n"></th><th id="hG2s"></th><th id="hG2n"></th></tr>
+            <tr><td>A</td><td><input type="number" min="0" id="A1s" oninput="onTable()"></td><td><input type="number" min="1" id="A1n" oninput="onTable()"></td><td><input type="number" min="0" id="A2s" oninput="onTable()"></td><td><input type="number" min="1" id="A2n" oninput="onTable()"></td></tr>
+            <tr><td>B</td><td><input type="number" min="0" id="B1s" oninput="onTable()"></td><td><input type="number" min="1" id="B1n" oninput="onTable()"></td><td><input type="number" min="0" id="B2s" oninput="onTable()"></td><td><input type="number" min="1" id="B2n" oninput="onTable()"></td></tr>
+          </table>
+          <div class="sub-hint" id="tableMsg"></div>
+          <button class="btn" style="margin-top:12px; background:#6c757d" onclick="setPreset(S.preset)" data-th="↺ คืนค่าตัวอย่าง" data-en="↺ Reset example">↺ คืนค่าตัวอย่าง</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" data-th="คำถามชวนคิด" data-en="Discussion Questions">คำถามชวนคิด</div>
+        <div class="questions">
+          <div class="q-chip" data-th="เลื่อน 'ความแรงของตัวกวน' ลงเป็น 0 — พาราดอกซ์ยังเกิดอยู่ไหม? เพราะอะไร?" data-en="Slide confounder strength to 0 — does the paradox survive? Why?">เลื่อน 'ความแรงของตัวกวน' ลงเป็น 0 — พาราดอกซ์ยังเกิดอยู่ไหม? เพราะอะไร?</div>
+          <div class="q-chip" data-th="ถ้าคุณเป็นผู้ป่วยนิ่วก้อนใหญ่ ควรเลือกวิธี A หรือ B? ดูจากตารางรวมหรือตารางแยก?" data-en="If you had a large kidney stone, would you pick A or B? Trust the total or the split table?">ถ้าคุณเป็นผู้ป่วยนิ่วก้อนใหญ่ ควรเลือกวิธี A หรือ B? ดูจากตารางรวมหรือตารางแยก?</div>
+          <div class="q-chip" data-th="แก้ตัวเลขให้ A กับ B รักษาเคสยากจำนวนเท่ากัน — พาราดอกซ์หายไปไหม?" data-en="Edit the counts so A and B treat the same number of hard cases — does the paradox vanish?">แก้ตัวเลขให้ A กับ B รักษาเคสยากจำนวนเท่ากัน — พาราดอกซ์หายไปไหม?</div>
+          <div class="q-chip" data-th="ยกตัวอย่างตัวแปรแฝงในชีวิตจริงที่อาจทำให้เราสรุปผิด" data-en="Name a real-life hidden variable that could mislead a conclusion.">ยกตัวอย่างตัวแปรแฝงในชีวิตจริงที่อาจทำให้เราสรุปผิด</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT -->
+    <div>
+      <!-- scatter panel -->
+      <div class="card" id="panelScatter">
+        <div class="card-title" data-th="ความสัมพันธ์ระหว่างชั่วโมงอ่านหนังสือกับคะแนน" data-en="Hours studied vs exam score">ความสัมพันธ์ระหว่างชั่วโมงอ่านหนังสือกับคะแนน</div>
+        <canvas id="cvsS"></canvas>
+        <div class="legend" id="legendS"></div>
+        <div class="banner" id="bannerS"></div>
+        <div class="stat-grid">
+          <div class="stat" style="border-bottom:4px solid #1a1a1a"><div class="stat-val" id="oSlope">–</div><div class="stat-lbl" data-th="ความชันรวม (b)" data-en="Overall slope (b)">ความชันรวม (b)</div></div>
+          <div class="stat" style="border-bottom:4px solid #1a1a1a"><div class="stat-val" id="oR">–</div><div class="stat-lbl" data-th="สหสัมพันธ์รวม (r)" data-en="Overall correlation (r)">สหสัมพันธ์รวม (r)</div></div>
+          <div class="stat" style="border-bottom:4px solid #0d6efd"><div class="stat-val" id="wSlope" style="color:#0d6efd">?</div><div class="stat-lbl" data-th="ความชันเฉลี่ยในกลุ่ม" data-en="Avg within-group slope">ความชันเฉลี่ยในกลุ่ม</div></div>
+        </div>
+        <div id="groupTable"></div>
+        <div class="insight" id="storyS"></div>
+        <div class="insight mis" id="misS"></div>
+      </div>
+
+      <!-- table panel -->
+      <div class="card" id="panelTable" style="display:none">
+        <div class="card-title" id="tblTitle"></div>
+        <canvas id="cvsT"></canvas>
+        <div class="legend" id="legendT"></div>
+        <div class="banner" id="bannerT"></div>
+        <div id="rateTable"></div>
+        <div class="card-title" style="margin-top:22px" data-th="ทำไมผลรวมถึงกลับด้าน? — ดู 'น้ำหนัก'" data-en="Why does the total flip? — look at the weights">ทำไมผลรวมถึงกลับด้าน? — ดู 'น้ำหนัก'</div>
+        <div id="weights"></div>
+        <div class="insight" id="storyT"></div>
+        <div class="insight mis" id="misT"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+/* ---------- language ---------- */
+var currentLang = 'th';
+function t(th, en){ return currentLang === 'en' ? en : th; }
+function setLang(lang){
+  currentLang = lang;
+  document.documentElement.lang = lang;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.textContent.trim().toLowerCase() === lang));
+  document.querySelectorAll('[data-th]').forEach(el => { var v = el.getAttribute('data-'+lang); if(v!==null) el.innerHTML = v; });
+  render();
+}
+
+/* ---------- helpers ---------- */
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; var q=Math.imul(a^a>>>15,1|a); q=q+Math.imul(q^q>>>7,61|q)^q; return ((q^q>>>14)>>>0)/4294967296; }; }
+function niceStep(raw){ const p=Math.pow(10,Math.floor(Math.log10(raw))), f=raw/p; return (f<1.5?1:f<3?2:f<7?5:10)*p; }
+function pct(x){ return (100*x).toFixed(1)+'%'; }
+function sg(v,d){ return (v>0?'+':'')+v.toFixed(d===undefined?2:d); }
+function reg(pts){
+  const n=pts.length; let mx=0,my=0; pts.forEach(p=>{mx+=p.x;my+=p.y;}); mx/=n; my/=n;
+  let sxx=0,sxy=0,syy=0; pts.forEach(p=>{ const dx=p.x-mx, dy=p.y-my; sxx+=dx*dx; sxy+=dx*dy; syy+=dy*dy; });
+  const b=sxy/sxx; return { b, a:my-b*mx, r:sxy/Math.sqrt(sxx*syy), mx, my, n };
+}
+
+/* ---------- state ---------- */
+const GCOL=['#0d6efd','#fd7e14','#dc3545'];
+const S={ mode:'scatter', w:4, c:1, noise:5, n:25, reveal:false, seed:2024, Z:null, preset:'kidney', T:null };
+function gname(g){ return [t('วิชาง่าย','Easy subject'), t('วิชาปานกลาง','Medium subject'), t('วิชายาก','Hard subject')][g]; }
+
+function setMode(m){
+  S.mode=m;
+  document.querySelectorAll('#segMode button').forEach(b=>b.classList.toggle('active', b.dataset.mode===m));
+  document.getElementById('ctrlScatter').style.display = m==='scatter'?'block':'none';
+  document.getElementById('ctrlTable').style.display   = m==='table'?'block':'none';
+  document.getElementById('panelScatter').style.display= m==='scatter'?'block':'none';
+  document.getElementById('panelTable').style.display  = m==='table'?'block':'none';
+  resizeCanvas();
+}
+
+/* ======================= SCATTER ======================= */
+function makeZ(){ // fixed random draws so sliders morph the same students smoothly
+  const r=mulberry32(S.seed), nrm=()=>{ const u=Math.max(1e-9,r()), v=r(); return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v); };
+  S.Z=[0,1,2].map(()=>Array.from({length:60},()=>({a:nrm(), b:nrm()})));
+}
+function genPoints(){
+  const pts=[];
+  for(let g=0; g<3; g++){
+    const xc=4+3.5*g*S.c, yc=75-25*g*S.c;
+    for(let i=0;i<S.n;i++){ const z=S.Z[g][i]; const x=Math.max(0.2, xc+1.3*z.a); pts.push({ x, y: yc+S.w*(x-xc)+S.noise*z.b, g }); }
+  }
+  return pts;
+}
+function onScatter(){
+  S.w=parseFloat(document.getElementById('wSlider').value);
+  S.c=parseFloat(document.getElementById('cSlider').value);
+  S.noise=parseFloat(document.getElementById('sSlider').value);
+  S.n=parseInt(document.getElementById('nSlider').value);
+  S.reveal=document.getElementById('revealChk').checked;
+  render();
+}
+function newSample(){ S.seed=(Math.random()*1e9)|0; makeZ(); render(); }
+
+function renderScatter(){
+  document.getElementById('wVal').textContent=S.w.toFixed(1);
+  document.getElementById('cVal').textContent=S.c.toFixed(2);
+  document.getElementById('sVal').textContent=S.noise.toFixed(1);
+  document.getElementById('nVal').textContent=S.n;
+  document.getElementById('revealBox').classList.toggle('on', S.reveal);
+
+  const pts=genPoints(), all=reg(pts), G=[0,1,2].map(g=>reg(pts.filter(p=>p.g===g)));
+  const avgW=(G[0].b+G[1].b+G[2].b)/3;
+  document.getElementById('oSlope').textContent=sg(all.b);
+  document.getElementById('oR').textContent=sg(all.r);
+  document.getElementById('wSlope').textContent= S.reveal ? sg(avgW) : '?';
+
+  // banner
+  const signs=G.map(x=>Math.sign(x.b)), same=signs.every(s=>s===signs[0]&&s!==0);
+  const flip = same && Math.sign(all.b)!==signs[0] && Math.abs(all.b)>0.05;
+  const bn=document.getElementById('bannerS');
+  if(!S.reveal){
+    bn.className='banner hide';
+    bn.innerHTML = all.b<0 ? t('ดูจากภาพรวม: ยิ่งอ่านมาก คะแนนยิ่ง<b>ต่ำ</b> (b = '+sg(all.b)+') — จริงหรือ? ลองติ๊ก "เปิดเผยตัวแปรแฝง"','Overall: more study → <b>lower</b> scores (b = '+sg(all.b)+')? Tick "Reveal the hidden variable".')
+                           : t('ดูจากภาพรวม: ยิ่งอ่านมาก คะแนนยิ่ง<b>สูง</b> (b = '+sg(all.b)+') — ลองติ๊ก "เปิดเผยตัวแปรแฝง" ดูว่าในแต่ละกลุ่มเป็นอย่างไร','Overall: more study → <b>higher</b> scores (b = '+sg(all.b)+'). Tick "Reveal" to check each group.');
+  } else if(flip){
+    bn.className='banner para';
+    bn.innerHTML = t('⚠ เกิด Simpson\'s Paradox! ทุกกลุ่มมีความชัน '+(signs[0]>0?'บวก':'ลบ')+' แต่เมื่อรวมกลุ่มกลับได้ความชัน'+(all.b>0?'บวก':'ลบ'),
+                     '⚠ Simpson\'s Paradox! Every group slopes '+(signs[0]>0?'up':'down')+', yet the pooled data slopes '+(all.b>0?'up':'down')+'.');
+  } else {
+    bn.className='banner ok';
+    bn.innerHTML = t('ไม่เกิดพาราดอกซ์ — ทิศทางภายในกลุ่มและภาพรวมสอดคล้องกัน (หรือแต่ละกลุ่มไม่ไปทางเดียวกัน)','No paradox — the pooled direction agrees with the groups (or the groups disagree among themselves).');
+  }
+
+  // group table
+  let tb='';
+  if(S.reveal){
+    tb='<table class="calc"><tr><th>'+t('กลุ่ม','Group')+'</th><th>n</th><th>'+t('ชม.เฉลี่ย','Mean hours')+'</th><th>'+t('คะแนนเฉลี่ย','Mean score')+'</th><th>'+t('ความชัน b','Slope b')+'</th><th>r</th></tr>';
+    G.forEach((x,g)=>{ tb+='<tr><td><span class="mdot" style="background:'+GCOL[g]+'"></span>'+gname(g)+'</td><td>'+x.n+'</td><td>'+x.mx.toFixed(1)+'</td><td>'+x.my.toFixed(1)+'</td><td>'+sg(x.b)+'</td><td>'+sg(x.r)+'</td></tr>'; });
+    tb+='<tr class="total"><td>'+t('รวมทุกกลุ่ม','All pooled')+'</td><td>'+all.n+'</td><td>'+all.mx.toFixed(1)+'</td><td>'+all.my.toFixed(1)+'</td><td>'+sg(all.b)+'</td><td>'+sg(all.r)+'</td></tr></table>';
+  }
+  document.getElementById('groupTable').innerHTML=tb;
+
+  // legend
+  let lg='';
+  if(S.reveal){ [0,1,2].forEach(g=>{ lg+='<div class="legend-item"><div class="legend-dot" style="background:'+GCOL[g]+'"></div><span>'+gname(g)+'</span></div>'; });
+    lg+='<div class="legend-item"><div style="width:20px;border-top:3px dashed #1a1a1a"></div><span>'+t('เส้นแนวโน้มรวม','Pooled trend')+'</span></div>'; }
+  else lg='<div class="legend-item"><div class="legend-dot" style="background:#888"></div><span>'+t('นักเรียน 1 คน','One student')+'</span></div><div class="legend-item"><div style="width:20px;border-top:3px solid #1a1a1a"></div><span>'+t('เส้นแนวโน้มรวม','Pooled trend')+'</span></div>';
+  document.getElementById('legendS').innerHTML=lg;
+
+  // story
+  document.getElementById('storyS').innerHTML = !S.reveal
+    ? t('<b>สังเกต:</b> ถ้าดูข้อมูลทั้งหมดรวมกัน เส้นแนวโน้มบอกว่าการอ่านหนังสือ'+(all.b<0?'ทำให้คะแนนลดลง':'สัมพันธ์กับคะแนน')+' แต่ข้อมูลนี้มาจากหลายวิชาที่ความยากต่างกัน ซึ่งเรายังมองไม่เห็น',
+        '<b>Notice:</b> pooling everyone, the trend line says studying '+(all.b<0?'lowers scores':'relates to scores')+' — but the data mix subjects of different difficulty, which we cannot see yet.')
+    : t('<b>ตัวกวน (confounder) คือ "ความยากของวิชา":</b> วิชายากทำให้นักเรียน<b>อ่านมากขึ้น</b>และได้<b>คะแนนต่ำลง</b>พร้อมกัน เมื่อเทียบภายในวิชาเดียวกัน อ่านเพิ่ม 1 ชม. คะแนนเปลี่ยนเฉลี่ย <b>'+sg(avgW,1)+'</b> แต่เมื่อรวมทุกวิชา ความต่างระหว่างวิชาบังทิศทางนี้จนเห็นเป็น <b>'+sg(all.b,1)+'</b>',
+        '<b>The confounder is subject difficulty:</b> harder subjects make students <b>study more</b> and <b>score lower</b> at the same time. Within one subject an extra hour changes the score by <b>'+sg(avgW,1)+'</b> on average, but pooling subjects hides this and shows <b>'+sg(all.b,1)+'</b>.');
+  document.getElementById('misS').innerHTML = t('<b>ระวังเข้าใจผิด:</b> พาราดอกซ์ไม่ได้แปลว่า "ต้องแยกกลุ่มเสมอ" — จะเชื่อผลรวมหรือผลแยกกลุ่ม ต้องรู้ว่าตัวแปรกลุ่มเป็น<b>สาเหตุร่วม</b>ของ X และ Y (ควรแยก) หรือเป็น<b>ผลที่ตามมา</b>จาก X (ไม่ควรแยก) ซึ่งตัดสินจากความรู้เรื่องเหตุและผล ไม่ใช่จากตัวเลขอย่างเดียว',
+    '<b>Common misconception:</b> the paradox does not mean "always split the data." Whether to trust the pooled or the split result depends on whether the group variable is a <b>common cause</b> of X and Y (split) or a <b>consequence</b> of X (don\'t split) — a causal question numbers alone can\'t answer.');
+
+  drawScatter(pts, all, G);
+}
+
+function drawScatter(pts, all, G){
+  const cv=document.getElementById('cvsS'), ctx=cv.getContext('2d');
+  const W=cv.offsetWidth, H=cv.offsetHeight; if(!W) return;
+  ctx.clearRect(0,0,W,H);
+  const pad={top:16,bottom:44,left:50,right:16}, cw=W-pad.left-pad.right, ch=H-pad.top-pad.bottom;
+  let x0=0, x1=Math.max(...pts.map(p=>p.x))*1.05;
+  let y0=Math.min(...pts.map(p=>p.y)), y1=Math.max(...pts.map(p=>p.y)); const r=y1-y0||1; y0-=r*0.08; y1+=r*0.08;
+  const sx=niceStep((x1-x0)/6), sy=niceStep((y1-y0)/5); x1=Math.ceil(x1/sx)*sx; y0=Math.floor(y0/sy)*sy; y1=Math.ceil(y1/sy)*sy;
+  const X=x=>pad.left+(x-x0)/(x1-x0)*cw, Y=y=>pad.top+ch-(y-y0)/(y1-y0)*ch;
+  const font=s=>s+'px "IBM Plex Sans","Noto Sans Thai",sans-serif';
+
+  ctx.font=font(13); ctx.textAlign='right';
+  for(let v=y0; v<=y1+1e-9; v+=sy){ ctx.strokeStyle='#f0f0f0'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(pad.left,Y(v)); ctx.lineTo(W-pad.right,Y(v)); ctx.stroke(); ctx.fillStyle='#999'; ctx.fillText(Math.round(v),pad.left-6,Y(v)+4); }
+  ctx.textAlign='center';
+  for(let v=x0; v<=x1+1e-9; v+=sx){ ctx.strokeStyle='#f6f6f6'; ctx.beginPath(); ctx.moveTo(X(v),pad.top); ctx.lineTo(X(v),pad.top+ch); ctx.stroke(); ctx.fillStyle='#999'; ctx.fillText(Math.round(v),X(v),pad.top+ch+18); }
+  ctx.strokeStyle='#888'; ctx.beginPath(); ctx.moveTo(pad.left,pad.top+ch); ctx.lineTo(W-pad.right,pad.top+ch); ctx.moveTo(pad.left,pad.top); ctx.lineTo(pad.left,pad.top+ch); ctx.stroke();
+  ctx.fillStyle='#666'; ctx.font=font(13); ctx.fillText(t('ชั่วโมงอ่านหนังสือ (X)','Hours studied (X)'),pad.left+cw/2,H-6);
+  ctx.save(); ctx.translate(13,pad.top+ch/2); ctx.rotate(-Math.PI/2); ctx.fillText(t('คะแนนสอบ (Y)','Exam score (Y)'),0,0); ctx.restore();
+
+  ctx.save(); ctx.beginPath(); ctx.rect(pad.left,pad.top,cw,ch); ctx.clip();
+  // points
+  pts.forEach(p=>{ ctx.fillStyle = S.reveal ? GCOL[p.g] : '#888'; ctx.globalAlpha=0.75; ctx.beginPath(); ctx.arc(X(p.x),Y(p.y),5,0,7); ctx.fill(); });
+  ctx.globalAlpha=1;
+  // group lines
+  if(S.reveal) G.forEach((gr,g)=>{
+    const gp=pts.filter(p=>p.g===g), lo=Math.min(...gp.map(p=>p.x)), hi=Math.max(...gp.map(p=>p.x));
+    ctx.strokeStyle=GCOL[g]; ctx.lineWidth=3.5; ctx.beginPath(); ctx.moveTo(X(lo),Y(gr.a+gr.b*lo)); ctx.lineTo(X(hi),Y(gr.a+gr.b*hi)); ctx.stroke();
+  });
+  // pooled line
+  const lo=Math.min(...pts.map(p=>p.x)), hi=Math.max(...pts.map(p=>p.x));
+  ctx.strokeStyle='#1a1a1a'; ctx.lineWidth=S.reveal?2.5:3.5; if(S.reveal) ctx.setLineDash([8,6]);
+  ctx.beginPath(); ctx.moveTo(X(lo),Y(all.a+all.b*lo)); ctx.lineTo(X(hi),Y(all.a+all.b*hi)); ctx.stroke(); ctx.setLineDash([]);
+  ctx.restore();
+}
+
+/* ======================= TABLE ======================= */
+const PRESETS={
+  kidney:{ A:[[81,87],[192,263]], B:[[234,270],[55,80]] },
+  admit: { A:[[480,800],[40,200]], B:[[130,200],[200,800]] }
+};
+function L(){ // labels for current preset
+  if(S.preset==='kidney') return {
+    A:t('วิธี A (ผ่าตัดเปิด)','Treatment A (open surgery)'), B:t('วิธี B (ส่องกล้อง)','Treatment B (keyhole)'),
+    g1:t('นิ่วก้อนเล็ก','Small stones'), g2:t('นิ่วก้อนใหญ่','Large stones'),
+    succ:t('หาย','cured'), tot:t('ผู้ป่วย','patients'), rate:t('อัตราการรักษาหาย','Success rate'),
+    title:t('อัตราการรักษาหายของนิ่วในไต แยกตามขนาดก้อน','Kidney-stone success rate by stone size'),
+    note:t('ข้อมูลจริงจากงานวิจัยของ Charig และคณะ (1986) ที่มักใช้สอนเรื่องนี้','Real data from Charig et al. (1986), the classic teaching example.'),
+    hard:t('นิ่วก้อนใหญ่ (เคสยาก)','large stones (hard cases)'),
+    why:t('แพทย์มักเลือกวิธี A ให้ผู้ป่วยนิ่วก้อนใหญ่ซึ่งรักษายากกว่า','Doctors tended to give the harder large-stone cases to treatment A')};
+  return {
+    A:t('ผู้สมัครชาย','Male applicants'), B:t('ผู้สมัครหญิง','Female applicants'),
+    g1:t('คณะ X (รับง่าย)','Dept X (easy)'), g2:t('คณะ Y (รับยาก)','Dept Y (hard)'),
+    succ:t('รับ','admitted'), tot:t('ผู้สมัคร','applied'), rate:t('อัตราการรับเข้า','Admission rate'),
+    title:t('อัตราการรับเข้าเรียน แยกตามคณะ','Admission rate by department'),
+    note:t('ตัวเลขสมมติที่จำลองจากกรณีมหาวิทยาลัย Berkeley ปี 1973','Illustrative numbers modelled on the 1973 UC Berkeley case.'),
+    hard:t('คณะที่รับยาก','the hard-to-enter department'),
+    why:t('ผู้สมัครหญิงส่วนใหญ่สมัครคณะที่รับยาก ส่วนผู้สมัครชายส่วนใหญ่สมัครคณะที่รับง่าย','Most women applied to the hard department, most men to the easy one')};
+}
+function setPreset(p){
+  S.preset=p; S.T=JSON.parse(JSON.stringify(PRESETS[p]));
+  document.querySelectorAll('#segPreset button').forEach(b=>b.classList.toggle('active', b.dataset.p===p));
+  ['A','B'].forEach(k=>[0,1].forEach(g=>{ document.getElementById(k+(g+1)+'s').value=S.T[k][g][0]; document.getElementById(k+(g+1)+'n').value=S.T[k][g][1]; }));
+  document.getElementById('tableMsg').textContent='';
+  render();
+}
+function onTable(){
+  const T={A:[[0,0],[0,0]],B:[[0,0],[0,0]]}; let err='';
+  ['A','B'].forEach(k=>[0,1].forEach(g=>{
+    const s=parseInt(document.getElementById(k+(g+1)+'s').value), n=parseInt(document.getElementById(k+(g+1)+'n').value);
+    if(!(n>0) || !(s>=0)) err=t('กรอกจำนวนเต็มบวก และจำนวนทั้งหมดต้องมากกว่า 0','Enter whole numbers; totals must be above 0');
+    else if(s>n) err=t('จำนวนที่สำเร็จต้องไม่เกินจำนวนทั้งหมด','Successes cannot exceed the total');
+    T[k][g]=[s,n];
+  }));
+  const m=document.getElementById('tableMsg'); m.className='sub-hint err'; m.textContent=err;
+  if(err) return;
+  S.T=T; render();
+}
+
+function renderTable(){
+  const lb=L(), T=S.T;
+  document.getElementById('presetNote').innerHTML=lb.note;
+  document.getElementById('hG1s').innerHTML=lb.g1+'<br>'+lb.succ; document.getElementById('hG1n').innerHTML=lb.g1+'<br>'+lb.tot;
+  document.getElementById('hG2s').innerHTML=lb.g2+'<br>'+lb.succ; document.getElementById('hG2n').innerHTML=lb.g2+'<br>'+lb.tot;
+  document.getElementById('tblTitle').innerHTML=lb.title;
+
+  const R={}; ['A','B'].forEach(k=>{ const a=T[k]; R[k]={ g:[a[0][0]/a[0][1], a[1][0]/a[1][1]], all:(a[0][0]+a[1][0])/(a[0][1]+a[1][1]), w:[a[0][1]/(a[0][1]+a[1][1]), a[1][1]/(a[0][1]+a[1][1])], S:a[0][0]+a[1][0], N:a[0][1]+a[1][1] }; });
+  const win=i=> i==='all' ? (R.A.all>R.B.all?'A':R.A.all<R.B.all?'B':'=') : (R.A.g[i]>R.B.g[i]?'A':R.A.g[i]<R.B.g[i]?'B':'=');
+  const w1=win(0), w2=win(1), wa=win('all'), para = w1===w2 && w1!=='=' && wa!=='=' && wa!==w1;
+
+  const bn=document.getElementById('bannerT');
+  if(para){ bn.className='banner para';
+    bn.innerHTML=t('⚠ เกิด Simpson\'s Paradox! '+(w1==='A'?lb.A:lb.B)+' ดีกว่าใน<b>ทั้งสองกลุ่ม</b> แต่เมื่อรวมกลุ่ม '+(wa==='A'?lb.A:lb.B)+' กลับดูดีกว่า',
+                   '⚠ Simpson\'s Paradox! '+(w1==='A'?lb.A:lb.B)+' wins in <b>both groups</b>, yet '+(wa==='A'?lb.A:lb.B)+' looks better overall.'); }
+  else { bn.className='banner ok'; bn.innerHTML=t('ไม่เกิดพาราดอกซ์ — ผลรวมกับผลแยกกลุ่มไปในทิศเดียวกัน','No paradox — the pooled and the split results agree.'); }
+
+  // rate table
+  const cell=(s,n,r,isWin)=>'<td'+(isWin?' class="win"':'')+'>'+s+'/'+n+'<br>'+pct(r)+(isWin?' ★':'')+'</td>';
+  let tb='<table class="calc"><tr><th></th><th>'+lb.g1+'</th><th>'+lb.g2+'</th><th>'+t('รวม','Total')+'</th></tr>';
+  ['A','B'].forEach(k=>{ tb+='<tr><td><span class="mdot" style="background:'+(k==='A'?'#0d6efd':'#fd7e14')+'"></span>'+lb[k]+'</td>'+
+      cell(T[k][0][0],T[k][0][1],R[k].g[0],w1===k)+cell(T[k][1][0],T[k][1][1],R[k].g[1],w2===k)+cell(R[k].S,R[k].N,R[k].all,wa===k)+'</tr>'; });
+  document.getElementById('rateTable').innerHTML=tb+'</table>';
+
+  // weights
+  let wh='';
+  ['A','B'].forEach(k=>{
+    const c=(k==='A'?'#0d6efd':'#fd7e14');
+    wh+='<div class="wlabel"><span class="mdot" style="background:'+c+'"></span>'+lb[k]+' — '+t('สัดส่วนเคส','case mix')+'</div>';
+    wh+='<div class="wbar"><div style="width:'+(R[k].w[0]*100)+'%;background:#9ec5fe;color:#0a3a8a">'+lb.g1+' '+pct(R[k].w[0])+'</div><div style="width:'+(R[k].w[1]*100)+'%;background:#495057">'+lb.g2+' '+pct(R[k].w[1])+'</div></div>';
+    wh+='<div class="sub-hint" style="margin:-4px 0 14px;color:#444;font-size:14px"><span class="eq">'+t('อัตรารวม','Overall')+' = '+R[k].w[0].toFixed(2)+' × '+pct(R[k].g[0])+' + '+R[k].w[1].toFixed(2)+' × '+pct(R[k].g[1])+' = <b>'+pct(R[k].all)+'</b></span></div>';
+  });
+  document.getElementById('weights').innerHTML=wh;
+
+  const harder=R.A.w[1]>R.B.w[1]?'A':'B';
+  document.getElementById('storyT').innerHTML = t(
+    '<b>กุญแจคือค่าเฉลี่ยถ่วงน้ำหนัก:</b> อัตรารวมของแต่ละแถวคือค่าเฉลี่ยของอัตราในกลุ่มย่อย <b>ถ่วงด้วยสัดส่วนเคส</b> — '+lb[harder]+' มี'+lb.hard+'ถึง '+pct(R[harder].w[1])+' (อีกฝั่งมีแค่ '+pct(R[harder==='A'?'B':'A'].w[1])+') อัตรารวมจึงถูกดึงลง ทั้งที่อาจดีกว่าในทุกกลุ่ม · สาเหตุ: '+lb.why,
+    '<b>The key is a weighted average:</b> each overall rate averages the subgroup rates <b>weighted by case mix</b>. '+lb[harder]+' has '+pct(R[harder].w[1])+' '+lb.hard+' (vs only '+pct(R[harder==='A'?'B':'A'].w[1])+' for the other), which drags its total down even if it is better in every group. Cause: '+lb.why+'.');
+  document.getElementById('misT').innerHTML = t('<b>ระวังเข้าใจผิด:</b> ตัวเลขรวมไม่ได้ "ผิด" แต่ตอบคำถามคนละข้อ — ถ้าเคสยากถูกส่งไปที่วิธีใดวิธีหนึ่งมากกว่า การเทียบผลรวมตรง ๆ จึงไม่ยุติธรรม การทดลองแบบสุ่ม (randomization) ช่วยแก้ปัญหานี้ได้เพราะทำให้สัดส่วนเคสใกล้เคียงกัน',
+    '<b>Common misconception:</b> the total isn\'t "wrong" — it answers a different question. When hard cases go mostly to one option, comparing totals is unfair. Randomised experiments fix this by balancing the case mix.');
+
+  document.getElementById('legendT').innerHTML='<div class="legend-item"><div class="legend-dot" style="background:#0d6efd"></div><span>'+lb.A+'</span></div><div class="legend-item"><div class="legend-dot" style="background:#fd7e14"></div><span>'+lb.B+'</span></div><div class="legend-item"><span>★ = '+t('ดีกว่าในช่องนั้น','better in that column')+'</span></div>';
+  drawBars(R, lb, [w1,w2,wa]);
+}
+
+function drawBars(R, lb, wins){
+  const cv=document.getElementById('cvsT'), ctx=cv.getContext('2d');
+  const W=cv.offsetWidth, H=cv.offsetHeight; if(!W) return;
+  ctx.clearRect(0,0,W,H);
+  const pad={top:24,bottom:40,left:46,right:12}, cw=W-pad.left-pad.right, ch=H-pad.top-pad.bottom;
+  const Y=v=>pad.top+ch-v*ch;
+  const font=s=>s+'px "IBM Plex Sans","Noto Sans Thai",sans-serif';
+  ctx.font=font(13); ctx.textAlign='right';
+  for(let v=0; v<=1.0001; v+=0.2){ ctx.strokeStyle='#f0f0f0'; ctx.beginPath(); ctx.moveTo(pad.left,Y(v)); ctx.lineTo(W-pad.right,Y(v)); ctx.stroke(); ctx.fillStyle='#999'; ctx.fillText(Math.round(v*100)+'%',pad.left-6,Y(v)+4); }
+  const groups=[lb.g1, lb.g2, t('รวมทั้งหมด','All combined')], slot=cw/3;
+  ctx.fillStyle='#f6f2ff'; ctx.fillRect(pad.left+2*slot+4, pad.top-18, slot-8, ch+18);
+  groups.forEach((gname,i)=>{
+    const vals=[ i<2?R.A.g[i]:R.A.all, i<2?R.B.g[i]:R.B.all ], bw=Math.min(70, slot*0.3), cx=pad.left+slot*(i+0.5);
+    vals.forEach((v,j)=>{
+      const x=cx+(j===0?-bw-4:4), col=j===0?'#0d6efd':'#fd7e14';
+      ctx.fillStyle=col; ctx.fillRect(x, Y(v), bw, Y(0)-Y(v));
+      ctx.fillStyle='#1a1a1a'; ctx.font='bold '+font(13); ctx.textAlign='center';
+      const isWin = wins[i]===(j===0?'A':'B');
+      ctx.fillText((isWin?'★ ':'')+Math.round(v*1000)/10+'%', x+bw/2, Y(v)-6);
+    });
+    ctx.fillStyle= i===2?'#6f42c1':'#555'; ctx.font='bold '+font(14); ctx.textAlign='center'; ctx.fillText(gname, cx, pad.top+ch+22);
+  });
+  ctx.strokeStyle='#888'; ctx.beginPath(); ctx.moveTo(pad.left,Y(0)); ctx.lineTo(W-pad.right,Y(0)); ctx.stroke();
+}
+
+/* ---------- canvas sizing & render ---------- */
+function sizeCanvas(id,H){
+  const cv=document.getElementById(id), W=cv.parentElement.clientWidth-40; if(W<=0) return;
+  cv.style.width=W+'px'; cv.style.height=H+'px'; cv.width=W*devicePixelRatio; cv.height=H*devicePixelRatio;
+  cv.getContext('2d').setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+}
+function resizeCanvas(){ sizeCanvas('cvsS',380); sizeCanvas('cvsT',320); render(); }
+window.addEventListener('resize', resizeCanvas);
+function render(){ if(S.mode==='scatter') renderScatter(); else renderTable(); }
+
+/* init */
+makeZ();
+S.T=JSON.parse(JSON.stringify(PRESETS.kidney));
+setPreset('kidney');
+setLang('th');
+setTimeout(resizeCanvas, 50);
+</script>
+</body>
+</html>
